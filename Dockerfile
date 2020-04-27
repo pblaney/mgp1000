@@ -19,6 +19,9 @@ RUN apt-get update && apt-get install -y \
 # Pull down current version of MGP1000 repository from GitHub
 RUN git clone --depth 1 https://github.com/pblaney/mgp1000.git
 
+# Set working directory
+WORKDIR mgp1000/
+
 # Pipeline setup using Makefile
 RUN make install-nextflow
 
