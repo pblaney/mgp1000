@@ -12,7 +12,9 @@ FROM ubuntu:16.04
 MAINTAINER "Patrick Blaney <patrick.blaney@nyulangone.org>"
 
 # Basic OS set up
-RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install -y \
+	git \
+	build-essential
 
 # Pull down current version of MGP1000 repository from GitHub
 RUN git clone --depth 1 https://github.com/pblaney/mgp1000.git
