@@ -27,4 +27,4 @@ WORKDIR mgp1000/
 # Pipeline setup using Makefile
 RUN make install-nextflow
 
-RUN make update-nextflow
+#RUN make update-nextflow
