@@ -11,7 +11,7 @@ FROM ubuntu:16.04
 # File Author/ Maintainer
 MAINTAINER "Patrick Blaney <patrick.blaney@nyulangone.org>"
 
-# Basic OS set up
+# Basic OS and dependency setup
 RUN apt-get update && apt-get install -y \
 	git \
 	build-essential \
@@ -27,3 +27,4 @@ WORKDIR mgp1000/
 # Pipeline setup using Makefile
 RUN make install-nextflow
 
+RUN make update-nextflow
