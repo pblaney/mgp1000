@@ -4,8 +4,10 @@ SHELL:=/bin/bash
 none:
 
 # Install/update Nextflow 
-install-nextflow:
+./nextflow:
 	curl -fsSL get.nextflow.io | bash
 
-update-nextflow:
+install-nextflow: ./nextflow
+
+update-nextflow: ./nextflow
 	./nextflow self-update
