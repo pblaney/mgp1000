@@ -27,5 +27,3 @@ WORKDIR mgp1000/
 # Pipeline setup using Makefile
 RUN make install-nextflow
 
-# test
-RUN nextflow -version
