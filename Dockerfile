@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
 	openjdk-8-jre-headless
 
 # Pull down current version of MGP1000 repository from GitHub
-RUN git clone https://github.com/pblaney/mgp1000.git /home/
+RUN git clone https://github.com/pblaney/mgp1000.git /home/mgp1000/
 
 # Set working directory
 WORKDIR /home/mgp1000/
