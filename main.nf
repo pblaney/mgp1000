@@ -4,11 +4,12 @@
 //  |   \  /   |  |          |  |
 //  |    \/    |   \---------/  |
 
-input_fastqs = Channel.fromPath('~/morganLab/mgp1000/development/testData/*.fastqz.gz')
+input_fastqs = Channel.fromPath('testData/*.fastqz.gz')
 params.output_dir = "output"
 
 process fastqc {
-	publishDir "${params.output_dir}"
+	tag "${fastq}"
+	publishDir "${params.output_dir}/fastqc", mode: 'copy', overwrite: true
 	echo true
 
 	input:
@@ -19,6 +20,8 @@ process fastqc {
 	file(output_zip)
 
 	script:
+	output_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	output_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
 	fastqc -o . "${fastq}"
 	"""
