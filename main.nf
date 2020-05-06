@@ -23,6 +23,7 @@ process fastqc {
 	output_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
 	output_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
+	echo "${fastq}"
 	fastqc -o . "${fastq}"
 	"""
 }
