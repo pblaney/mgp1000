@@ -4,7 +4,7 @@
 //  |   \  /   |  |          |  |
 //  |    \/    |   \---------/  |
 
-Channel.fromPath('testData/*.fastqz.gz').set{input_fastqs}
+input_fastqs = Channel.fromPath('testData/*.fastqz.gz')
 params.output_dir = "output"
 
 process fastqc {
