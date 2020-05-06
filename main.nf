@@ -7,6 +7,13 @@
 input_fastqs = Channel.fromPath( 'testData/*.fastqz.gz' )
 params.output_dir = "output"
 
+process test {
+	input:
+	file fastq from input_fastqs
+
+	"echo fastq"
+}
+
 process fastqc {
 	tag "${fastq}"
 	publishDir "${params.output_dir}/fastqc", mode: 'copy', overwrite: true
