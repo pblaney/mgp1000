@@ -1,8 +1,8 @@
 nextflow
 .nextflow
 .nextflow.log*
-nextflow_report.html
-timeline_report.html
-trace.txt
+nextflow_report.html*
+timeline_report.html*
+trace.txt*
 work
 testData
