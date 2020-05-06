@@ -8,6 +8,8 @@ input_fastq = Channel.value( 'U0a_CGATGT_L001_R1_001.fastq.gz' )
 params.output_dir = "output"
 
 process test {
+	echo true
+	
 	input:
 	file fastq from input_fastq
 
