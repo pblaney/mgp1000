@@ -4,7 +4,7 @@
 //  |   \  /   |  |          |  |
 //  |    \/    |   \---------/  |
 
-input_fastqs = Channel.fromPath('testData/*.fastqz.gz')
+Channel.fromPath('testData/*.fastqz.gz').set(input_fastqs)
 params.output_dir = "output"
 
 process fastqc {
@@ -23,7 +23,6 @@ process fastqc {
 	output_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
 	output_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
-	echo "${fastq}"
 	fastqc -o . "${fastq}"
 	"""
 }
