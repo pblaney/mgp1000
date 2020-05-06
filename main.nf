@@ -9,11 +9,11 @@ params.output_dir = "output"
 
 process test {
 	echo true
-	
+
 	input:
 	file fastq from input_fastq
 
-	"echo fastq"
+	"echo $fastq"
 }
 
 //process fastqc {
