@@ -9,7 +9,7 @@ params.output_dir = "output"
 
 process test {
 	input:
-	file fastq from input_fastqs
+	file 'fastq' from input_fastqs
 
 	"echo fastq"
 }
