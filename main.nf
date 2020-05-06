@@ -4,12 +4,12 @@
 //  |   \  /   |  |          |  |
 //  |    \/    |   \---------/  |
 
-input_fastqs = Channel.fromPath( 'testData/*.fastqz.gz' )
+input_fastq = Channel.value( 'U0a_CGATGT_L001_R1_001.fastq.gz' )
 params.output_dir = "output"
 
 process test {
 	input:
-	file 'fastq' from input_fastqs
+	file fastq from input_fastq
 
 	"echo fastq"
 }
