@@ -6,44 +6,37 @@
 //  |         |   \---------/  |               |   \------/    \------/    \------/
 //  ################################################################################
 
-input_fastqs = Channel.fromPath( 'testData/*.fastq.gz' )
 params.output_dir = "output"
 
+input_fastqs = Channel.fromPath( 'testData/*.fastq.gz' )
 process fastqc {
-	tag "${fastq}"
-	publishDir "${params.output_dir}/fastqc", mode: 'copy', overwrite: true
-	echo true
-	containerOptions '-v /Users/blanep01/morganLab/mgp1000/development/mgp1000/testData:/home/data'
+	publishDir "${params.output_dir}/fastqc", mode: 'copy'
+	containerOptions '-v $PWD/testData:/home/data'
 
 	input:
 	file fastq from input_fastqs
 
 	output:
-	file output_html into fastqc_reports
-	file output_zip 
+	file "*_fastqc.{zip,html}" into fastqc_reports
 
 	script:
-	output_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	output_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
-	fastqc -o . "/home/data/${fastq}"
+	fastqc "/home/data/${fastq}"
 	"""
 }
 
-fastqc_outdir = Channel.fromPath( "${params.output_dir}/fastqc" )
 process multiqc {
-	publishDir "${params.output_dir}/multiqc", mode: 'copy', overwrite: true
-	echo true
+	publishDir "${params.output_dir}/multiqc", mode: 'copy'
 
 	input:
-	file output_dir from fastqc_outdir
+	file fastqc_dir from fastqc_reports.collect()
 
 	output:
-	file output_html
-	file output_data
+	file "multiqc_report.html"
+	file "multiqc_data"
 
 	script:
 	"""
-	multiqc "${output_dir}"
+	multiqc "${fastqc_dir}"
 	"""
 }
