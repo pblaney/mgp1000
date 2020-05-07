@@ -11,32 +11,35 @@ params.output_dir = "output"
 input_fastqs = Channel.fromPath( 'testData/*.fastq.gz' )
 process fastqc {
 	publishDir "${params.output_dir}/fastqc", mode: 'copy'
-	containerOptions '-v $PWD/testData:/home/data'
+	containerOptions '-v ~/morganLab/mgp1000/development/mgp1000/testData:/home/data'
 
 	input:
-	file fastq from input_fastqs
+	path fastq from input_fastqs
 
 	output:
-	file "*_fastqc.{zip,html}" into fastqc_reports
+	path fastqc_html into fastqc_reports
+	path fastqc_zip
 
 	script:
+	fastqc_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	fastqc_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
-	fastqc "/home/data/${fastq}"
+	fastqc -o . "/home/data/${fastq}"
 	"""
 }
 
-process multiqc {
-	publishDir "${params.output_dir}/multiqc", mode: 'copy'
-
-	input:
-	file fastqc_dir from fastqc_reports.collect()
-
-	output:
-	file "multiqc_report.html"
-	file "multiqc_data"
-
-	script:
-	"""
-	multiqc "${fastqc_dir}"
-	"""
-}
+//process multiqc {
+//	publishDir "${params.output_dir}/multiqc", mode: 'copy'
+//
+//	input:
+//	path  from fastqc_reports.collect()
+//
+//	output:
+//	path "multiqc_report.html"
+//	path "multiqc_data"
+//
+//	script:
+//	"""
+//	multiqc .
+//	"""
+//}
