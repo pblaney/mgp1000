@@ -19,13 +19,31 @@ process fastqc {
 	file fastq from input_fastqs
 
 	output:
-	file(output_html)
-	file(output_zip)
+	file output_html into fastqc_reports
+	file output_zip 
 
 	script:
 	output_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
 	output_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
 	fastqc -o . "/home/data/${fastq}"
+	"""
+}
+
+fastqc_outdir = Channel.fromPath( "${params.output_dir}/fastqc" )
+process multiqc {
+	publishDir "${params.output_dir}/multiqc", mode: 'copy', overwrite: true
+	echo true
+
+	input:
+	file output_dir from fastqc_outdir
+
+	output:
+	file output_html
+	file output_data
+
+	script:
+	"""
+	multiqc "${output_dir}"
 	"""
 }
