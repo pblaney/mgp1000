@@ -1,45 +1,77 @@
-//  ################################################################################
-//  |\       /|   /---------\  /---------\    /|   /------\    /------\    /------\
-//  | \     / |  |             |         |   / |  |        |  |        |  |        |
-//  |  \   /  |  |     |----\  |---------/     |  |        |  |        |  |        |
-//  |   \ /   |  |          |  |               |  |        |  |        |  |        |
-//  |         |   \---------/  |               |   \------/    \------/    \------/
-//  ################################################################################
+// ################################################################################
+// |\       /|   /---------\  /---------\    /|   /------\    /------\    /------\
+// | \     / |  |             |         |   / |  |        |  |        |  |        |
+// |  \   /  |  |     |----\  |---------/     |  |        |  |        |  |        |
+// |   \ /   |  |          |  |               |  |        |  |        |  |        |
+// |         |   \---------/  |               |   \------/    \------/    \------/
+// ################################################################################
+
+// Myeloma Genome Project 1000 
+// Comprehensive pipeline for analysis of matched T/N Multiple Myeloma WGS data
+// https://github.com/pblaney/mgp1000
+
+
+// ################################################ \\
+//                                                  \\
+// ~~~~~~~~~~~~~~~~ CONFIGURATION ~~~~~~~~~~~~~~~~~ \\
+//                                                  \\
+// ################################################ \\
+
+
+
 
 params.output_dir = "output"
 
-input_fastqs = Channel.fromPath( 'testData/*.fastq.gz' )
+// ################################################ \\
+//                                                  \\
+// ~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~ \\
+//                                                  \\
+// ################################################ \\
+
+input_bams = Channel.fromPath( 'testData/*.fastq.gz' )
+
+// FastQC ~ generate sequence quality metrics for input BAM files
 process fastqc {
-	publishDir "${params.output_dir}/fastqc", mode: 'copy'
-	containerOptions '-v ~/morganLab/mgp1000/development/mgp1000/testData:/home/data'
+	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 
 	input:
-	path fastq from input_fastqs
+	path bam from input_bams
 
 	output:
 	path fastqc_html into fastqc_reports
 	path fastqc_zip
 
 	script:
-	fastqc_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	fastqc_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
+	fastqc_html = "${bam}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	fastqc_zip = "${bam}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
-	fastqc -o . "/home/data/${fastq}"
+	fastqc -o . "${bam}"
 	"""
 }
 
-//process multiqc {
-//	publishDir "${params.output_dir}/multiqc", mode: 'copy'
-//
-//	input:
-//	path  from fastqc_reports.collect()
-//
-//	output:
-//	path "multiqc_report.html"
-//	path "multiqc_data"
-//
-//	script:
-//	"""
-//	multiqc .
-//	"""
-//}
+
+
+
+
+
+
+
+/* ###### WORK IN PROGRESS ######
+
+process multiqc {
+	publishDir "${params.output_dir}/multiqc", mode: 'copy'
+
+	input:
+	path reports from fastqc_reports.collect()
+
+	output:
+	path "multiqc_report.html"
+	path "multiqc_data"
+
+	script:
+	"""
+	multiqc "$PWD"
+	"""
+}
+
+*/

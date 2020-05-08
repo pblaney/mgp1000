@@ -12,6 +12,10 @@ install-nextflow: ./nextflow
 update-nextflow: ./nextflow
 	./nextflow self-update
 
+# Test pipeline locally with Docker
+local-test-run:
+	nextflow run main.nf -profile docker
+
 # Remove all output files
 clean-all:
 	rm -f .nextflow.log*
