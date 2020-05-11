@@ -17,10 +17,10 @@
 //                                                  \\
 // ################################################ \\
 
-
-
-
 params.output_dir = "output"
+params.input_format = "bam"
+
+
 
 // ################################################ \\
 //                                                  \\
@@ -28,31 +28,52 @@ params.output_dir = "output"
 //                                                  \\
 // ################################################ \\
 
-input_bams = Channel.fromPath( 'testData/*.fastq.gz' )
+input_data = Channel.fromPath( 'input/' )
 
-// FastQC ~ generate sequence quality metrics for input BAM files
+
+// biobambam2 ~ convert input BAM files to FASTQ files
+process biobambam {
+	
+}
+
+
+
+
+/*
+
+input_fastqs = Channel.fromPath( 'testData/*.fastq.gz' )
+
+// FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 
 	input:
-	path bam from input_bams
+	path fastq from input_fastqs
 
 	output:
 	path fastqc_html into fastqc_reports
 	path fastqc_zip
 
 	script:
-	fastqc_html = "${bam}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	fastqc_zip = "${bam}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
+	fastqc_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	fastqc_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
-	fastqc -o . "${bam}"
+	fastqc --quite --noextract --outdir . "${fastq}"
 	"""
 }
 
+// Trimmomatic ~ trim low quality bases and clip adapters from reads
+process trimmomatic {
+	
+}
 
 
+// BWA MEM + Sambamba ~ align input BAM files to reference genome
+process alignment {
+	
+}
 
-
+*/
 
 
 
