@@ -39,8 +39,7 @@ process biobambam {
 	path bam from input_data
 
 	output:
-	path fastq_R1 into input_fastqs 
-	path fastq_R2 into input_fastqs
+	tuple path(fastq_R1), path(fastq_R2) into input_fastqs 
 
 	when:
 	params.input_format != "bam"
