@@ -31,9 +31,26 @@ params.input_format = "bam"
 input_data = Channel.fromPath( 'input/' )
 
 
-// biobambam2 ~ convert input BAM files to FASTQ files
+// biobambam ~ convert input BAM files to FASTQ files
 process biobambam {
-	
+	publishDir "${params.out_dir}/preprocessing/biobambam", mode: 'copy'
+
+	input:
+	path bam from input_data
+
+	output:
+	path fastq_R1 into input_fastqs 
+	path fastq_R2 into input_fastqs
+
+	when:
+	params.input_format != "bam"
+
+	script:
+	fastq_R1 = "${bam}".replaceFirst(/.bam$/, "_R1.fastq.gz")
+	fastq_R2 = "${bam}".replaceFirst(/.bam$/, "_R2.fastq.gz")
+	"""
+	bamtofastq filename="${bam}" F="${fastq_R1}" F2="${fastq_R2}" gz=1
+	"""
 }
 
 
