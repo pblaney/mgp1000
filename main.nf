@@ -50,7 +50,7 @@ process biobambam {
 	fastq_R1 = "${bam}".replaceFirst(/.bam$/, "_R1.fastq")
 	fastq_R2 = "${bam}".replaceFirst(/.bam$/, "_R2.fastq")
 	"""
-	bamtofastq filename="${bam}" F="${fastq_R1}" F2="${fastq_R2}" #gz=1
+	bamtofastq filename="${bam}" F="${fastq_R1}" F2="${fastq_R2}" gz=1
 	"""
 }
 
@@ -59,55 +59,43 @@ if( params.input_format == "bam" ) {
 	input_fastqs = converted_fastqs
 }
 else {
-	input_fastqs = Channel.fromPath( 'input/*.f*q*' )
+	input_R1_fastqs = Channel.fromPath( 'input/*R1.f*q*' )
+	input_R2_fastqs = Channel.fromPath( 'input/*R2.f*q*' )
+	input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
 }
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process trimmomatic {
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R1_trimmed}"
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R2_trimmed}"
 
 	input:
-	tuple path(fastq_R1), path(fastq_R2) from input_fastqs
+	tuple path(input_R1_fastqs), path(input_R2_fastqs) from input_fastqs
 	path trimmomatic_contaminants
 
 	output:
 	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs
 
 	script:
-	fastq_R1_trimmed = "${fastq_R1}".replaceFirst(/.fastq$/, ".trim.fastq")
-	fastq_R2_trimmed = "${fastq_R2}".replaceFirst(/.fastq$/, ".trim.fastq")
-	fastq_R1_unpaired = "${fastq_R1}".replaceFirst(/.fastq$/, ".unpaired.fastq")
-	fastq_R2_unpaired = "${fastq_R2}".replaceFirst(/.fastq$/, ".unpaired.fastq")
+	fastq_R1_trimmed = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
+	fastq_R2_trimmed = "${input_R2_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
+	fastq_R1_unpaired = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".unpaired.fastq.gz")
+	fastq_R2_unpaired = "${input_R2_fastqs}".replaceFirst(/.fastq.gz$/, ".unpaired.fastq.gz")
 	"""
 	trimmomatic PE -threads 8 \
-	"${fastq_R1}" "${fastq_R2}" \
+	"${input_R1_fastqs}" "${input_R2_fastqs}" \
 	"${fastq_R1_trimmed}" "${fastq_R1_unpaired}" \
 	"${fastq_R2_trimmed}" "${fastq_R2_unpaired}" \
 	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true TRAILING:5 SLIDINGWINDOW:4:15 MINLEN:35
 	"""
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 
 	input:
-	tuple path(fastq_R1), path(fastq_R2) from input_fastqs
+	tuple path(fastq_R1), path(fastq_R2) from trimmed_fastqs
 
 	output:
 	tuple path(fastqc_R1_html), path(fastqc_R2_html) into fastqc_reports
@@ -124,7 +112,11 @@ process fastqc {
 	"""
 }
 
-*/
+
+
+
+
+
 
 /*
 
