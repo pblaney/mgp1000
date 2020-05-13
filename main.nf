@@ -17,10 +17,12 @@
 //                                                  \\
 // ################################################ \\
 
-params.output_dir = "output"
+// Declare the defaults for all pipeline parameters
 params.input_format = "bam"
+params.output_dir = "output"
 
-
+// Set path to reference files
+trimmomatic_contaminants = Channel.fromPath('references/trimmomatic.fa')
 
 // ################################################ \\
 //                                                  \\
@@ -28,61 +30,103 @@ params.input_format = "bam"
 //                                                  \\
 // ################################################ \\
 
-input_data = Channel.fromPath( 'input/' )
+// Set the path to all input BAM files
+input_bams = Channel.fromPath( 'input/*.bam' )
 
-
-// biobambam ~ convert input BAM files to FASTQ files
+// biobambam ~ convert any input BAM files to FASTQ files
 process biobambam {
-	publishDir "${params.out_dir}/preprocessing/biobambam", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/biobambam", mode: 'copy'
 
 	input:
-	path bam from input_data
+	path bam from input_bams
 
 	output:
-	tuple path(fastq_R1), path(fastq_R2) into input_fastqs 
+	tuple path(fastq_R1), path(fastq_R2) into converted_fastqs
 
 	when:
-	params.input_format != "bam"
+	params.input_format == "bam"
 
 	script:
-	fastq_R1 = "${bam}".replaceFirst(/.bam$/, "_R1.fastq.gz")
-	fastq_R2 = "${bam}".replaceFirst(/.bam$/, "_R2.fastq.gz")
+	fastq_R1 = "${bam}".replaceFirst(/.bam$/, "_R1.fastq")
+	fastq_R2 = "${bam}".replaceFirst(/.bam$/, "_R2.fastq")
 	"""
-	bamtofastq filename="${bam}" F="${fastq_R1}" F2="${fastq_R2}" gz=1
+	bamtofastq filename="${bam}" F="${fastq_R1}" F2="${fastq_R2}" #gz=1
 	"""
 }
+
+// Set the path to all input FASTQ files. If started with BAM files, use the converted FASTQs
+if( params.input_format == "bam" ) {
+	input_fastqs = converted_fastqs
+}
+else {
+	input_fastqs = Channel.fromPath( 'input/*.f*q*' )
+}
+
+// Trimmomatic ~ trim low quality bases and clip adapters from reads
+process trimmomatic {
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy'
+
+	input:
+	tuple path(fastq_R1), path(fastq_R2) from input_fastqs
+	path trimmomatic_contaminants
+
+	output:
+	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs
+
+	script:
+	fastq_R1_trimmed = "${fastq_R1}".replaceFirst(/.fastq$/, ".trim.fastq")
+	fastq_R2_trimmed = "${fastq_R2}".replaceFirst(/.fastq$/, ".trim.fastq")
+	fastq_R1_unpaired = "${fastq_R1}".replaceFirst(/.fastq$/, ".unpaired.fastq")
+	fastq_R2_unpaired = "${fastq_R2}".replaceFirst(/.fastq$/, ".unpaired.fastq")
+	"""
+	trimmomatic PE -threads 8 \
+	"${fastq_R1}" "${fastq_R2}" \
+	"${fastq_R1_trimmed}" "${fastq_R1_unpaired}" \
+	"${fastq_R2_trimmed}" "${fastq_R2_unpaired}" \
+	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true TRAILING:5 SLIDINGWINDOW:4:15 MINLEN:35
+	"""
+}
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 /*
 
-input_fastqs = Channel.fromPath( 'testData/*.fastq.gz' )
-
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 
 	input:
-	path fastq from input_fastqs
+	tuple path(fastq_R1), path(fastq_R2) from input_fastqs
 
 	output:
-	path fastqc_html into fastqc_reports
-	path fastqc_zip
+	tuple path(fastqc_R1_html), path(fastqc_R2_html) into fastqc_reports
+	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_html = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	fastqc_zip = "${fastq}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
+	fastqc_R1_html = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
+	fastqc_R2_html = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
-	fastqc --quite --noextract --outdir . "${fastq}"
+	fastqc --outdir . "${fastq_R1}"
+	fastqc --outdir . "${fastq_R2}"
 	"""
 }
 
-// Trimmomatic ~ trim low quality bases and clip adapters from reads
-process trimmomatic {
-	
-}
+*/
 
+/*
 
 // BWA MEM + Sambamba ~ align input BAM files to reference genome
 process alignment {

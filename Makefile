@@ -12,9 +12,13 @@ install-nextflow: ./nextflow
 update-nextflow: ./nextflow
 	./nextflow self-update
 
-# Test pipeline locally with Docker
-local-test-run:
-	nextflow run main.nf -profile docker
+# Test pipeline locally with Docker and BAM input files
+local-test-run-bam:
+	nextflow run main.nf --input_format bam -profile docker
+
+# Test pipeline locally with Docker and FASTQ input files
+local-test-run-fastq:
+	nextflow run main.nf --input_format fastq -profile docker
 
 # Remove all output files
 clean-all:
