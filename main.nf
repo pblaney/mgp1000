@@ -47,8 +47,8 @@ process biobambam {
 	params.input_format == "bam"
 
 	script:
-	fastq_R1 = "${bam}".replaceFirst(/.bam$/, "_R1.fastq")
-	fastq_R2 = "${bam}".replaceFirst(/.bam$/, "_R2.fastq")
+	fastq_R1 = "${bam}".replaceFirst(/.bam$/, "_R1.fastq.gz")
+	fastq_R2 = "${bam}".replaceFirst(/.bam$/, "_R2.fastq.gz")
 	"""
 	bamtofastq filename="${bam}" F="${fastq_R1}" F2="${fastq_R2}" gz=1
 	"""
@@ -59,8 +59,8 @@ if( params.input_format == "bam" ) {
 	input_fastqs = converted_fastqs
 }
 else {
-	input_R1_fastqs = Channel.fromPath( 'input/*R1.f*q*' )
-	input_R2_fastqs = Channel.fromPath( 'input/*R2.f*q*' )
+	input_R1_fastqs = Channel.fromPath( 'input/_R1.f*q*' )
+	input_R2_fastqs = Channel.fromPath( 'input/_R2.f*q*' )
 	input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
 }
 
@@ -68,6 +68,7 @@ else {
 process trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R1_trimmed}"
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R2_trimmed}"
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'copy', pattern: "*${fastq_trim_log}"
 
 	input:
 	tuple path(input_R1_fastqs), path(input_R2_fastqs) from input_fastqs
@@ -75,18 +76,21 @@ process trimmomatic {
 
 	output:
 	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs
+	path fastq_trim_log into trim_logs
 
 	script:
 	fastq_R1_trimmed = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
 	fastq_R2_trimmed = "${input_R2_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
 	fastq_R1_unpaired = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".unpaired.fastq.gz")
 	fastq_R2_unpaired = "${input_R2_fastqs}".replaceFirst(/.fastq.gz$/, ".unpaired.fastq.gz")
+	fastq_trim_log = "${input_R1_fastqs}".replaceFirst(/_R1.fastq.gz$/, ".trim.log")
 	"""
 	trimmomatic PE -threads 8 \
 	"${input_R1_fastqs}" "${input_R2_fastqs}" \
 	"${fastq_R1_trimmed}" "${fastq_R1_unpaired}" \
 	"${fastq_R2_trimmed}" "${fastq_R2_unpaired}" \
-	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true TRAILING:5 SLIDINGWINDOW:4:15 MINLEN:35
+	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true TRAILING:5 SLIDINGWINDOW:4:15 MINLEN:35 \
+	2> "${fastq_trim_log}"
 	"""
 }
 
