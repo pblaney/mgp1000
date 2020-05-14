@@ -22,7 +22,8 @@ params.input_format = "bam"
 params.output_dir = "output"
 
 // Set path to reference files
-trimmomatic_contaminants = Channel.fromPath('references/trimmomatic.fa')
+trimmomatic_contaminants = Channel.fromPath( 'references/trimmomatic.fa' )
+bwa_reference_genome = Channel.fromPath( 'references/hg38/bwa/genome.fa' )
 
 // ################################################ \\
 //                                                  \\
@@ -59,8 +60,8 @@ if( params.input_format == "bam" ) {
 	input_fastqs = converted_fastqs
 }
 else {
-	input_R1_fastqs = Channel.fromPath( 'input/_R1.f*q*' )
-	input_R2_fastqs = Channel.fromPath( 'input/_R2.f*q*' )
+	input_R1_fastqs = Channel.fromPath( 'input/*_R1.f*q*' )
+	input_R2_fastqs = Channel.fromPath( 'input/*_R2.f*q*' )
 	input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
 }
 
@@ -76,7 +77,7 @@ process trimmomatic {
 
 	output:
 	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs
-	path fastq_trim_log into trim_logs
+	path fastq_trim_log
 
 	script:
 	fastq_R1_trimmed = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
@@ -116,39 +117,44 @@ process fastqc {
 	"""
 }
 
-
-
-
-
-
-
-/*
-
-// BWA MEM + Sambamba ~ align input BAM files to reference genome
+// BWA MEM + Sambamba ~ align trimmed FASTQ files to reference genome
 process alignment {
-	
-}
-
-*/
-
-
-
-/* ###### WORK IN PROGRESS ######
-
-process multiqc {
-	publishDir "${params.output_dir}/multiqc", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'copy', pattern: "*${bam_aligned}"
+	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'copy', pattern: "*${bam_flagstat_log}"
 
 	input:
-	path reports from fastqc_reports.collect()
+	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) from trimmed_fastqs
+	path bwa_reference_genome
 
 	output:
-	path "multiqc_report.html"
-	path "multiqc_data"
+	path bam_aligned into aligned_bams
+	path bam_flagstat_log
 
 	script:
+	sample_id = "${fastq_R1_trimmed}".replaceFirst(/.trim.fastq.gz$/, "")
+	bam_aligned = "${sample_id}.bam"
+	bam_flagstat_log = "${sample_id}.alignFlagstat.log"
 	"""
-	multiqc "$PWD"
+	bwa mem \
+	-M -v 1 \
+	-t 8 \
+	-R '@RG\tID:${sample_id}\tSM:${sample_id}\tLB:${sample_id}\tPL:ILLUMINA' \
+	"${bwa_reference_genome}" \
+	"${fastq_R1_trimmed}" "${fastq_R2_trimmed}" \
+	| \
+	sambamba view \
+	--sam-input \
+	--nthreads=8 \
+	--filter='mapping_quality>=10' \
+	--format=bam \
+	--compression-level=0 \
+	/dev/stdin \
+	| \
+	sambamba sort \
+	--nthreads=8 \
+	--out="${bam_aligned}"
+
+	sambamba flagstat "${bam_aligned}" > "${bam_flagstat_log}"
 	"""
 }
 
-*/
