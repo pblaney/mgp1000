@@ -14,11 +14,11 @@ update-nextflow: ./nextflow
 
 # Test pipeline locally with Docker and BAM input files
 local-test-run-bam:
-	nextflow run main.nf --input_format bam -profile docker
+	nextflow run main.nf -resume --input_format bam -profile docker 
 
 # Test pipeline locally with Docker and FASTQ input files
 local-test-run-fastq:
-	nextflow run main.nf --input_format fastq -profile docker
+	nextflow run main.nf -resume --input_format fastq -profile docker 
 
 # Remove all output files
 clean-all:

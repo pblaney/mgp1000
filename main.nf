@@ -23,7 +23,8 @@ params.output_dir = "output"
 
 // Set path to reference files
 trimmomatic_contaminants = Channel.fromPath( 'references/trimmomatic.fa' )
-bwa_reference_genome = Channel.fromPath( 'references/hg38/bwa/genome.fa' )
+bwa_reference_dir = Channel.fromPath( 'references/hg38/bwa' )
+
 
 // ################################################ \\
 //                                                  \\
@@ -76,7 +77,7 @@ process trimmomatic {
 	path trimmomatic_contaminants
 
 	output:
-	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs
+	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
 	path fastq_trim_log
 
 	script:
@@ -100,7 +101,7 @@ process fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 
 	input:
-	tuple path(fastq_R1), path(fastq_R2) from trimmed_fastqs
+	tuple path(fastq_R1), path(fastq_R2) from trimmed_fastqs_forFastqc
 
 	output:
 	tuple path(fastqc_R1_html), path(fastqc_R2_html) into fastqc_reports
@@ -123,23 +124,23 @@ process alignment {
 	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'copy', pattern: "*${bam_flagstat_log}"
 
 	input:
-	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) from trimmed_fastqs
-	path bwa_reference_genome
+	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) from trimmed_fastqs_forAlignment
+	path bwa_reference_dir
 
 	output:
 	path bam_aligned into aligned_bams
 	path bam_flagstat_log
 
 	script:
-	sample_id = "${fastq_R1_trimmed}".replaceFirst(/.trim.fastq.gz$/, "")
+	sample_id = "${fastq_R1_trimmed}".replaceFirst(/_R1.trim.fastq.gz$/, "")
 	bam_aligned = "${sample_id}.bam"
 	bam_flagstat_log = "${sample_id}.alignFlagstat.log"
 	"""
 	bwa mem \
 	-M -v 1 \
 	-t 8 \
-	-R '@RG\tID:${sample_id}\tSM:${sample_id}\tLB:${sample_id}\tPL:ILLUMINA' \
-	"${bwa_reference_genome}" \
+	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
+	"${bwa_reference_dir}/genome.fa" \
 	"${fastq_R1_trimmed}" "${fastq_R2_trimmed}" \
 	| \
 	sambamba view \
@@ -152,7 +153,8 @@ process alignment {
 	| \
 	sambamba sort \
 	--nthreads=8 \
-	--out="${bam_aligned}"
+	--out="${bam_aligned}" \
+	/dev/stdin
 
 	sambamba flagstat "${bam_aligned}" > "${bam_flagstat_log}"
 	"""
