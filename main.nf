@@ -108,10 +108,10 @@ process fastqc {
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_R1_html = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
-	fastqc_R2_html = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
+	fastqc_R1_html = "${fastq_R1}".replaceFirst(/.fastq.gz$/, ".fastqc.html")
+	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/.fastq.gz$/, ".fastqc.zip")
+	fastqc_R2_html = "${fastq_R2}".replaceFirst(/.fastq.gz$/, ".fastqc.html")
+	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/.fastq.gz$/, ".fastqc.zip")
 	"""
 	fastqc --outdir . "${fastq_R1}"
 	fastqc --outdir . "${fastq_R2}"
@@ -134,7 +134,7 @@ process alignment {
 	script:
 	sample_id = "${fastq_R1_trimmed}".replaceFirst(/_R1.trim.fastq.gz$/, "")
 	bam_aligned = "${sample_id}.bam"
-	bam_flagstat_log = "${sample_id}.alignFlagstat.log"
+	bam_flagstat_log = "${sample_id}.flagstat.log"
 	"""
 	bwa mem \
 	-M -v 1 \
@@ -157,6 +157,34 @@ process alignment {
 	/dev/stdin
 
 	sambamba flagstat "${bam_aligned}" > "${bam_flagstat_log}"
+	"""
+}
+
+// NYGC ShortAlignmentMarking + Sambamba ~ parses BAM files and marks very short reads as unaligned
+process shortAlignmentMarking {
+	publishDir "${params.output_dir}/preprocessing/shortAlignmentMarking", mode: 'copy'
+
+	input:
+	path bam_aligned from aligned_bams
+
+	output:
+	path bam_short_marked into short_marked_bams
+
+	script:
+	bam_short_marked = "${bam_aligned}".replaceFirst(/.bam$/, ".shortmark.bam")
+	"""
+	filter_bam \
+	-I "${bam_aligned}" \
+	-A1 30 \
+	-A2 30 \
+	-o "${bam_short_marked}" \
+	| \
+	sambamba view \
+	--nthreads=8 \
+	--format=bam \
+	--compression-level=0 \
+	--output-filename="${bam_short_marked}" \
+	-
 	"""
 }
 
