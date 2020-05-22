@@ -36,7 +36,7 @@ bwa_reference_dir = Channel.fromPath( 'references/hg38/bwa' )
 input_bams = Channel.fromPath( 'input/*.bam' )
 
 // biobambam ~ convert any input BAM files to FASTQ files
-process biobambam {
+process bamToFastq_biobambam {
 	publishDir "${params.output_dir}/preprocessing/biobambam", mode: 'copy'
 
 	input:
@@ -67,7 +67,7 @@ else {
 }
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
-process trimmomatic {
+process fastqTrimming_trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R1_trimmed}"
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R2_trimmed}"
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'copy', pattern: "*${fastq_trim_log}"
@@ -97,7 +97,7 @@ process trimmomatic {
 }
 
 // FastQC ~ generate sequence quality metrics for input FASTQ files
-process fastqc {
+process fastqQualityControlMetrics_fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 
 	input:
@@ -108,10 +108,10 @@ process fastqc {
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_R1_html = "${fastq_R1}".replaceFirst(/.fastq.gz$/, ".fastqc.html")
-	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/.fastq.gz$/, ".fastqc.zip")
-	fastqc_R2_html = "${fastq_R2}".replaceFirst(/.fastq.gz$/, ".fastqc.html")
-	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/.fastq.gz$/, ".fastqc.zip")
+	fastqc_R1_html = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
+	fastqc_R2_html = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
+	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
 	"""
 	fastqc --outdir . "${fastq_R1}"
 	fastqc --outdir . "${fastq_R2}"
@@ -119,7 +119,7 @@ process fastqc {
 }
 
 // BWA MEM + Sambamba ~ align trimmed FASTQ files to reference genome
-process alignment {
+process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'copy', pattern: "*${bam_aligned}"
 	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'copy', pattern: "*${bam_flagstat_log}"
 
@@ -149,42 +149,40 @@ process alignment {
 	--filter='mapping_quality>=10' \
 	--format=bam \
 	--compression-level=0 \
-	/dev/stdin \
-	| \
-	sambamba sort \
-	--nthreads=8 \
-	--out="${bam_aligned}" \
+	--output-filename "${bam_aligned}" \
 	/dev/stdin
 
 	sambamba flagstat "${bam_aligned}" > "${bam_flagstat_log}"
 	"""
 }
 
-// NYGC ShortAlignmentMarking + Sambamba ~ parses BAM files and marks very short reads as unaligned
-process shortAlignmentMarking {
-	publishDir "${params.output_dir}/preprocessing/shortAlignmentMarking", mode: 'copy'
+/*
+	| \
+	sambamba sort \
+	--nthreads=8 \
+	--out="${bam_aligned}" \
+	--by-name \
+	/dev/stdin
+*/
+
+// GATK FixMateInformation ~ veryify/fix mate-pair information
+process fixMateInformation_gatk {
+	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'copy'
 
 	input:
 	path bam_aligned from aligned_bams
 
 	output:
-	path bam_short_marked into short_marked_bams
+	path bam_fixed_mate into fixed_mate_bams
 
 	script:
-	bam_short_marked = "${bam_aligned}".replaceFirst(/.bam$/, ".shortmark.bam")
+	bam_fixed_mate = "${bam_aligned}".replaceFirst(/.bam$/, ".fixedmate.bam")
 	"""
-	filter_bam \
+	gatk FixMateInformation \
+	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--VALIDATION_STRINGENCY SILENT \
+	--ADD_MATE_CIGAR true \
 	-I "${bam_aligned}" \
-	-A1 30 \
-	-A2 30 \
-	-o "${bam_short_marked}" \
-	| \
-	sambamba view \
-	--nthreads=8 \
-	--format=bam \
-	--compression-level=0 \
-	--output-filename="${bam_short_marked}" \
-	-
+	-O "${bam_fixed_mate}"
 	"""
 }
-
