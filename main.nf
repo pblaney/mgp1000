@@ -156,17 +156,8 @@ process alignment_bwa {
 	"""
 }
 
-/*
-	| \
-	sambamba sort \
-	--nthreads=8 \
-	--out="${bam_aligned}" \
-	--by-name \
-	/dev/stdin
-*/
-
-// GATK FixMateInformation ~ veryify/fix mate-pair information
-process fixMateInformation_gatk {
+// GATK FixMateInformation ~ veryify/fix mate-pair information and sort output BAM by coordinate
+process fixMateInformationAndSort_gatk {
 	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'copy'
 
 	input:
@@ -182,7 +173,41 @@ process fixMateInformation_gatk {
 	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
+	--SORT_ORDER coordinate \
 	-I "${bam_aligned}" \
 	-O "${bam_fixed_mate}"
 	"""
+}
+
+// Sambamba ~ Mark duplicate alignments and create BAM index
+process markDuplicatesAndIndex_sambamba {
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${bam_markdup_flagstat_log}"
+
+	input:
+	path bam_fixed_mate from fixed_mate_bams
+
+	output:
+	tuple path(bam_marked_dup), path(bam_index) into marked_dup_indexed_bams
+	path bam_markdup_flagstat_log
+
+	script:
+	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.bam")
+	bam_index = "${bam_marked_dup}.bai"
+	markdup_output_log = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.log")
+	bam_markdup_flagstat_log = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.flagstat.log")
+	"""
+	sambamba markdup \
+	--remove-duplicates \
+	--nthreads 4 \
+	--hash-table-size 525000 \
+	--overflow-list-size 525000 \
+	"${bam_fixed_mate}" \
+	"${bam_marked_dup}" \
+	2> "${markdup_output_log}"
+
+	sambamba flagstat "${bam_marked_dup}" > "${bam_markdup_flagstat_log}"
+
+	sambamba index "${bam_marked_dup}"
+	"""	
 }
