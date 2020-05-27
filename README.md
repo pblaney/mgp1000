@@ -7,7 +7,4 @@ In order to analyze hundreds of matched tumor/normal whole-genome samples across
 <img src="https://github.com/pblaney/mgp1000/blob/master/MGP1000Pipeline.png" width="900">
 
 ## Running the Pipeline
-The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies. The only prerequisites:
-  - Singularity (v3.1)
-  - Java (8+)
-  - Nextflow (20.01)
+The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies.
