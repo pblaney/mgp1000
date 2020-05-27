@@ -17,6 +17,9 @@
 //                                                  \\
 // ################################################ \\
 
+
+// NEED TO CHANGE MODE TO COPY WHEN FINALIZED
+
 // Declare the defaults for all pipeline parameters
 params.input_format = "bam"
 params.output_dir = "output"
@@ -37,7 +40,7 @@ input_bams = Channel.fromPath( 'input/*.bam' )
 
 // biobambam ~ convert any input BAM files to FASTQ files
 process bamToFastq_biobambam {
-	publishDir "${params.output_dir}/preprocessing/biobambam", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/biobambam", mode: 'symlink'
 
 	input:
 	path bam from input_bams
@@ -68,9 +71,9 @@ else {
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process fastqTrimming_trimmomatic {
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R1_trimmed}"
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'copy', pattern: "*${fastq_R2_trimmed}"
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'copy', pattern: "*${fastq_trim_log}"
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R1_trimmed}"	
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R2_trimmed}"
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'symlink', pattern: "*${fastq_trim_log}"
 
 	input:
 	tuple path(input_R1_fastqs), path(input_R2_fastqs) from input_fastqs
@@ -98,7 +101,7 @@ process fastqTrimming_trimmomatic {
 
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqQualityControlMetrics_fastqc {
-	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'symlink'
 
 	input:
 	tuple path(fastq_R1), path(fastq_R2) from trimmed_fastqs_forFastqc
@@ -120,8 +123,8 @@ process fastqQualityControlMetrics_fastqc {
 
 // BWA MEM + Sambamba ~ align trimmed FASTQ files to reference genome
 process alignment_bwa {
-	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'copy', pattern: "*${bam_aligned}"
-	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'copy', pattern: "*${bam_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
+	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'symlink', pattern: "*${bam_flagstat_log}"
 
 	input:
 	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) from trimmed_fastqs_forAlignment
@@ -158,7 +161,7 @@ process alignment_bwa {
 
 // GATK FixMateInformation ~ veryify/fix mate-pair information and sort output BAM by coordinate
 process fixMateInformationAndSort_gatk {
-	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'symlink'
 
 	input:
 	path bam_aligned from aligned_bams
@@ -181,8 +184,8 @@ process fixMateInformationAndSort_gatk {
 
 // Sambamba ~ Mark duplicate alignments and create BAM index
 process markDuplicatesAndIndex_sambamba {
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'copy'
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${bam_markdup_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'symlink', pattern: "*${bam_markdup_flagstat_log}"
 
 	input:
 	path bam_fixed_mate from fixed_mate_bams
