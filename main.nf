@@ -28,10 +28,15 @@ params.output_dir = "output"
 trimmomatic_contaminants = Channel.fromPath( 'references/trimmomatic.fa' )
 bwa_reference_dir = Channel.fromPath( 'references/hg38/bwa' )
 reference_genome_fasta = Channel.fromPath( 'references/hg38/bwa/genome.fa' )
+reference_genome_fasta_index = Channel.fromPath( 'references/hg38/bwa/genome.fa.fai' )
+reference_genome_fasta_dict = Channel.fromPath( 'references/hg38/bwa/genome.dict' )
 gatk_bundle_wgs_interval_list = Channel.fromPath( 'references/hg38/gatkBundle/wgs_calling_regions.hg38.interval_list' )
 gatk_bundle_mills_1000G = Channel.fromPath( 'references/hg38/gatkBundle/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
+gatk_bundle_mills_1000G_index = Channel.fromPath( 'references/hg38/gatkBundle/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi' )
 gatk_bundle_known_indels = Channel.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.known_indels.vcf.gz' )
-gatk_bundle_dbsnp138 = Channel.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
+gatk_bundle_known_indels_index = Channel.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi' )
+gatk_bundle_dbsnp138 = Channel.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf' )
+gatk_bundle_dbsnp138_index = Channel.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.idx' )
 
 
 // ################################################ \\
@@ -246,27 +251,35 @@ process downsampleBam_gatk {
 	"""
 }
 
-// GATK BaseRecalibrator ~ Generate base quality score recalibration table based on covariates
+// Combine all needed GATK bundle files and reference FASTA into one channel for use in GATK BaseRecalibrator process
+gatk_reference_bundle = gatk_bundle_wgs_interval_list.combine(gatk_bundle_mills_1000G)
+							.combine(gatk_bundle_mills_1000G_index)
+							.combine(gatk_bundle_known_indels)
+							.combine(gatk_bundle_known_indels_index)
+							.combine(gatk_bundle_dbsnp138)
+							.combine(gatk_bundle_dbsnp138_index)
+reference_genome_bundle = reference_genome_fasta.combine(reference_genome_fasta_index)
+							.combine(reference_genome_fasta_dict)
+
+// GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
 	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
 
 	input:
 	path bam_marked_dup_downsampled from downsampled_makred_dup_bams
-	path reference_genome_fasta
-	path gatk_bundle_wgs_interval_list
-	path gatk_bundle_mills_1000G
-	path gatk_bundle_known_indels
-	path gatk_bundle_dbsnp138
+	tuple path(reference_genome_fasta), path(reference_genome_fasta_index), path(reference_genome_fasta_dict) from reference_genome_bundle
+	tuple path(gatk_bundle_wgs_interval_list), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from gatk_reference_bundle
 
 	output:
 	path bqsr_table into base_quality_score_recalibration_data
 
 	script:
-	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst.(/.markdup.downsampled.bam$/, ".recaldata.table")
+	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/.markdup.downsampled.bam$/, ".recaldata.table")
 	"""
 	gatk BaseRecalibrator \
 	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
-	
+	--verbosity ERROR \
+	--reference "${reference_genome_fasta}" \
 	-L "${gatk_bundle_wgs_interval_list}" \
 	-I "${bam_marked_dup_downsampled}" \
 	-O "${bqsr_table}" \
@@ -275,3 +288,4 @@ process baseRecalibrator_gatk {
 	--known-sites "${gatk_bundle_dbsnp138}"
 	"""
 }
+
