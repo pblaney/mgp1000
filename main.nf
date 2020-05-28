@@ -27,6 +27,11 @@ params.output_dir = "output"
 // Set path to reference files
 trimmomatic_contaminants = Channel.fromPath( 'references/trimmomatic.fa' )
 bwa_reference_dir = Channel.fromPath( 'references/hg38/bwa' )
+reference_genome_fasta = Channel.fromPath( 'references/hg38/bwa/genome.fa' )
+gatk_bundle_wgs_interval_list = Channel.fromPath( 'references/hg38/gatkBundle/wgs_calling_regions.hg38.interval_list' )
+gatk_bundle_mills_1000G = Channel.fromPath( 'references/hg38/gatkBundle/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
+gatk_bundle_known_indels = Channel.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.known_indels.vcf.gz' )
+gatk_bundle_dbsnp138 = Channel.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
 
 
 // ################################################ \\
@@ -182,7 +187,7 @@ process fixMateInformationAndSort_gatk {
 	"""
 }
 
-// Sambamba ~ Mark duplicate alignments and create BAM index
+// Sambamba ~ mark duplicate alignments and create BAM index
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'symlink', pattern: "*${bam_markdup_flagstat_log}"
@@ -191,12 +196,13 @@ process markDuplicatesAndIndex_sambamba {
 	path bam_fixed_mate from fixed_mate_bams
 
 	output:
-	tuple path(bam_marked_dup), path(bam_index) into marked_dup_indexed_bams
+	path bam_marked_dup into marked_dup_bams
+	path bam_marked_dup_index into marked_dup_bam_indices
 	path bam_markdup_flagstat_log
 
 	script:
 	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.bam")
-	bam_index = "${bam_marked_dup}.bai"
+	bam_marked_dup_index = "${bam_marked_dup}.bai"
 	markdup_output_log = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.log")
 	bam_markdup_flagstat_log = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.flagstat.log")
 	"""
@@ -211,6 +217,61 @@ process markDuplicatesAndIndex_sambamba {
 
 	sambamba flagstat "${bam_marked_dup}" > "${bam_markdup_flagstat_log}"
 
-	sambamba index "${bam_marked_dup}"
+	sambamba index "${bam_marked_dup}" "${bam_marked_dup_index}"
 	"""	
+}
+
+// GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
+process downsampleBam_gatk {
+	publishDir  "${params.output_dir}/preprocessing/downsampleBams", mode: 'symlink'
+
+	input:
+	path bam_marked_dup from marked_dup_bams
+
+	output:
+	path bam_marked_dup_downsampled into downsampled_makred_dup_bams
+
+	script:
+	bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/.markdup.bam$/, ".markdup.downsampled.bam")
+	"""
+	gatk DownsampleSam \
+	--java-options "-Xmx80g -XX:ParallelGCThreads=1" \
+	--STRATEGY Chained \
+	--RANDOM_SEED 1000 \
+	--CREATE_INDEX \
+	--VALIDATION_STRINGENCY SILENT \
+	-P 0.1 \
+	-I "${bam_marked_dup}" \
+	-O "${bam_marked_dup_downsampled}"
+	"""
+}
+
+// GATK BaseRecalibrator ~ Generate base quality score recalibration table based on covariates
+process baseRecalibrator_gatk {
+	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
+
+	input:
+	path bam_marked_dup_downsampled from downsampled_makred_dup_bams
+	path reference_genome_fasta
+	path gatk_bundle_wgs_interval_list
+	path gatk_bundle_mills_1000G
+	path gatk_bundle_known_indels
+	path gatk_bundle_dbsnp138
+
+	output:
+	path bqsr_table into base_quality_score_recalibration_data
+
+	script:
+	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst.(/.markdup.downsampled.bam$/, ".recaldata.table")
+	"""
+	gatk BaseRecalibrator \
+	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	
+	-L "${gatk_bundle_wgs_interval_list}" \
+	-I "${bam_marked_dup_downsampled}" \
+	-O "${bqsr_table}" \
+	--known-sites "${gatk_bundle_mills_1000G}" \
+	--known-sites "${gatk_bundle_known_indels}" \
+	--known-sites "${gatk_bundle_dbsnp138}"
+	"""
 }
