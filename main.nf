@@ -36,17 +36,20 @@ Channel
 Channel
 	.fromPath( 'references/hg38/bwa/genome.fa' )
 	.into{ reference_genome_fasta_forBaseRecalibrator;
-	       reference_genome_fasta_forApplyBqsr }
+	       reference_genome_fasta_forApplyBqsr;
+	       reference_genome_fasta_forDepthOfCoverage }
 
 Channel
 	.fromPath( 'references/hg38/bwa/genome.fa.fai' )
 	.into{ reference_genome_fasta_index_forBaseRecalibrator;
-	       reference_genome_fasta_index_forApplyBqsr }
+	       reference_genome_fasta_index_forApplyBqsr;
+	       reference_genome_fasta_index_forDepthOfCoverage }
 
 Channel
 	.fromPath( 'references/hg38/bwa/genome.dict' )
 	.into{ reference_genome_fasta_dict_forBaseRecalibrator;
-	       reference_genome_fasta_dict_forApplyBqsr }
+	       reference_genome_fasta_dict_forApplyBqsr;
+	       reference_genome_fasta_dict_forDepthOfCoverage }
 
 Channel
 	.fromPath( 'references/hg38/gatkBundle/wgs_calling_regions.hg38.interval_list' )
@@ -222,6 +225,7 @@ process fixMateInformationAndSort_gatk {
 	"""
 	gatk FixMateInformation \
 	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--verbosity ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
 	--SORT_ORDER coordinate \
@@ -280,6 +284,7 @@ process downsampleBam_gatk {
 	"""
 	gatk DownsampleSam \
 	--java-options "-Xmx80g -XX:ParallelGCThreads=1" \
+	--verbosity ERROR \
 	--STRATEGY Chained \
 	--RANDOM_SEED 1000 \
 	--CREATE_INDEX \
@@ -321,6 +326,7 @@ process baseRecalibrator_gatk {
 	gatk BaseRecalibrator \
 	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
 	--verbosity ERROR \
+	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forBaseRecalibrator}" \
 	-L "${gatk_bundle_wgs_interval_list}" \
 	-I "${bam_marked_dup_downsampled}" \
@@ -331,7 +337,7 @@ process baseRecalibrator_gatk {
 	"""
 }
 
-// Create additional channel for the reference FASTA
+// Create additional channel for the reference FASTA to be used in GATK ApplyBQSR process
 reference_genome_fasta_forApplyBqsr.combine( reference_genome_fasta_index_forApplyBqsr )
 	.combine( reference_genome_fasta_dict_forApplyBqsr )
 	.set{ reference_genome_bundle_forApplyBqsr }
@@ -353,9 +359,48 @@ process applyBqsr_gatk {
 	"""
 	gatk ApplyBQSR \
 	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--verbosity ERROR \
+	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forApplyBqsr}" \
 	-I "${bam_marked_dup}" \
 	-O "${bam_preprocessed_final}" \
 	--bqsr-recal-file "${bqsr_table}"
 	"""
+}
+
+// Create additional channel for the reference FASTA to be used in GATK DepthOfCoverage process
+reference_genome_fasta_forDepthOfCoverage.combine( reference_genome_fasta_index_forDepthOfCoverage )
+	.combine( reference_genome_fasta_dict_forDepthOfCoverage )
+	.set{ reference_genome_bundle_forDepthOfCoverage }
+
+// GATK DepthOfCoverage ~ generate covearge summary information from final BAM
+process depthOfCoverage_gatk {
+	publishDir "${params.output_dir}/preprocessing/coverage", mode: 'symlink'
+
+	input:
+	path bam_preprocessed_final from final_preprocessed_bams
+	tuple path(reference_genome_fasta_forDepthOfCoverage), path(reference_genome_fasta_index_forDepthOfCoverage), path(reference_genome_fasta_dict_forDepthOfCoverage) from reference_genome_bundle_forDepthOfCoverage
+
+	output:
+	path coverage_summary
+
+	script:
+	sample_id = "${bam_preprocessed_final}".replaceFirst(/.final.bam$/, "")
+	coverage_summary = "${sample_id}.sample_summary"
+	"""
+	gatk DepthOfCoverage \
+	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--verbosity ERROR \
+	--read-filter GoodCigarReadFilter \
+	--reference "${reference_genome_fasta_forDepthOfCoverage}" \
+	--omit-interval-statistics \
+	--omit-depth-output-at-each-base \
+	--omit-locus-table \
+	-ct 10 -ct 50 -ct 100 -ct 500 \
+	--min-base-quality 20 \
+	-I "${bam_preprocessed_final}" \
+	--output-format CSV \
+	-O "${sample_id}"
+	"""
+
 }
