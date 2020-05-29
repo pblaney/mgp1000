@@ -8,3 +8,5 @@ work
 output
 input
 references
+*.bam
+*.fastq*
