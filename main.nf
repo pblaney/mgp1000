@@ -37,19 +37,22 @@ Channel
 	.fromPath( 'references/hg38/bwa/genome.fa' )
 	.into{ reference_genome_fasta_forBaseRecalibrator;
 	       reference_genome_fasta_forApplyBqsr;
-	       reference_genome_fasta_forDepthOfCoverage }
+	       reference_genome_fasta_forCollectWgsMetrics;
+	       reference_genome_fasta_forCollectGcBiasMetrics }
 
 Channel
 	.fromPath( 'references/hg38/bwa/genome.fa.fai' )
 	.into{ reference_genome_fasta_index_forBaseRecalibrator;
 	       reference_genome_fasta_index_forApplyBqsr;
-	       reference_genome_fasta_index_forDepthOfCoverage }
+	       reference_genome_fasta_index_forCollectWgsMetrics;
+	       reference_genome_fasta_index_forCollectGcBiasMetrics }
 
 Channel
 	.fromPath( 'references/hg38/bwa/genome.dict' )
 	.into{ reference_genome_fasta_dict_forBaseRecalibrator;
 	       reference_genome_fasta_dict_forApplyBqsr;
-	       reference_genome_fasta_dict_forDepthOfCoverage }
+	       reference_genome_fasta_dict_forCollectWgsMetrics;
+	       reference_genome_fasta_dict_forCollectGcBiasMetrics }
 
 Channel
 	.fromPath( 'references/hg38/gatkBundle/wgs_calling_regions.hg38.interval_list' )
@@ -225,7 +228,7 @@ process fixMateInformationAndSort_gatk {
 	"""
 	gatk FixMateInformation \
 	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
-	--verbosity ERROR \
+	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
 	--SORT_ORDER coordinate \
@@ -284,7 +287,7 @@ process downsampleBam_gatk {
 	"""
 	gatk DownsampleSam \
 	--java-options "-Xmx80g -XX:ParallelGCThreads=1" \
-	--verbosity ERROR \
+	--VERBOSITY ERROR \
 	--STRATEGY Chained \
 	--RANDOM_SEED 1000 \
 	--CREATE_INDEX \
@@ -352,7 +355,7 @@ process applyBqsr_gatk {
 	path bqsr_table from base_quality_score_recalibration_data
 
 	output:
-	path bam_preprocessed_final into final_preprocessed_bams
+	path bam_preprocessed_final into final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics
 
 	script:
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/.markdup.bam$/, ".final.bam")
@@ -368,39 +371,76 @@ process applyBqsr_gatk {
 	"""
 }
 
-// Create additional channel for the reference FASTA to be used in GATK DepthOfCoverage process
-reference_genome_fasta_forDepthOfCoverage.combine( reference_genome_fasta_index_forDepthOfCoverage )
-	.combine( reference_genome_fasta_dict_forDepthOfCoverage )
-	.set{ reference_genome_bundle_forDepthOfCoverage }
 
-// GATK DepthOfCoverage ~ generate covearge summary information from final BAM
-process depthOfCoverage_gatk {
-	publishDir "${params.output_dir}/preprocessing/coverage", mode: 'symlink'
+// ################################################# \\
+//                                                   \\
+// ~~~~~~~~~~~~~~~~ Quality Control ~~~~~~~~~~~~~~~~ \\
+//                                                   \\
+// ################################################# \\
+
+// Create additional channel for the reference FASTA and interfal list to be used in GATK CollectWgsMetrics process
+reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_index_forCollectWgsMetrics )
+	.combine( reference_genome_fasta_dict_forCollectWgsMetrics )
+	.set{ reference_genome_bundle_forCollectWgsMetrics }
+
+// GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
+process collectWgsMetrics_gatk {
+	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'symlink'
 
 	input:
-	path bam_preprocessed_final from final_preprocessed_bams
-	tuple path(reference_genome_fasta_forDepthOfCoverage), path(reference_genome_fasta_index_forDepthOfCoverage), path(reference_genome_fasta_dict_forDepthOfCoverage) from reference_genome_bundle_forDepthOfCoverage
+	path bam_preprocessed_final from final_preprocessed_bams_forCollectWgsMetrics
+	tuple path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from reference_genome_bundle_forCollectWgsMetrics
 
 	output:
-	path coverage_summary
+	path coverage_metrics
 
 	script:
 	sample_id = "${bam_preprocessed_final}".replaceFirst(/.final.bam$/, "")
-	coverage_summary = "${sample_id}.sample_summary"
+	coverage_metrics = "${sample_id}.coverage.metrics.txt"
 	"""
-	gatk DepthOfCoverage \
+	gatk CollectWgsMetrics \
 	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
-	--verbosity ERROR \
-	--read-filter GoodCigarReadFilter \
-	--reference "${reference_genome_fasta_forDepthOfCoverage}" \
-	--omit-interval-statistics \
-	--omit-depth-output-at-each-base \
-	--omit-locus-table \
-	-ct 10 -ct 50 -ct 100 -ct 500 \
-	--min-base-quality 20 \
+	--VERBOSITY ERROR \
+	--INCLUDE_BQ_HISTOGRAM \
+	--MINIMUM_BASE_QUALITY 20 \
+	--MINIMUM_MAPPING_QUALITY 20 \
+	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectWgsMetrics}" \
 	-I "${bam_preprocessed_final}" \
-	--output-format CSV \
-	-O "${sample_id}"
+	-O "${coverage_metrics}"
 	"""
+}
 
+// Create additional channel for the reference FASTA and interfal list to be used in GATK CollectWgsMetrics process
+reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_index_forCollectGcBiasMetrics )
+	.combine( reference_genome_fasta_dict_forCollectGcBiasMetrics )
+	.set{ reference_genome_bundle_forCollectGcBiasMetrics }
+
+// GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
+process collectGcBiasMetrics_gatk {
+	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'symlink'
+
+	input:
+	path bam_preprocessed_final from final_preprocessed_bams_forCollectGcBiasMetrics
+	tuple path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from reference_genome_bundle_forCollectGcBiasMetrics
+
+	output:
+	path gc_bias_metrics
+	path gc_bias_chart
+	path gc_bias_summary
+
+	script:
+	sample_id = "${bam_preprocessed_final}".replaceFirst(/.final.bam$/, "")
+	gc_bias_metrics = "${sample_id}.gcbias.metrics.txt"
+	gc_bias_chart = "${sample_id}.gcbias.metrics.pdf"
+	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
+	"""
+	gatk CollectGcBiasMetrics \
+	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--VERBOSITY ERROR \
+	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
+	-I "${bam_preprocessed_final}" \
+	-O "${gc_bias_metrics}" \
+	--CHART_OUTPUT "${gc_bias_chart}" \
+	--SUMMARY_OUTPUT "${gc_bias_summary}"
+	"""
 }
