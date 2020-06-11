@@ -10,13 +10,13 @@
 // Comprehensive pipeline for analysis of matched T/N Multiple Myeloma WGS data
 // https://github.com/pblaney/mgp1000
 
+log.info ''
 
 // ################################################ \\
 //                                                  \\
 // ~~~~~~~~~~~~~~~~ CONFIGURATION ~~~~~~~~~~~~~~~~~ \\
 //                                                  \\
 // ################################################ \\
-
 
 // NEED TO CHANGE MODE TO COPY WHEN FINALIZED
 
@@ -90,38 +90,60 @@ Channel
 // ################################################ \\
 
 // Set the path to all input BAM files
-input_bams = Channel.fromPath( 'input/*.bam' )
+input_mapped_bams = Channel.fromPath( 'input/*.bam' )
 
-// biobambam ~ convert any input BAM files to FASTQ files
-process bamToFastq_biobambam {
-	publishDir "${params.output_dir}/preprocessing/biobambam", mode: 'symlink'
+// GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
+process revertMappedBam_gatk {
+	publishDir "${params.output_dir}/preprocessing/revertedBams", mode: 'symlink'
 
 	input:
-	path bam from input_bams
+	path bam_mapped from input_mapped_bams
 
 	output:
-	tuple path(fastq_R1), path(fastq_R2) into converted_fastqs
+	path bam_unmapped into unmapped_bams
 
 	when:
 	params.input_format == "bam"
 
 	script:
-	fastq_R1 = "${bam}".replaceFirst(/.bam$/, "_R1.fastq.gz")
-	fastq_R2 = "${bam}".replaceFirst(/.bam$/, "_R2.fastq.gz")
+	bam_unmapped = "${bam_mapped}".replaceFirst(/.bam$/, ".unmapped.bam")
 	"""
-	bamtofastq filename="${bam}" F="${fastq_R1}" F2="${fastq_R2}" gz=1
+	gatk RevertSam \
+	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--VERBOSITY ERROR \
+	-I "${bam_mapped}" \
+	-O "${bam_unmapped}"
 	"""
 }
 
-// Set the path to all input FASTQ files. If started with BAM files, use the converted FASTQs
-if( params.input_format == "bam" ) {
-	input_fastqs = converted_fastqs
+// biobambam bamtofastq ~ convert unmapped BAM files to paired FASTQ files
+process bamToFastq_biobambam {
+	publishDir "${params.output_dir}/preprocessing/biobambam", mode: 'symlink'
+
+	input:
+	path bam_unmapped from unmapped_bams
+
+	output:
+	tuple path(fastq_R1), path(fastq_R2) into converted_fastqs_forFastqc, converted_fastqs_forAlignment
+
+	when:
+	params.input_format == "bam"
+
+	script:
+	fastq_R1 = "${bam_unmapped}".replaceFirst(/.unmapped.bam$/, "_R1.fastq.gz")
+	fastq_R2 = "${bam_unmapped}".replaceFirst(/.unmapped.bam$/, "_R2.fastq.gz")
+	"""
+	bamtofastq \
+	filename="${bam_unmapped}" \
+	F="${fastq_R1}" F2="${fastq_R2}" \
+	gz=1
+	"""
 }
-else {
-	input_R1_fastqs = Channel.fromPath( 'input/*_R1.f*q*' )
-	input_R2_fastqs = Channel.fromPath( 'input/*_R2.f*q*' )
-	input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
-}
+
+// If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
+input_R1_fastqs = Channel.fromPath( 'input/*_R1.f*q*' )
+input_R2_fastqs = Channel.fromPath( 'input/*_R2.f*q*' )
+input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process fastqTrimming_trimmomatic {
@@ -136,6 +158,9 @@ process fastqTrimming_trimmomatic {
 	output:
 	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
 	path fastq_trim_log
+
+	when:
+	params.input_format == "fastq"
 
 	script:
 	fastq_R1_trimmed = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
@@ -153,12 +178,20 @@ process fastqTrimming_trimmomatic {
 	"""
 }
 
+// Depending on which input data type was used, set an input variable for the FastQC process
+if( params.input_format == "bam" ) {
+	fastqs_forFastqc = converted_fastqs_forFastqc
+}
+else {
+	fastqs_forFastqc = trimmed_fastqs_forFastqc
+}
+
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqQualityControlMetrics_fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'symlink'
 
 	input:
-	tuple path(fastq_R1), path(fastq_R2) from trimmed_fastqs_forFastqc
+	tuple path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
 
 	output:
 	tuple path(fastqc_R1_html), path(fastqc_R2_html) into fastqc_reports
@@ -175,13 +208,21 @@ process fastqQualityControlMetrics_fastqc {
 	"""
 }
 
+// Depending on which input data type was used, set an input variable for the BWA process
+if( params.input_format == "bam" ) {
+	fastqs_forAlignment = converted_fastqs_forAlignment
+}
+else {
+	fastqs_forAlignment = trimmed_fastqs_forAlignment
+}
+
 // BWA MEM + Sambamba ~ align trimmed FASTQ files to reference genome
 process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
 	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'symlink', pattern: "*${bam_flagstat_log}"
 
 	input:
-	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) from trimmed_fastqs_forAlignment
+	tuple path(fastq_R1), path(fastq_R2) from fastqs_forAlignment
 	path bwa_reference_dir
 
 	output:
@@ -189,7 +230,7 @@ process alignment_bwa {
 	path bam_flagstat_log
 
 	script:
-	sample_id = "${fastq_R1_trimmed}".replaceFirst(/_R1.trim.fastq.gz$/, "")
+	sample_id = "${fastq_R1}".replaceFirst(/_R1.fastq.gz$/, "")
 	bam_aligned = "${sample_id}.bam"
 	bam_flagstat_log = "${sample_id}.flagstat.log"
 	"""
@@ -198,7 +239,7 @@ process alignment_bwa {
 	-t 8 \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/genome.fa" \
-	"${fastq_R1_trimmed}" "${fastq_R2_trimmed}" \
+	"${fastq_R1}" "${fastq_R2}" \
 	| \
 	sambamba view \
 	--sam-input \
@@ -237,7 +278,7 @@ process fixMateInformationAndSort_gatk {
 	"""
 }
 
-// Sambamba ~ mark duplicate alignments and create BAM index
+// Sambamba ~ mark duplicate alignments, remove them, and create BAM index
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'symlink', pattern: "*${bam_markdup_flagstat_log}"
@@ -374,7 +415,7 @@ process applyBqsr_gatk {
 
 // ################################################# \\
 //                                                   \\
-// ~~~~~~~~~~~~~~~~ Quality Control ~~~~~~~~~~~~~~~~ \\
+// ~~~~~~~~~~~~~~~~ QUALITY CONTROL ~~~~~~~~~~~~~~~~ \\
 //                                                   \\
 // ################################################# \\
 
