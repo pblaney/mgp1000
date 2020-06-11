@@ -1,11 +1,3 @@
-################################################################################
-|\       /|   /---------\  /---------\    /|   /------\    /------\    /------\
-| \     / |  |             |         |   / |  |        |  |        |  |        |
-|  \   /  |  |     |----\  |---------/     |  |        |  |        |  |        |
-|   \ /   |  |          |  |               |  |        |  |        |  |        |
-|         |   \---------/  |               |   \------/    \------/    \------/
-################################################################################
-
 # Myeloma Genome Project 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to deliniate the broad spectrum of somatic events that occur within them.
 
