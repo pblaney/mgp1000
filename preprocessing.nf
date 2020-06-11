@@ -1,22 +1,20 @@
-// ################################################################################
-// |\       /|   /---------\  /---------\    /|   /------\    /------\    /------\
-// | \     / |  |             |         |   / |  |        |  |        |  |        |
-// |  \   /  |  |     |----\  |---------/     |  |        |  |        |  |        |
-// |   \ /   |  |          |  |               |  |        |  |        |  |        |
-// |         |   \---------/  |               |   \------/    \------/    \------/
-// ################################################################################
-
-// Myeloma Genome Project 1000 
+// Myeloma Genome Project 1000
 // Comprehensive pipeline for analysis of matched T/N Multiple Myeloma WGS data
 // https://github.com/pblaney/mgp1000
 
+// This portion of the pipeline is used for consistent preprocessing of all input WGS files.
+// Both FASTQ and BAM files are supported formats for the input WGS files.
+// The pipeline assumes that the input BAM reads were trimmed before alignment and that all FASTQs are in raw form.
+
+log.info ''
+log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '################################################'
+log.info '~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~'
+log.info '################################################'
 log.info ''
 
-// ################################################ \\
-//                                                  \\
-// ~~~~~~~~~~~~~~~~ CONFIGURATION ~~~~~~~~~~~~~~~~~ \\
-//                                                  \\
-// ################################################ \\
+// ########################################################## \\
+// ~~~~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~~~~ \\
 
 // NEED TO CHANGE MODE TO COPY WHEN FINALIZED
 
@@ -24,7 +22,7 @@ log.info ''
 params.input_format = "bam"
 params.output_dir = "output"
 
-// Set path to reference files
+// Set channels for reference files
 Channel
 	.fromPath( 'references/trimmomatic.fa' )
 	.set{ trimmomatic_contaminants }
@@ -83,11 +81,8 @@ Channel
 	.set{ gatk_bundle_dbsnp138_index }
 
 
-// ################################################ \\
-//                                                  \\
-// ~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~ \\
-//                                                  \\
-// ################################################ \\
+// #################################################### \\
+// ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 // Set the path to all input BAM files
 input_mapped_bams = Channel.fromPath( 'input/*.bam' )
@@ -109,8 +104,9 @@ process revertMappedBam_gatk {
 	bam_unmapped = "${bam_mapped}".replaceFirst(/.bam$/, ".unmapped.bam")
 	"""
 	gatk RevertSam \
-	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
+	--MAX_RECORDS_IN_RAM 8000000 \
 	-I "${bam_mapped}" \
 	-O "${bam_unmapped}"
 	"""
@@ -169,7 +165,7 @@ process fastqTrimming_trimmomatic {
 	fastq_R2_unpaired = "${input_R2_fastqs}".replaceFirst(/.fastq.gz$/, ".unpaired.fastq.gz")
 	fastq_trim_log = "${input_R1_fastqs}".replaceFirst(/_R1.fastq.gz$/, ".trim.log")
 	"""
-	trimmomatic PE -threads 8 \
+	trimmomatic PE -threads 4 \
 	"${input_R1_fastqs}" "${input_R2_fastqs}" \
 	"${fastq_R1_trimmed}" "${fastq_R1_unpaired}" \
 	"${fastq_R2_trimmed}" "${fastq_R2_unpaired}" \
@@ -268,8 +264,9 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/.bam$/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
+	--MAX_RECORDS_IN_RAM 8000000 \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
 	--SORT_ORDER coordinate \
@@ -300,7 +297,7 @@ process markDuplicatesAndIndex_sambamba {
 	"""
 	sambamba markdup \
 	--remove-duplicates \
-	--nthreads 4 \
+	--nthreads 2 \
 	--hash-table-size 525000 \
 	--overflow-list-size 525000 \
 	"${bam_fixed_mate}" \
@@ -327,8 +324,9 @@ process downsampleBam_gatk {
 	bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/.markdup.bam$/, ".markdup.downsampled.bam")
 	"""
 	gatk DownsampleSam \
-	--java-options "-Xmx80g -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
+	--MAX_RECORDS_IN_RAM 8000000 \
 	--STRATEGY Chained \
 	--RANDOM_SEED 1000 \
 	--CREATE_INDEX \
@@ -368,7 +366,7 @@ process baseRecalibrator_gatk {
 	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/.markdup.downsampled.bam$/, ".recaldata.table")
 	"""
 	gatk BaseRecalibrator \
-	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forBaseRecalibrator}" \
@@ -402,7 +400,7 @@ process applyBqsr_gatk {
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/.markdup.bam$/, ".final.bam")
 	"""
 	gatk ApplyBQSR \
-	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx24G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forApplyBqsr}" \
@@ -411,13 +409,6 @@ process applyBqsr_gatk {
 	--bqsr-recal-file "${bqsr_table}"
 	"""
 }
-
-
-// ################################################# \\
-//                                                   \\
-// ~~~~~~~~~~~~~~~~ QUALITY CONTROL ~~~~~~~~~~~~~~~~ \\
-//                                                   \\
-// ################################################# \\
 
 // Create additional channel for the reference FASTA and interfal list to be used in GATK CollectWgsMetrics process
 reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_index_forCollectWgsMetrics )
@@ -440,7 +431,7 @@ process collectWgsMetrics_gatk {
 	coverage_metrics = "${sample_id}.coverage.metrics.txt"
 	"""
 	gatk CollectWgsMetrics \
-	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--INCLUDE_BQ_HISTOGRAM \
 	--MINIMUM_BASE_QUALITY 20 \
@@ -476,7 +467,7 @@ process collectGcBiasMetrics_gatk {
 	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
 	"""
 	gatk CollectGcBiasMetrics \
-	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
 	-I "${bam_preprocessed_final}" \
