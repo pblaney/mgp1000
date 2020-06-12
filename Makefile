@@ -3,6 +3,8 @@ SHELL:=/bin/bash
 # Set default make call to do nothing
 none:
 
+###############################################################################
+
 # Install/update Nextflow 
 ./nextflow:
 	curl -fsSL get.nextflow.io | bash
@@ -11,6 +13,13 @@ install-nextflow: ./nextflow
 
 update-nextflow: ./nextflow
 	./nextflow self-update
+
+###############################################################################
+
+# Print out help message for executing steps of the pipeline
+help:
+	echo 'Preprocessing Usage:'
+	echo '	nextflow run preprocessing.nf --input_format [bam|fastq] -executor [slurm] -profile preprocessing'
 
 # Test pipeline locally with Docker and BAM input files
 local-test-run-bam:
