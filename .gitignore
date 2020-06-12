@@ -7,6 +7,5 @@ trace.txt*
 work
 output
 input
-references
 *.bam
 *.fastq*
