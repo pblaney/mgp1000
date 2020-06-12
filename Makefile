@@ -16,11 +16,6 @@ update-nextflow: ./nextflow
 
 ###############################################################################
 
-# Print out help message for executing steps of the pipeline
-help:
-	echo 'Preprocessing Usage:'
-	echo '	nextflow run preprocessing.nf --input_format [bam|fastq] -executor [slurm] -profile preprocessing'
-
 # Test pipeline locally with Docker and BAM input files
 local-test-run-bam:
 	nextflow run main.nf -resume --input_format bam -profile docker 
