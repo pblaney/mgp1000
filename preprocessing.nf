@@ -73,11 +73,11 @@ Channel
 	.set{ gatk_bundle_known_indels_index }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf' )
+	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
 	.set{ gatk_bundle_dbsnp138 }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.idx' )
+	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
 	.set{ gatk_bundle_dbsnp138_index }
 
 
