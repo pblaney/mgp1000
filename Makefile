@@ -16,6 +16,12 @@ update-nextflow: ./nextflow
 
 ###############################################################################
 
+# Prepare reference genome files
+prep-ref:
+	gunzip references/hg38/bwa/genome.fa.gz
+	gunzip references/hg38/bwa/genome.fa.bwt.gz
+	gunzip references/hg38/bwa/genome.fa.sa.gz
+
 # Test pipeline locally with Docker and BAM input files
 local-test-run-bam:
 	nextflow run main.nf -resume --input_format bam -profile docker 

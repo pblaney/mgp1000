@@ -3,3 +3,8 @@ trimmomatic.fa filter=lfs diff=lfs merge=lfs -text
 *.vcf.gz filter=lfs diff=lfs merge=lfs -text
 *.vcf.gz.tbi filter=lfs diff=lfs merge=lfs -text
 *.interval_list filter=lfs diff=lfs merge=lfs -text
+*.fa.bwt.gz filter=lfs diff=lfs merge=lfs -text
+*.fa.fai filter=lfs diff=lfs merge=lfs -text
+*.fa.gz filter=lfs diff=lfs merge=lfs -text
+*.fa.pac filter=lfs diff=lfs merge=lfs -text
+*.fa.sa.gz filter=lfs diff=lfs merge=lfs -text
