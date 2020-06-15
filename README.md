@@ -11,4 +11,10 @@ This compartmentalizes the workflow and provides significant completion checkpoi
 
 ## Running the Pipeline
 The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available in nearly all HPC environments.
+* Git
+* GNU Utilities
+* Java 8 (or later)
+* Singularity v3.1
 
+# Clone GitHub Repository
+The first step in the deployment process is to clone the MGP1000 GitHub repository to a location on your HPC that is large enough to hold the input/output data, like a scratch directory, and has access to the job scheduling software, such as Slurm or SGE.
