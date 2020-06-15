@@ -11,16 +11,20 @@ none:
 
 install-nextflow: ./nextflow
 
+nextflow-test: ./nextflow
+	./nextflow run hello
+
 update-nextflow: ./nextflow
 	./nextflow self-update
 
 ###############################################################################
 
-# Prepare reference genome files
-prep-ref:
+# Prepare reference genome files and create input directory
+prep-pipeline:
 	gunzip references/hg38/bwa/genome.fa.gz
 	gunzip references/hg38/bwa/genome.fa.bwt.gz
 	gunzip references/hg38/bwa/genome.fa.sa.gz
+	mkdir -p input
 
 ###############################################################################
 
