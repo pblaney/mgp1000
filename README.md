@@ -9,7 +9,9 @@ In order to analyze over one thousand matched tumor/normal whole-genome samples 
 The entire pipeline is divided into 3 steps: Preprocessing, Germline Variant Analysis, and Somatic Variant Analysis
 This compartmentalizes the workflow and provides significant completion checkpoints which is effective for large-scale batch processing. 
 
-<img src="https://github.com/pblaney/mgp1000/blob/master/MGP1000Pipeline.png" width="900">
+*WORK IN PROGRESS*
+<img src="https://github.com/pblaney/mgp1000/blob/master/MGP1000Pipeline.png" width="500">
+
 
 ## Deploying the Pipeline
 The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies. None of the commands require admin access or `sudo`  to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available in nearly all HPC environments.
