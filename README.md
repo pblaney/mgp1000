@@ -28,9 +28,9 @@ $ wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linu
 
 ### Note, these commands will clean the installation, leaving only the binary executible git-lfs file ###
 $ rm git-lfs-linux-amd64-v2.11.0.tar.gz && \
-$ rm install.sh && \
-$ rm CHANGELOG.md && \
-$ rm README.md
+  rm install.sh && \
+  rm CHANGELOG.md && \
+  rm README.md
 ```
 
 ## Clone GitHub Repository
