@@ -1,3 +1,5 @@
+# UNDER ACTIVE DEVELOPMENT
+
 # Myeloma Genome Project 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to deliniate the broad spectrum of somatic events
 
@@ -32,7 +34,7 @@ rm README.md
 ```
 
 # Clone GitHub Repository
-The first step in the deployment process is to clone the MGP1000 GitHub repository to a location on your HPC that is large enough to hold the input/output data, like a scratch directory, and has access to the job scheduling software, such as Slurm or SGE.
+The first step in the deployment process is to clone the MGP1000 GitHub repository to a location on your HPC that is large enough to hold the input/output data, like a scratch directory, and has access to the job scheduling software, such as SLURM or SGE.
 ```
 $ cd <scratch dir>
 
@@ -98,3 +100,31 @@ $ cp -r </normal/samples/directory/*.bam> input/
 ```
 
 # Run the Preprocessing Step of the Pipeline
+Now the simplicity of Nextflow takes over. The Preprocessing step of the pipeline will be started with one command that will handle the all linking of each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
+*** Currently includes configuration for SLURM ***
+```
+$ make run-preprocessing-bam
+### Example output ###
+# nextflow run preprocessing.nf -resume --input_format bam -profile preprocessing
+# N E X T F L O W  ~  version 20.04.1
+# Launching `preprocessing.nf` [fervent_sanger] - revision: 4c8e5915c4
+# 
+# ##### Myeloma Genome Project 1000 Pipeline #####
+# ################################################
+# ~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~
+# ################################################
+# 
+# executor >  slurm (1)
+# [9a/49cdcf] process > revertMappedBam_gatk (1)          [  0%] 0 of 1
+# [-        ] process > bamToFastq_biobambam              -
+# [-        ] process > fastqTrimming_trimmomatic         -
+# [-        ] process > fastqQualityControlMetrics_fastqc -
+# [-        ] process > alignment_bwa                     -
+# [-        ] process > fixMateInformationAndSort_gatk    -
+# [-        ] process > markDuplicatesAndIndex_sambamba   -
+# [-        ] process > downsampleBam_gatk                -
+# [-        ] process > baseRecalibrator_gatk             -
+# [-        ] process > applyBqsr_gatk                    -
+# [-        ] process > collectWgsMetrics_gatk            -
+# [-        ] process > collectGcBiasMetrics_gatk         -
+```
