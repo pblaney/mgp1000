@@ -105,6 +105,7 @@ $ cp -r </normal/samples/directory/*.bam> input/
 Now the simplicity of Nextflow takes over. The Preprocessing step of the pipeline will be started with one command that will handle the all linking of each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
 
 *WORK IN PROGRESS*
+
 *CURRENTLY INCLUDES CONFIGURATION FOR SLURM*
 ```
 $ make run-preprocessing-bam
