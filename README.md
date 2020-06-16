@@ -10,27 +10,25 @@ This compartmentalizes the workflow and provides significant completion checkpoi
 <img src="https://github.com/pblaney/mgp1000/blob/master/MGP1000Pipeline.png" width="900">
 
 ## Running the Pipeline
-The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available in nearly all HPC environments.
+The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies. None of the commands require admin access or `sudo`  to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available in nearly all HPC environments.
 * Git
-* Git LFS
 * GNU Utilities
 * Java 8 (or later)
 * Singularity v3.1
 
-# Installing Git LFS
+# Installing Git LFS v2.11.0
 In an effort to maintain containerize the pipeline further, all the necessary reference files used are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
 ```
-# Example of installation of Linux AMD64 binary executible git-lfs file
-# Note, these commands will remove the 'install.sh', 'CHANGELOG.md', and 'README.md' files.
+# Example of installation of Linux AMD64 binary executible git-lfs file, (other [binary files](https://github.com/git-lfs/git-lfs/releases))
 cd $HOME/bin
 wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linux-amd64-v2.11.0.tar.gz &&
 tar -zxvf git-lfs-linux-amd64-v2.11.0.tar.gz
 
-### Note, these commands will clean the installation, leaving only the binary executible git-lfs file###
-# rm git-lfs-linux-amd64-v2.11.0.tar.gz
-# rm install.sh &&
-# rm CHANGELOG.md &&
-# rm README.md
+### Note, these commands will clean the installation, leaving only the binary executible git-lfs file ###
+rm git-lfs-linux-amd64-v2.11.0.tar.gz &&
+rm install.sh &&
+rm CHANGELOG.md &&
+rm README.md
 ```
 
 # Clone GitHub Repository
