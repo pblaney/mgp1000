@@ -24,7 +24,8 @@ In an effort to containerize the pipeline further, all the necessary reference f
 # Example of installation of Linux AMD64 binary executible git-lfs file, (other binary files: https://github.com/git-lfs/git-lfs/releases)
 $ cd $HOME/bin
 $ wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linux-amd64-v2.11.0.tar.gz && \
-  tar -zxvf git-lfs-linux-amd64-v2.11.0.tar.gz
+  tar -zxvf git-lfs-linux-amd64-v2.11.0.tar.gz && \
+  git lfs install
 
 ### Note, these commands will clean the installation, leaving only the binary executible git-lfs file ###
 $ rm git-lfs-linux-amd64-v2.11.0.tar.gz && \
