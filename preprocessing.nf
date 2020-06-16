@@ -9,7 +9,7 @@
 log.info ''
 log.info '##### Myeloma Genome Project 1000 Pipeline #####'
 log.info '################################################'
-log.info '~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~'
+log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
 log.info '################################################'
 log.info ''
 

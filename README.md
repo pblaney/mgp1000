@@ -20,22 +20,22 @@ The pipeline was developed to be run on various HPCs without concern of environm
 * Java 8 (or later)
 * Singularity v3.1
 
-# Installing Git LFS
+## Installing Git LFS
 In an effort to maintain containerize the pipeline further, all the necessary reference files used are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
 ```
 # Example of installation of Linux AMD64 binary executible git-lfs file, (other binary files: https://github.com/git-lfs/git-lfs/releases)
-cd $HOME/bin
-wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linux-amd64-v2.11.0.tar.gz &&
-tar -zxvf git-lfs-linux-amd64-v2.11.0.tar.gz
+$ cd $HOME/bin
+$ wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linux-amd64-v2.11.0.tar.gz && \
+  tar -zxvf git-lfs-linux-amd64-v2.11.0.tar.gz
 
 ### Note, these commands will clean the installation, leaving only the binary executible git-lfs file ###
-rm git-lfs-linux-amd64-v2.11.0.tar.gz &&
-rm install.sh &&
-rm CHANGELOG.md &&
-rm README.md
+$ rm git-lfs-linux-amd64-v2.11.0.tar.gz && \
+$ rm install.sh && \
+$ rm CHANGELOG.md && \
+$ rm README.md
 ```
 
-# Clone GitHub Repository
+## Clone GitHub Repository
 The first step in the deployment process is to clone the MGP1000 GitHub repository to a location on your HPC that is large enough to hold the input/output data, like a scratch directory, and has access to the job scheduling software, such as SLURM or SGE.
 ```
 $ cd <scratch dir>
@@ -54,7 +54,7 @@ $ git clone https://github.com/pblaney/mgp1000.git
 $ cd mgp1000/
 ```
 
-# Install Nextflow
+## Install Nextflow
 This series of `make` commands will install Nextflow, and, optionally, test or update the current Nextflow installation. First, check for what current version of Java is available to the current environment.
 ```
 $ java -version
@@ -83,7 +83,7 @@ $ make install-nextflow
 $ mv nextflow $HOME/bin
 ```
 
-# Prepare the Pipeline for Usage
+## Prepare the Pipeline for Usage
 Due to size, certain reference genome files are GNU zipped so these `make` commands will unzip them for use in the pipeline. Additionally, an `input` directory is created for staging all input BAM or FASTQ files.
 ```
 $ make prep-pipeline
@@ -94,16 +94,18 @@ $ make prep-pipeline
 # mkdir -p input
 ```
 
-# Stage Input BAM or FASTQ Files
+## Stage Input BAM or FASTQ Files
 For the Preprocessing step of the pipeline, all input files are handled out of `input` directory that was created. Given the sheer size of the input data, the samples will have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs. One key assumption is that any input BAM file was trimmed for quality before being previously aligned.
 ```
 # Example of staging input data files
 $ cp -r </normal/samples/directory/*.bam> input/ 
 ```
 
-# Run the Preprocessing Step of the Pipeline
+## Run the Preprocessing Step of the Pipeline
 Now the simplicity of Nextflow takes over. The Preprocessing step of the pipeline will be started with one command that will handle the all linking of each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
-*** Currently includes configuration for SLURM ***
+
+*WORK IN PROGRESS*
+*CURRENTLY INCLUDES CONFIGURATION FOR SLURM*
 ```
 $ make run-preprocessing-bam
 ### Example output ###
@@ -113,7 +115,7 @@ $ make run-preprocessing-bam
 # 
 # ##### Myeloma Genome Project 1000 Pipeline #####
 # ################################################
-# ~~~~~~~~~~~~~~~~ PRE-PROCESSING ~~~~~~~~~~~~~~~~
+# ~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
 # ################################################
 # 
 # executor >  slurm (1)
