@@ -9,17 +9,17 @@ This compartmentalizes the workflow and provides significant completion checkpoi
 
 <img src="https://github.com/pblaney/mgp1000/blob/master/MGP1000Pipeline.png" width="900">
 
-## Running the Pipeline
+## Deploying the Pipeline
 The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies. None of the commands require admin access or `sudo`  to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available in nearly all HPC environments.
 * Git
 * GNU Utilities
 * Java 8 (or later)
 * Singularity v3.1
 
-# Installing Git LFS v2.11.0
+# Installing Git LFS
 In an effort to maintain containerize the pipeline further, all the necessary reference files used are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
 ```
-# Example of installation of Linux AMD64 binary executible git-lfs file, (other [binary files](https://github.com/git-lfs/git-lfs/releases))
+# Example of installation of Linux AMD64 binary executible git-lfs file, (other binary files: https://github.com/git-lfs/git-lfs/releases)
 cd $HOME/bin
 wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linux-amd64-v2.11.0.tar.gz &&
 tar -zxvf git-lfs-linux-amd64-v2.11.0.tar.gz
@@ -39,12 +39,13 @@ $ cd <scratch dir>
 $ git clone https://github.com/pblaney/mgp1000.git
 ### Example output ###
 # Cloning into 'mgp1000'...
-# remote: Enumerating objects: 83, done.
-# remote: Counting objects: 100% (83/83), done.
-# remote: Compressing objects: 100% (67/67), done.
-# remote: Total 300 (delta 29), reused 64 (delta 13), pack-reused 217
-# Receiving objects: 100% (300/300), 412.90 KiB | 13.76 MiB/s, done.
-# Resolving deltas: 100% (155/155), done.
+# remote: Enumerating objects: 90, done.
+# remote: Counting objects: 100% (90/90), done.
+# remote: Compressing objects: 100% (71/71), done.
+# remote: Total 307 (delta 33), reused 70 (delta 16), pack-reused 217
+# Receiving objects: 100% (307/307), 415.32 KiB | 12.58 MiB/s, done.
+# Resolving deltas: 100% (159/159), done.
+# Filtering content: 100% (20/20), 9.63 GiB | 88.90 MiB/s, done.
 
 $ cd mgp1000/
 ```
@@ -69,10 +70,31 @@ $ make install-nextflow
 #     created 03-05-2020 19:37 UTC (15:37 EDT)
 #     cite doi:10.1038/nbt.3820
 #     http://nextflow.io
+#
+# Nextflow installation completed. Please note:
+# - the executable file `nextflow` has been created in the folder: /gpfs/scratch/blanep01/mgp1000
+# - you may complete the installation by moving it to a directory in your $PATH
+
+# Move the binary executible nextflow file to same directory as git-lfs
+$ mv nextflow $HOME/bin
 ```
 
 # Prepare the Pipeline for Usage
 Due to size, certain reference genome files are GNU zipped so these `make` commands will unzip them for use in the pipeline. Additionally, an `input` directory is created for staging all input BAM or FASTQ files.
 ```
 $ make prep-pipeline
+### Example output ###
+# gunzip references/hg38/bwa/genome.fa.gz
+# gunzip references/hg38/bwa/genome.fa.bwt.gz
+# gunzip references/hg38/bwa/genome.fa.sa.gz
+# mkdir -p input
 ```
+
+# Stage Input BAM or FASTQ Files
+For the Preprocessing step of the pipeline, all input files are handled out of `input` directory that was created. Given the sheer size of the input data, the samples will have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs. One key assumption is that any input BAM file was trimmed for quality before being previously aligned.
+```
+# Example of staging input data files
+$ cp -r </normal/samples/directory/*.bam> input/ 
+```
+
+# Run the Preprocessing Step of the Pipeline
