@@ -30,10 +30,10 @@ prep-pipeline:
 
 # Run Preprocessing step of pipeline with BAM or FASTQ input files
 run-preprocessing-bam:
-	nextflow run preprocessing.nf -resume --input_format bam -profile preprocessing
+	nextflow run preprocessing.nf -bg -resume --input_format bam -profile preprocessing
 
 run-preprocessing-fastq:
-	nextflow run preprocessing.nf -resume --input_format fastq -profile preprocessing
+	nextflow run preprocessing.nf -bg -resume --input_format fastq -profile preprocessing
 
 ###############################################################################
 
