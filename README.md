@@ -109,7 +109,7 @@ Now the simplicity of Nextflow takes over. The Preprocessing step of the pipelin
 ```
 $ make run-preprocessing-bam
 ### Example output ###
-# nextflow run preprocessing.nf -resume --input_format bam -profile preprocessing
+# nextflow run preprocessing.nf -bg -resume --input_format bam -profile preprocessing
 # N E X T F L O W  ~  version 20.04.1
 # Launching `preprocessing.nf` [fervent_sanger] - revision: 4c8e5915c4
 # 
@@ -117,18 +117,5 @@ $ make run-preprocessing-bam
 # ################################################
 # ~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
 # ################################################
-# 
-# executor >  slurm (1)
-# [9a/49cdcf] process > revertMappedBam_gatk (1)          [  0%] 0 of 1
-# [-        ] process > bamToFastq_biobambam              -
-# [-        ] process > fastqTrimming_trimmomatic         -
-# [-        ] process > fastqQualityControlMetrics_fastqc -
-# [-        ] process > alignment_bwa                     -
-# [-        ] process > fixMateInformationAndSort_gatk    -
-# [-        ] process > markDuplicatesAndIndex_sambamba   -
-# [-        ] process > downsampleBam_gatk                -
-# [-        ] process > baseRecalibrator_gatk             -
-# [-        ] process > applyBqsr_gatk                    -
-# [-        ] process > collectWgsMetrics_gatk            -
-# [-        ] process > collectGcBiasMetrics_gatk         -
 ```
+
