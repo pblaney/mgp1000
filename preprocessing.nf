@@ -16,8 +16,6 @@ log.info ''
 // ########################################################## \\
 // ~~~~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~~~~ \\
 
-// NEED TO CHANGE MODE TO COPY WHEN FINALIZED
-
 // Declare the defaults for all pipeline parameters
 params.input_format = "bam"
 params.output_dir = "output"
@@ -145,7 +143,7 @@ input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
 process fastqTrimming_trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R1_trimmed}"	
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R2_trimmed}"
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'symlink', pattern: "*${fastq_trim_log}"
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'move', pattern: "*${fastq_trim_log}"
 
 	input:
 	tuple path(input_R1_fastqs), path(input_R2_fastqs) from input_fastqs
@@ -184,7 +182,7 @@ else {
 
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqQualityControlMetrics_fastqc {
-	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'symlink'
+	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'move'
 
 	input:
 	tuple path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
@@ -215,7 +213,7 @@ else {
 // BWA MEM + Sambamba ~ align trimmed FASTQ files to reference genome
 process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
-	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'symlink', pattern: "*${bam_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'move', pattern: "*${bam_flagstat_log}"
 
 	input:
 	tuple path(fastq_R1), path(fastq_R2) from fastqs_forAlignment
@@ -278,7 +276,7 @@ process fixMateInformationAndSort_gatk {
 // Sambamba ~ mark duplicate alignments, remove them, and create BAM index
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'symlink', pattern: "*${bam_markdup_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
 
 	input:
 	path bam_fixed_mate from fixed_mate_bams
@@ -417,7 +415,7 @@ reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_inde
 
 // GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
 process collectWgsMetrics_gatk {
-	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'symlink'
+	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'move'
 
 	input:
 	path bam_preprocessed_final from final_preprocessed_bams_forCollectWgsMetrics
@@ -449,7 +447,7 @@ reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_i
 
 // GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
 process collectGcBiasMetrics_gatk {
-	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'symlink'
+	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'move'
 
 	input:
 	path bam_preprocessed_final from final_preprocessed_bams_forCollectGcBiasMetrics
