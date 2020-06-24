@@ -25,6 +25,8 @@ prep-pipeline:
 	gunzip references/hg38/bwa/genome.fa.bwt.gz
 	gunzip references/hg38/bwa/genome.fa.sa.gz
 	mkdir -p input
+	mkdir -p input/preprocessedBams
+	mkdir -p logs
 
 ###############################################################################
 
@@ -34,6 +36,18 @@ run-preprocessing-bam:
 
 run-preprocessing-fastq:
 	nextflow run preprocessing.nf -bg -resume --input_format fastq -profile preprocessing
+
+###############################################################################
+
+# Save the necessary output files and clean the directory of any unneeded files after 
+# successful completion of the Preprocessing step
+preprocessing-cleanup:
+	mkdir -p logs/preprocessing
+	mv nextflow_report.html logs/preprocessing
+	mv timeline_report.html logs/preprocessing
+	mv trace.txt logs/preprocessing
+	mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
+	rm -rf work/*
 
 ###############################################################################
 
