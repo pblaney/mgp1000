@@ -13,8 +13,8 @@ log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
 log.info '################################################'
 log.info ''
 
-// ########################################################## \\
-// ~~~~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~~~~ \\
+// #################################################### \\
+// ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
 // Declare the defaults for all pipeline parameters
 params.input_format = "bam"
