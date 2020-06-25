@@ -16,7 +16,23 @@ log.info ''
 // #################################################### \\
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
-
+// Declare the defaults for all pipeline parameters
+params.output_dir = "output"
 
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
+
+// Telomerecat bam2length ~ estimate telomere length of sample
+process telomereLengthEstimation_telomerecat {
+	publishDir "${params.output_dir}/germline/telomereLength", mode: 'symlink'
+
+	input:
+
+
+	output:
+
+
+	script:
+
+	
+}
