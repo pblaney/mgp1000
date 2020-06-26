@@ -23,20 +23,24 @@ params.output_dir = "output"
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 // Set the channel for all input BAM files
+Channel
+	.fromPath( 'input/preprocessedBams/*.bam' )
+	.into( 'input_preprocessed_bams_forTelomereLengthEstimation';
+	       'input_preprocessed_bams_forHaplotypeCaller' )
 
 // Telomerecat bam2length ~ estimate telomere length of sample
 process telomereLengthEstimation_telomerecat {
-	publishDir "${params.output_dir}/germline/telomereLength", mode: 'symlink'
+	publishDir "${params.output_dir}/germline/telomereLength", mode: 'move'
 
 	input:
-
+	path bam_preprocessed from input_preprocessed_bams_forTelomereLengthEstimation
 
 	output:
-
+	path telomere_length_estimation
 
 	script:
-
+	telomere_length_estimation = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".telomerelength.csv")
 	"""
-	telomerecat bam2length -p4 -v1  "${sampleId}_telomerecat.csv" "${bam}"
+	telomerecat bam2length -p4 -v1 --output "${telomere_length_estimation}" "${bam_preprocessed}"
 	"""
 }
