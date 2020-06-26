@@ -82,7 +82,7 @@ Channel
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
-// Set the path to all input BAM files
+// Set the channel for all input BAM files
 input_mapped_bams = Channel.fromPath( 'input/*.bam' )
 
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
@@ -99,7 +99,7 @@ process revertMappedBam_gatk {
 	params.input_format == "bam"
 
 	script:
-	bam_unmapped = "${bam_mapped}".replaceFirst(/.bam$/, ".unmapped.bam")
+	bam_unmapped = "${bam_mapped}".replaceFirst(/\.bam/, ".unmapped.bam")
 	"""
 	gatk RevertSam \
 	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -124,8 +124,8 @@ process bamToFastq_biobambam {
 	params.input_format == "bam"
 
 	script:
-	fastq_R1 = "${bam_unmapped}".replaceFirst(/.unmapped.bam$/, "_R1.fastq.gz")
-	fastq_R2 = "${bam_unmapped}".replaceFirst(/.unmapped.bam$/, "_R2.fastq.gz")
+	fastq_R1 = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "_R1.fastq.gz")
+	fastq_R2 = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "_R2.fastq.gz")
 	"""
 	bamtofastq \
 	filename="${bam_unmapped}" \
@@ -135,8 +135,8 @@ process bamToFastq_biobambam {
 }
 
 // If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
-input_R1_fastqs = Channel.fromPath( 'input/*_R1.f*q*' )
-input_R2_fastqs = Channel.fromPath( 'input/*_R2.f*q*' )
+input_R1_fastqs = Channel.fromPath( 'input/*R1*.f*q*' )
+input_R2_fastqs = Channel.fromPath( 'input/*R2*.f*q*' )
 input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
@@ -157,11 +157,11 @@ process fastqTrimming_trimmomatic {
 	params.input_format == "fastq"
 
 	script:
-	fastq_R1_trimmed = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
-	fastq_R2_trimmed = "${input_R2_fastqs}".replaceFirst(/.fastq.gz$/, ".trim.fastq.gz")
-	fastq_R1_unpaired = "${input_R1_fastqs}".replaceFirst(/.fastq.gz$/, ".unpaired.fastq.gz")
-	fastq_R2_unpaired = "${input_R2_fastqs}".replaceFirst(/.fastq.gz$/, ".unpaired.fastq.gz")
-	fastq_trim_log = "${input_R1_fastqs}".replaceFirst(/_R1.fastq.gz$/, ".trim.log")
+	fastq_R1_trimmed = "${input_R1_fastqs}".replaceFirst(/\.f.*q*/, ".trim.fastq.gz")
+	fastq_R2_trimmed = "${input_R2_fastqs}".replaceFirst(/\.f.*q*/, ".trim.fastq.gz")
+	fastq_R1_unpaired = "${input_R1_fastqs}".replaceFirst(/\.f.*q*/, ".unpaired.fastq.gz")
+	fastq_R2_unpaired = "${input_R2_fastqs}".replaceFirst(/\.f.*q*/, ".unpaired.fastq.gz")
+	fastq_trim_log = "${input_R1_fastqs}".replaceFirst(/[_\.]R1.*\.f.*q*/, ".trim.log")
 	"""
 	trimmomatic PE -threads 4 \
 	"${input_R1_fastqs}" "${input_R2_fastqs}" \
@@ -192,10 +192,10 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_R1_html = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
-	fastqc_R2_html = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.html")
-	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/.fastq.gz$/, "_fastqc.zip")
+	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\..*f.*q*/, ".fastqc.html")
+	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\..*f.*q*/, ".fastqc.zip")
+	fastqc_R2_html = "${fastq_R2}".replaceFirst(/\..*f.*q*/, ".fastqc.html")
+	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/\..*f.*q*/, ".fastqc.zip")
 	"""
 	fastqc --outdir . "${fastq_R1}"
 	fastqc --outdir . "${fastq_R2}"
@@ -224,7 +224,7 @@ process alignment_bwa {
 	path bam_flagstat_log
 
 	script:
-	sample_id = "${fastq_R1}".replaceFirst(/_R1.fastq.gz$/, "")
+	sample_id = "${fastq_R1}".replaceFirst(/[_\.]R1.*\.f.*q*/, "")
 	bam_aligned = "${sample_id}.bam"
 	bam_flagstat_log = "${sample_id}.flagstat.log"
 	"""
@@ -259,7 +259,7 @@ process fixMateInformationAndSort_gatk {
 	path bam_fixed_mate into fixed_mate_bams
 
 	script:
-	bam_fixed_mate = "${bam_aligned}".replaceFirst(/.bam$/, ".fixedmate.bam")
+	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
 	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -285,13 +285,12 @@ process markDuplicatesAndIndex_sambamba {
 	path bam_marked_dup into marked_dup_bams_forDownsampleBam, marked_dup_bams_forApplyBqsr
 	path bam_marked_dup_index
 	path bam_markdup_flagstat_log
-	//into marked_dup_bam_indices
 
 	script:
-	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.bam")
+	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.bam")
 	bam_marked_dup_index = "${bam_marked_dup}.bai"
-	markdup_output_log = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.log")
-	bam_markdup_flagstat_log = "${bam_fixed_mate}".replaceFirst(/.fixedmate.bam$/, ".markdup.flagstat.log")
+	markdup_output_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.log")
+	bam_markdup_flagstat_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.flagstat.log")
 	"""
 	sambamba markdup \
 	--remove-duplicates \
@@ -319,7 +318,7 @@ process downsampleBam_gatk {
 	path bam_marked_dup_downsampled into downsampled_makred_dup_bams
 
 	script:
-	bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/.markdup.bam$/, ".markdup.downsampled.bam")
+	bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".markdup.downsampled.bam")
 	"""
 	gatk DownsampleSam \
 	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -361,7 +360,7 @@ process baseRecalibrator_gatk {
 	path bqsr_table into base_quality_score_recalibration_data
 
 	script:
-	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/.markdup.downsampled.bam$/, ".recaldata.table")
+	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, ".recaldata.table")
 	"""
 	gatk BaseRecalibrator \
 	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -395,7 +394,7 @@ process applyBqsr_gatk {
 	path bam_preprocessed_final into final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics
 
 	script:
-	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/.markdup.bam$/, ".final.bam")
+	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bam")
 	"""
 	gatk ApplyBQSR \
 	--java-options "-Xmx24G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -425,7 +424,7 @@ process collectWgsMetrics_gatk {
 	path coverage_metrics
 
 	script:
-	sample_id = "${bam_preprocessed_final}".replaceFirst(/.final.bam$/, "")
+	sample_id = "${bam_preprocessed_final}".replaceFirst(/\.final\.bam/, "")
 	coverage_metrics = "${sample_id}.coverage.metrics.txt"
 	"""
 	gatk CollectWgsMetrics \
@@ -459,7 +458,7 @@ process collectGcBiasMetrics_gatk {
 	path gc_bias_summary
 
 	script:
-	sample_id = "${bam_preprocessed_final}".replaceFirst(/.final.bam$/, "")
+	sample_id = "${bam_preprocessed_final}".replaceFirst(/\.final\.bam/, "")
 	gc_bias_metrics = "${sample_id}.gcbias.metrics.txt"
 	gc_bias_chart = "${sample_id}.gcbias.metrics.pdf"
 	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
