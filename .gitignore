@@ -11,4 +11,4 @@ input
 *.fastq*
 references/hg38/bwa/genome.fa.sa
 references/hg38/bwa/genome.fa.bwt
-eferences/hg38/bwa/genome.fa.gz
+references/hg38/bwa/genome.fa.gz
