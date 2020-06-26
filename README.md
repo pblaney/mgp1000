@@ -94,7 +94,7 @@ $ make prep-pipeline
 ```
 
 ## Stage Input BAM or FASTQ Files
-For the Preprocessing step of the pipeline, all input files are handled out of `input` directory that was created. Given the sheer size of the input data, the samples will have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs. One key assumption is that any input BAM file was trimmed for quality before being previously aligned.
+For the Preprocessing step of the pipeline, all input files are handled out of `input` directory that was created. Given the sheer size of the input data, the samples will have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs. One key assumption is that any input BAM file was trimmed for quality before being previously aligned. Another assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files.
 ```
 # Example of staging input data files
 $ cp -r </normal/samples/directory/*.bam> input/ 
