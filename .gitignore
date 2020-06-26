@@ -9,6 +9,9 @@ output
 input
 *.bam
 *.fastq*
+references/hg38/bwa/genome.fa.sa.gz
+references/hg38/bwa/genome.fa.bwt.gz
+references/hg38/bwa/genome.fa.gz
 references/hg38/bwa/genome.fa.sa
 references/hg38/bwa/genome.fa.bwt
-references/hg38/bwa/genome.fa.gz
+references/hg38/bwa/genome.fa
