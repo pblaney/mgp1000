@@ -22,6 +22,8 @@ params.output_dir = "output"
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
+// Set the channel for all input BAM files
+
 // Telomerecat bam2length ~ estimate telomere length of sample
 process telomereLengthEstimation_telomerecat {
 	publishDir "${params.output_dir}/germline/telomereLength", mode: 'symlink'
@@ -34,5 +36,7 @@ process telomereLengthEstimation_telomerecat {
 
 	script:
 
-	
+	"""
+	telomerecat bam2length -p4 -v1  "${sampleId}_telomerecat.csv" "${bam}"
+	"""
 }
