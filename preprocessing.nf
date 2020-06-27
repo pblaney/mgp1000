@@ -188,8 +188,7 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
 
 	output:
-	tuple path(fastqc_R1_html), path(fastqc_R2_html) into fastqc_reports
-	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
+	tuple path(fastqc_R1_html), path(fastqc_R2_html), path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
 	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\..*f.*q*/, "_fastqc.html")
