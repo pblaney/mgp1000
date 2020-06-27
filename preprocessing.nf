@@ -191,13 +191,15 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastqc_R1_html), path(fastqc_R2_html), path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\..*f.*q*/, "_fastqc.html")
-	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\..*f.*q*/, "_fastqc.zip")
-	fastqc_R2_html = "${fastq_R2}".replaceFirst(/\..*f.*q*/, "_fastqc.html")
-	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/\..*f.*q*/, "_fastqc.zip")
+	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\..*fastq.gz/, "_fastqc.html")
+	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\..*fastq.gz/, "_fastqc.zip")
+	fastqc_R2_html = "${fastq_R2}".replaceFirst(/\..*fastq.gz/, "_fastqc.html")
+	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/\..*fastq.gz/, "_fastqc.zip")
+	// fastqc --outdir . "${fastq_R1}"
+	// fastqc --outdir . "${fastq_R2}" 
 	"""
-	fastqc --outdir . "${fastq_R1}"
-	fastqc --outdir . "${fastq_R2}"
+	fastqc "${fastq_R1}"
+	fastqc "${fastq_R2}"
 	"""
 }
 
