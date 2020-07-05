@@ -1,6 +1,7 @@
 nextflow
 .nextflow
 .nextflow.log*
+.nextflow.pid*
 nextflow_report.html*
 timeline_report.html*
 trace.txt*
