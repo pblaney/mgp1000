@@ -41,7 +41,7 @@ run-preprocessing-fastq:
 
 # Save the necessary output files and clean the directory of any unneeded files after 
 # successful completion of the Preprocessing step
-preprocessing-cleanup:
+preprocessing-completion:
 	mkdir -p logs/preprocessing
 	mv nextflow_report.html logs/preprocessing
 	mv timeline_report.html logs/preprocessing
@@ -66,9 +66,32 @@ dev-germline:
 
 # Completely scrub pipeline output files
 clean-all:
-	rm -f .nextflow.log*
 	rm -rf work
 	rm -rf output
+	rm -f .nextflow.log*
+	rm -f .nextflow.pid*
 	rm -f timeline_report.html*
 	rm -f nextflow_report.html*
 	rm -f trace.txt*
+
+# Scrub Preprocessing step output files
+clean-preprocessing:
+	rm -rf work/*
+	rm -rf output/preprocessing/
+	rm -f .nextflow.log*
+	rm -f .nextflow.pid*
+	rm -f timeline_report.html*
+	rm -f nextflow_report.html*
+	rm -f trace.txt*
+
+# Scrub Germline step output files
+clean-germline:
+	rm -rf work/*
+	rm -rf output/germline/
+	rm -f .nextflow.log*
+	rm -f .nextflow.pid*
+	rm -f timeline_report.html*
+	rm -f nextflow_report.html*
+	rm -f trace.txt*
+
+###############################################################################
