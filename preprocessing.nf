@@ -102,7 +102,7 @@ process revertMappedBam_gatk {
 	bam_unmapped = "${bam_mapped}".replaceFirst(/\.bam/, ".unmapped.bam")
 	"""
 	gatk RevertSam \
-	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 8000000 \
 	-I "${bam_mapped}" \
@@ -188,18 +188,17 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
 
 	output:
-	tuple path(fastqc_R1_html), path(fastqc_R2_html), path(fastqc_R1_zip), path(fastqc_R2_zip)
+	tuple path(fastqc_R1_html), path(fastqc_R2_html)
+	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\..*fastq.gz/, "_fastqc.html")
-	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\..*fastq.gz/, "_fastqc.zip")
-	fastqc_R2_html = "${fastq_R2}".replaceFirst(/\..*fastq.gz/, "_fastqc.html")
-	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/\..*fastq.gz/, "_fastqc.zip")
-	// fastqc --outdir . "${fastq_R1}"
-	// fastqc --outdir . "${fastq_R2}" 
+	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
+	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
+	fastqc_R2_html = "${fastq_R2}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
+	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
 	"""
-	fastqc "${fastq_R1}"
-	fastqc "${fastq_R2}"
+	fastqc --outdir . "${fastq_R1}"
+	fastqc --outdir . "${fastq_R2}"
 	"""
 }
 
@@ -231,14 +230,14 @@ process alignment_bwa {
 	"""
 	bwa mem \
 	-M -v 1 \
-	-t 8 \
+	-t 6 \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/genome.fa" \
 	"${fastq_R1}" "${fastq_R2}" \
 	| \
 	sambamba view \
 	--sam-input \
-	--nthreads=8 \
+	--nthreads=6 \
 	--filter='mapping_quality>=10' \
 	--format=bam \
 	--compression-level=0 \
@@ -263,11 +262,11 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
-	--MAX_RECORDS_IN_RAM 8000000 \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
+	--MAX_RECORDS_IN_RAM 8000000 \
 	--SORT_ORDER coordinate \
 	-I "${bam_aligned}" \
 	-O "${bam_fixed_mate}"
@@ -322,7 +321,7 @@ process downsampleBam_gatk {
 	bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".markdup.downsampled.bam")
 	"""
 	gatk DownsampleSam \
-	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 8000000 \
 	--STRATEGY Chained \
@@ -364,7 +363,7 @@ process baseRecalibrator_gatk {
 	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, ".recaldata.table")
 	"""
 	gatk BaseRecalibrator \
-	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx4G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forBaseRecalibrator}" \
@@ -398,7 +397,7 @@ process applyBqsr_gatk {
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bam")
 	"""
 	gatk ApplyBQSR \
-	--java-options "-Xmx24G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx4G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forApplyBqsr}" \
@@ -429,7 +428,7 @@ process collectWgsMetrics_gatk {
 	coverage_metrics = "${sample_id}.coverage.metrics.txt"
 	"""
 	gatk CollectWgsMetrics \
-	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx6G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--INCLUDE_BQ_HISTOGRAM \
 	--MINIMUM_BASE_QUALITY 20 \
@@ -465,7 +464,7 @@ process collectGcBiasMetrics_gatk {
 	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
 	"""
 	gatk CollectGcBiasMetrics \
-	--java-options "-Xmx80G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx6G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
 	-I "${bam_preprocessed_final}" \
