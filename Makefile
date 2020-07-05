@@ -53,10 +53,14 @@ preprocessing-cleanup:
 
 # Test Preprocessing step locally with Docker and BAM or FASTQ input files
 dev-preprocessing-bam:
-	nextflow run preprocessing.nf -resume --input_format bam -profile dev_preprocessing
+	nextflow run preprocessing.nf -bg -resume --input_format bam -profile dev_preprocessing
 
 dev-preprocessing-fastq:
-	nextflow run preprocessing.nf -resume --input_format fastq -profile dev_preprocessing
+	nextflow run preprocessing.nf -bg -resume --input_format fastq -profile dev_preprocessing
+
+# Test Germline step locally with Docker
+dev-germline:
+	nextflow run germline.nf -bg -resume -profile dev_germline
 
 ###############################################################################
 
