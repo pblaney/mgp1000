@@ -68,7 +68,7 @@ clean-all:
 # Scrub Preprocessing step output files
 clean-preprocessing:
 	rm -rf work/*
-	rm -rf output/preprocessing/
+	rm -rf output/preprocessing/*
 	rm -f .nextflow.log*
 	rm -f .nextflow.pid*
 	rm -f timeline_report.html*
@@ -78,7 +78,7 @@ clean-preprocessing:
 # Scrub Germline step output files
 clean-germline:
 	rm -rf work/*
-	rm -rf output/germline/
+	rm -rf output/germline/*
 	rm -f .nextflow.log*
 	rm -f .nextflow.pid*
 	rm -f timeline_report.html*
