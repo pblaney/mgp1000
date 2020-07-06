@@ -104,9 +104,9 @@ $ cp -r </normal/samples/directory/*.bam> input/
 
 ## Run the Preprocessing Step of the Pipeline
 Now the simplicity of Nextflow takes over. The Preprocessing step of the pipeline will be started with one command that will handle the all linking of each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
-The command to execute the Preprocessing step will require the user to define the `input_format` of the files and the `singularity_module` to be loaded for use.
+The command to execute the Preprocessing step will require the user to define the `input_format` of the files and the `singularity_module` to be loaded for use. The other parameters will not change from user to user. The `bg` option will run the script in the background and the `profile` option will use the correct process configuration profile for this step.
 ```
-$ nextflow run preprocessing.nf -bg -resume --input_format bam --singularity_module "singularity/3.1" -profile preprocessing
+$ nextflow run preprocessing.nf -bg --input_format bam --singularity_module "singularity/3.1" -profile preprocessing
 ### Example output ###
 # $ N E X T F L O W  ~  version 20.04.1
 # Launching `preprocessing.nf` [insane_turing] - revision: 576a8a5fde
