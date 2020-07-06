@@ -91,6 +91,8 @@ $ make prep-pipeline
 # gunzip references/hg38/bwa/genome.fa.bwt.gz
 # gunzip references/hg38/bwa/genome.fa.sa.gz
 # mkdir -p input
+# mkdir -p input/preprocessedBams
+# mkdir -p logs
 ```
 
 ## Stage Input BAM or FASTQ Files
