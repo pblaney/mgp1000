@@ -16,7 +16,7 @@ The pipeline was developed to be run on various HPCs without concern of environm
 * Git
 * GNU Utilities
 * Java 8 (or later)
-* Singularity v3.1
+* Singularity (validated on v3.1, other versions will be tested)
 
 ## Installing Git LFS
 In an effort to containerize the pipeline further, all the necessary reference files used are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
