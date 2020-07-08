@@ -62,8 +62,8 @@ Channel
 	       input_preprocessed_bams_forHaplotypeCaller;
 	       input_preprocessed_bams_forCNNScoreVariants }
 
-// Telomerecat bam2length ~ estimate telomere length of sample
-process telomereLengthEstimation_telomerecat {
+// TelSeq ~ estimate telomere length of sample
+process telomereLengthEstimation_telseq {
 	publishDir "${params.output_dir}/germline/telomereLength", mode: 'move'
 
 	input:
@@ -75,11 +75,9 @@ process telomereLengthEstimation_telomerecat {
 	script:
 	telomere_length_estimation = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".telomerelength.csv")
 	"""
-	telomerecat bam2length -p4 -v1 --output "${telomere_length_estimation}" "${bam_preprocessed}"
+	telseq "${bam_preprocessed}" > "${telomere_length_estimation}"
 	"""
 }
-
-/*
 
 // Combine all needed reference FASTA files into one channel for use in GATK HaplotypeCaller process
 reference_genome_fasta_forHaplotypeCaller.combine( reference_genome_fasta_index_forHaplotypeCaller )
@@ -95,21 +93,25 @@ process haplotypeCaller_gatk {
 	tuple path(reference_genome_fasta_forHaplotypeCaller), path(reference_genome_fasta_index_forHaplotypeCaller), path(reference_genome_fasta_dict_forHaplotypeCaller) from reference_genome_bundle_forHaplotypeCaller
 
 	output:
-	path vcf_raw into raw_vcfs
+	path gvcf_raw into raw_gvcfs
 
 	script:
-	vcf_raw = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".raw.vcf.gz")
+	gvcf_raw = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".raw.gvcf.gz")
 	"""
 	gatk HaplotypeCaller \
 	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--max-alternate-alleles 3 \
 	--standard-min-confidence-threshold-for-calling 50 \
+	-ERC GVCF \
 	-R "${reference_genome_fasta_forHaplotypeCaller}" \
 	-I "${bam_preprocessed}" \
-	-O "${vcf_raw}"
+	-O "${gvcf_raw}"
 	"""
 }
+
+/*
+
 
 // Combine all needed reference FASTA files into one channel for use in GATK CNNScoreVariants process
 reference_genome_fasta_forCNNScoreVariants.combine( reference_genome_fasta_index_forCNNScoreVariants )
