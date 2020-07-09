@@ -1,0 +1,6 @@
+references/hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/Homo_sapiens_assembly38.fasta.64.bwt.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/Homo_sapiens_assembly38.fasta.64.pac filter=lfs diff=lfs merge=lfs -text
+references/hg38/Homo_sapiens_assembly38.fasta.64.sa.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/Homo_sapiens_assembly38.fasta.gz filter=lfs diff=lfs merge=lfs -text
