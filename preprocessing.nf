@@ -22,7 +22,7 @@ params.output_dir = "output"
 
 // Set channels for reference files
 Channel
-	.fromPath( 'references/trimmomatic.fa' )
+	.fromPath( 'references/trimmomaticContaminants.fa' )
 	.set{ trimmomatic_contaminants }
 
 Channel
