@@ -39,7 +39,7 @@ The first step in the deployment process is to clone the MGP1000 GitHub reposito
 ```
 $ cd <scratch dir>
 
-$ git clone https://github.com/pblaney/mgp1000.git
+$ git lfs clone https://github.com/pblaney/mgp1000.git
 ### Example output ###
 # Cloning into 'mgp1000'...
 # remote: Enumerating objects: 90, done.
