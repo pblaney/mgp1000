@@ -86,7 +86,7 @@ Channel
 // Set the channel for all input BAM files
 Channel
 	.fromPath( 'input/*.bam' )
-	into{ input_mapped_bams;
+	.into{ input_mapped_bams;
 	      input_mapped_bams_toCollectWgsMetrics;
 	      input_mapped_bams_toCollectGcBiasMetrics }
 
