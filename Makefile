@@ -21,9 +21,9 @@ update-nextflow: ./nextflow
 
 # Prepare reference genome files and create input directory
 prep-pipeline:
-	gunzip references/hg38/bwa/genome.fa.gz
-	gunzip references/hg38/bwa/genome.fa.bwt.gz
-	gunzip references/hg38/bwa/genome.fa.sa.gz
+	gunzip references/hg38/Homo_sapiens_assembly38.fasta.gz
+	gunzip references/hg38/Homo_sapiens_assembly38.fasta.64.bwt.gz
+	gunzip references/hg38/Homo_sapiens_assembly38.fasta.64.sa.gz
 	mkdir -p input
 	mkdir -p input/preprocessedBams
 	mkdir -p logs
