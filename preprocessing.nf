@@ -19,6 +19,7 @@ log.info ''
 // Declare the defaults for all pipeline parameters
 params.input_format = "bam"
 params.output_dir = "output"
+params.skip_to_qc = "no"
 
 // Set channels for reference files
 Channel
@@ -83,7 +84,11 @@ Channel
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 // Set the channel for all input BAM files
-input_mapped_bams = Channel.fromPath( 'input/*.bam' )
+Channel
+	.fromPath( 'input/*.bam' )
+	into{ input_mapped_bams;
+	      input_mapped_bams_toCollectWgsMetrics;
+	      input_mapped_bams_toCollectGcBiasMetrics }
 
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
 process revertMappedBam_gatk {
@@ -412,12 +417,21 @@ reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_inde
 	.combine( reference_genome_fasta_dict_forCollectWgsMetrics )
 	.set{ reference_genome_bundle_forCollectWgsMetrics }
 
+// If input BAM files have excessively high coverage (>80x), were previously aligned with same reference genome,
+// and aligner then there is the option to skip directly to QC processes
+if( params.skip_to_qc == "yes" ) {
+	bamsToQc_forCollectWgsMetrics = input_mapped_bams_toCollectWgsMetrics
+}
+else {
+	bamsToQc_forCollectWgsMetrics = final_preprocessed_bams_forCollectWgsMetrics
+}
+
 // GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
 process collectWgsMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'move'
 
 	input:
-	path bam_preprocessed_final from final_preprocessed_bams_forCollectWgsMetrics
+	path bam_preprocessed_final from bamsToQc_forCollectWgsMetrics
 	tuple path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from reference_genome_bundle_forCollectWgsMetrics
 
 	output:
@@ -444,12 +458,21 @@ reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_i
 	.combine( reference_genome_fasta_dict_forCollectGcBiasMetrics )
 	.set{ reference_genome_bundle_forCollectGcBiasMetrics }
 
+// If input BAM files have excessively high coverage (>80x), were previously aligned with same reference genome,
+// and aligner then there is the option to skip directly to QC processes
+if( params.skip_to_qc == "yes" ) {
+	bamsToQc_forCollectGcBiasMetrics = input_mapped_bams_toCollectGcBiasMetrics
+}
+else {
+	bamsToQc_forCollectGcBiasMetrics = final_preprocessed_bams_forCollectGcBiasMetrics
+}
+
 // GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
 process collectGcBiasMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'move'
 
 	input:
-	path bam_preprocessed_final from final_preprocessed_bams_forCollectGcBiasMetrics
+	path bam_preprocessed_final from bamsToQc_forCollectGcBiasMetrics
 	tuple path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from reference_genome_bundle_forCollectGcBiasMetrics
 
 	output:
