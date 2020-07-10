@@ -26,56 +26,56 @@ Channel
 	.set{ trimmomatic_contaminants }
 
 Channel
-	.fromPath( 'references/hg38/bwa' )
+	.fromPath( 'references/hg38' )
 	.set{ bwa_reference_dir }
 
 Channel
-	.fromPath( 'references/hg38/bwa/genome.fa' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta' )
 	.into{ reference_genome_fasta_forBaseRecalibrator;
 	       reference_genome_fasta_forApplyBqsr;
 	       reference_genome_fasta_forCollectWgsMetrics;
 	       reference_genome_fasta_forCollectGcBiasMetrics }
 
 Channel
-	.fromPath( 'references/hg38/bwa/genome.fa.fai' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
 	.into{ reference_genome_fasta_index_forBaseRecalibrator;
 	       reference_genome_fasta_index_forApplyBqsr;
 	       reference_genome_fasta_index_forCollectWgsMetrics;
 	       reference_genome_fasta_index_forCollectGcBiasMetrics }
 
 Channel
-	.fromPath( 'references/hg38/bwa/genome.dict' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
 	.into{ reference_genome_fasta_dict_forBaseRecalibrator;
 	       reference_genome_fasta_dict_forApplyBqsr;
 	       reference_genome_fasta_dict_forCollectWgsMetrics;
 	       reference_genome_fasta_dict_forCollectGcBiasMetrics }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/wgs_calling_regions.hg38.interval_list' )
+	.fromPath( 'references/hg38/wgs_calling_regions.hg38.interval_list' )
 	.set{ gatk_bundle_wgs_interval_list }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
+	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
 	.set{ gatk_bundle_mills_1000G }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi' )
+	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi' )
 	.set{ gatk_bundle_mills_1000G_index }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.known_indels.vcf.gz' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.known_indels.vcf.gz' )
 	.set{ gatk_bundle_known_indels }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi' )
 	.set{ gatk_bundle_known_indels_index }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
 	.set{ gatk_bundle_dbsnp138 }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
 	.set{ gatk_bundle_dbsnp138_index }
 
 
@@ -232,7 +232,7 @@ process alignment_bwa {
 	-M -v 1 \
 	-t 6 \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
-	"${bwa_reference_dir}/genome.fa" \
+	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
 	"${fastq_R1}" "${fastq_R2}" \
 	| \
 	sambamba view \
