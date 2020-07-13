@@ -55,6 +55,14 @@ dev-germline:
 
 ###############################################################################
 
+# Remove logs/pid/reports/trace files
+quick-clean:
+	rm -f .nextflow.log*
+	rm -f .nextflow.pid*
+	rm -f timeline_report.html*
+	rm -f nextflow_report.html*
+	rm -f trace.txt*
+
 # Completely scrub pipeline output files
 clean-all:
 	rm -rf work
