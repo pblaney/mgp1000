@@ -102,6 +102,7 @@ process revertMappedBam_gatk {
 
 	when:
 	params.input_format == "bam"
+	params.skip_to_qc == "no"
 
 	script:
 	bam_unmapped = "${bam_mapped}".replaceFirst(/\.bam/, ".unmapped.bam")
@@ -127,6 +128,7 @@ process bamToFastq_biobambam {
 
 	when:
 	params.input_format == "bam"
+	params.skip_to_qc == "no"
 
 	script:
 	fastq_R1 = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "_R1.fastq.gz")
