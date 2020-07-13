@@ -21,34 +21,34 @@ params.output_dir = "output"
 
 // Set channels for reference files
 Channel
-	.fromPath( 'references/hg38/bwa/genome.fa' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta' )
 	.into{ reference_genome_fasta_forHaplotypeCaller;
 	       reference_genome_fasta_forCNNScoreVariants }
 
 Channel
-	.fromPath( 'references/hg38/bwa/genome.fa.fai' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
 	.into{ reference_genome_fasta_index_forHaplotypeCaller;
 		   reference_genome_fasta_index_forCNNScoreVariants }
 
 Channel
-	.fromPath( 'references/hg38/bwa/genome.dict' )
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
 	.into{ reference_genome_fasta_dict_forHaplotypeCaller;
 	       reference_genome_fasta_dict_forCNNScoreVariants }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/1000G_Omni2.5.hg38.vcf.gz' )
+	.fromPath( 'references/hg38/1000G_Omni2.5.hg38.vcf.gz' )
 	.set{ gatk_bundle_1000G_omni }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/1000G_Omni2.5.hg38.vcf.gz.tbi' )
+	.fromPath( 'references/hg38/1000G_Omni2.5.hg38.vcf.gz.tbi' )
 	.set{ gatk_bundle_1000G_omni_index }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Hapmap_3.3.hg38.vcf.gz' )
+	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz' )
 	.set{ gatk_bundle_hapmap }
 
 Channel
-	.fromPath( 'references/hg38/gatkBundle/Hapmap_3.3.hg38.vcf.gz.tbi' )
+	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz.tbi' )
 	.set{ gatk_bundle_hapmap_index }
 
 
@@ -59,8 +59,8 @@ Channel
 Channel
 	.fromPath( 'input/preprocessedBams/*.bam' )
 	.into{ input_preprocessed_bams_forTelomereLengthEstimation;
-	       input_preprocessed_bams_forHaplotypeCaller;
-	       input_preprocessed_bams_forCNNScoreVariants }
+	       input_preprocessed_bams_forHaplotypeCaller; }
+/*
 
 // TelSeq ~ estimate telomere length of sample
 process telomereLengthEstimation_telseq {
@@ -79,6 +79,8 @@ process telomereLengthEstimation_telseq {
 	"""
 }
 
+*/
+
 // Combine all needed reference FASTA files into one channel for use in GATK HaplotypeCaller process
 reference_genome_fasta_forHaplotypeCaller.combine( reference_genome_fasta_index_forHaplotypeCaller )
 	.combine( reference_genome_fasta_dict_forHaplotypeCaller )
@@ -93,10 +95,11 @@ process haplotypeCaller_gatk {
 	tuple path(reference_genome_fasta_forHaplotypeCaller), path(reference_genome_fasta_index_forHaplotypeCaller), path(reference_genome_fasta_dict_forHaplotypeCaller) from reference_genome_bundle_forHaplotypeCaller
 
 	output:
-	path gvcf_raw into raw_gvcfs
+	tuple path(gvcf_raw), path(gvcf_raw_index) into raw_gvcfs
 
 	script:
-	gvcf_raw = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".raw.gvcf.gz")
+	gvcf_raw = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".g.vcf")
+	gvcf_raw_index = "${gvcf_raw}.idx"
 	"""
 	gatk HaplotypeCaller \
 	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -111,6 +114,71 @@ process haplotypeCaller_gatk {
 }
 
 /*
+
+// Collect all GVCF files into one singular list
+
+
+// GATK SortVcf ~ merge and sort all GVCF files
+process mergeAndSortGvcfs_gatk {
+	publishDir "${params.output_dir}/germline/mergedAndSortedGvcfs", mode: 'symlink'
+
+	input:
+	tuple path(gvcf_raw), path(gvcf_raw_index) from raw_gvcfs
+
+	output:
+	tuple path(gvcf_merged_sorted), path(gvcf_merged_sorted_index) into merged_sorted_gvcfs
+
+	script:
+	gvcf_merged_sorted = "${gvcf_raw}".replaceFirst(/\.g\.vcf/, ".ms.g.vcf")
+	gvcf_merged_sorted_index = "${gvcf_merged_sorted}.idx"
+	"""
+	gatk SortVcf \
+	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+
+	"""
+
+}
+
+
+
+// GATK GenomicsDBImport ~ import GVCF into data storage system to make data more accessible to tools
+process createGenomicsDb_gatk {
+	
+	input:
+
+	output:
+
+	script:
+
+	"""
+	gatk GenomicsDBImport \
+	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	
+	"""
+}
+
+
+// GATK GenotypeGVCFs ~ perform joint genotyping using the GenomicsDB workspace
+process jointGenotyping_gatk {
+	publishDir "${params.output_dir}/germline/genotypedVcf", mode: 'symlink'
+
+	input:
+
+	output:
+
+	script:
+
+	"""
+	gatk GenotypeGVCFs \
+	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+
+	"""
+}
+
+
+
+
+
 
 
 // Combine all needed reference FASTA files into one channel for use in GATK CNNScoreVariants process
