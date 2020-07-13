@@ -196,6 +196,9 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastqc_R1_html), path(fastqc_R2_html)
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
+	when:
+	params.skip_to_qc == "no"
+
 	script:
 	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
 	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
@@ -227,6 +230,9 @@ process alignment_bwa {
 	output:
 	path bam_aligned into aligned_bams
 	path bam_flagstat_log
+
+	when:
+	params.skip_to_qc == "no"
 
 	script:
 	sample_id = "${fastq_R1}".replaceFirst(/[_\.]R1.*\.f.*q*/, "")
@@ -263,6 +269,9 @@ process fixMateInformationAndSort_gatk {
 	output:
 	path bam_fixed_mate into fixed_mate_bams
 
+	when:
+	params.skip_to_qc == "no"
+
 	script:
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
@@ -290,6 +299,9 @@ process markDuplicatesAndIndex_sambamba {
 	path bam_marked_dup into marked_dup_bams_forDownsampleBam, marked_dup_bams_forApplyBqsr
 	path bam_marked_dup_index
 	path bam_markdup_flagstat_log
+
+	when:
+	params.skip_to_qc == "no"
 
 	script:
 	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.bam")
@@ -321,6 +333,9 @@ process downsampleBam_gatk {
 
 	output:
 	path bam_marked_dup_downsampled into downsampled_makred_dup_bams
+
+	when:
+	params.skip_to_qc == "no"
 
 	script:
 	bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".markdup.downsampled.bam")
@@ -364,6 +379,9 @@ process baseRecalibrator_gatk {
 	output:
 	path bqsr_table into base_quality_score_recalibration_data
 
+	when:
+	params.skip_to_qc == "no"
+
 	script:
 	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, ".recaldata.table")
 	"""
@@ -397,6 +415,9 @@ process applyBqsr_gatk {
 
 	output:
 	path bam_preprocessed_final into final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics
+
+	when:
+	params.skip_to_qc == "no"
 
 	script:
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bam")
