@@ -419,7 +419,7 @@ reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_inde
 
 // If input BAM files have excessively high coverage (>80x), were previously aligned with same reference genome,
 // and aligner then there is the option to skip directly to QC processes
-if( params.skip_to_qc == "yes" ) {
+if( params.skip_to_qc == "yes" && params.input_format == "bam") {
 	bamsToQc_forCollectWgsMetrics = input_mapped_bams_toCollectWgsMetrics
 }
 else {
@@ -460,7 +460,7 @@ reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_i
 
 // If input BAM files have excessively high coverage (>80x), were previously aligned with same reference genome,
 // and aligner then there is the option to skip directly to QC processes
-if( params.skip_to_qc == "yes" ) {
+if( params.skip_to_qc == "yes" && params.input_format == "bam") {
 	bamsToQc_forCollectGcBiasMetrics = input_mapped_bams_toCollectGcBiasMetrics
 }
 else {
