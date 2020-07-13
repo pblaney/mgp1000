@@ -408,7 +408,7 @@ reference_genome_fasta_forApplyBqsr.combine( reference_genome_fasta_index_forApp
 
 // GATK ApplyBQSR ~ apply base quality score recalibration using generated table
 process applyBqsr_gatk {
-	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy'
+	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: '*.{bam,bai}'
 
 	input:
 	path bam_marked_dup from marked_dup_bams_forApplyBqsr
