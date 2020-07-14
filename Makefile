@@ -49,6 +49,9 @@ dev-preprocessing-bam:
 dev-preprocessing-fastq:
 	nextflow run preprocessing.nf -bg -resume --input_format fastq -profile dev_preprocessing
 
+dev-preprocessing-bigbam:
+	nextflow run preprocessing.nf -bg --input_format bam --skip_to_qc yes -profile dev_preprocessing
+
 # Test Germline step locally with Docker
 dev-germline:
 	nextflow run germline.nf -bg -resume -profile dev_germline
