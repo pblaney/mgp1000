@@ -56,6 +56,10 @@ Channel
 	.set{ gatk_bundle_wgs_interval_list }
 
 Channel
+	.fromPath( 'references/hg38/wgs_calling_regions.hg38.bed' )
+	.set{ gatk_bundle_wgs_bed}
+
+Channel
 	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
 	.set{ gatk_bundle_mills_1000G }
 
@@ -87,8 +91,7 @@ Channel
 Channel
 	.fromPath( 'input/*.bam' )
 	.into{ input_mapped_bams;
-	      input_mapped_bams_toCollectWgsMetrics;
-	      input_mapped_bams_toCollectGcBiasMetrics }
+	       input_mapped_bams_forQaulimap }
 
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
 process revertMappedBam_gatk {
@@ -440,25 +443,19 @@ reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_inde
 	.combine( reference_genome_fasta_dict_forCollectWgsMetrics )
 	.set{ reference_genome_bundle_forCollectWgsMetrics }
 
-// If input BAM files have excessively high coverage (>80x), were previously aligned with same reference genome,
-// and aligner then there is the option to skip directly to QC processes
-if( params.skip_to_qc == "yes" && params.input_format == "bam") {
-	bamsToQc_forCollectWgsMetrics = input_mapped_bams_toCollectWgsMetrics
-}
-else {
-	bamsToQc_forCollectWgsMetrics = final_preprocessed_bams_forCollectWgsMetrics
-}
-
 // GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
 process collectWgsMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'move'
 
 	input:
-	path bam_preprocessed_final from bamsToQc_forCollectWgsMetrics
+	path bam_preprocessed_final from final_preprocessed_bams_forCollectWgsMetrics
 	tuple path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from reference_genome_bundle_forCollectWgsMetrics
 
 	output:
 	path coverage_metrics
+
+	when:
+	params.skip_to_qc == "no"
 
 	script:
 	sample_id = "${bam_preprocessed_final}".replaceFirst(/\.final\.bam/, "")
@@ -481,27 +478,21 @@ reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_i
 	.combine( reference_genome_fasta_dict_forCollectGcBiasMetrics )
 	.set{ reference_genome_bundle_forCollectGcBiasMetrics }
 
-// If input BAM files have excessively high coverage (>80x), were previously aligned with same reference genome,
-// and aligner then there is the option to skip directly to QC processes
-if( params.skip_to_qc == "yes" && params.input_format == "bam") {
-	bamsToQc_forCollectGcBiasMetrics = input_mapped_bams_toCollectGcBiasMetrics
-}
-else {
-	bamsToQc_forCollectGcBiasMetrics = final_preprocessed_bams_forCollectGcBiasMetrics
-}
-
 // GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
 process collectGcBiasMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'move'
 
 	input:
-	path bam_preprocessed_final from bamsToQc_forCollectGcBiasMetrics
+	path bam_preprocessed_final from final_preprocessed_bams_forCollectGcBiasMetrics
 	tuple path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from reference_genome_bundle_forCollectGcBiasMetrics
 
 	output:
 	path gc_bias_metrics
 	path gc_bias_chart
 	path gc_bias_summary
+
+	when:
+	params.skip_to_qc == "no"
 
 	script:
 	sample_id = "${bam_preprocessed_final}".replaceFirst(/\.final\.bam/, "")
@@ -517,5 +508,40 @@ process collectGcBiasMetrics_gatk {
 	-O "${gc_bias_metrics}" \
 	--CHART_OUTPUT "${gc_bias_chart}" \
 	--SUMMARY_OUTPUT "${gc_bias_summary}"
+	"""
+}
+
+// If input BAM files have excessively high coverage (>100x), were previously aligned with same reference genome,
+// and aligner then there is the option to skip directly to QC processes
+
+// Qualimap BAM QC ~ perform quality control analysis on extreme coverage (>100x) BAMs
+process extremeBamQualityControl_qualimap {
+	publishDir "${params.output_dir}/preprocessing/qualimapBamQc", mode: 'move'
+
+	input:
+	path bam_mapped_high_coverage from input_mapped_bams_forQaulimap
+	path wgs_bed_file from gatk_bundle_wgs_bed
+
+	output:
+	path qualimap_qc_report
+
+	when:
+	params.input_format == "bam"
+	params.skip_to_qc == "yes"
+
+	script:
+	sample_id = "${bam_mapped_high_coverage}".replaceFirst(/\.bam/, "")
+	qualimap_qc_report = "${sample_id}_qualimap_report.html"
+	"""
+	qualimap --java-mem-size=12G \
+	bamqc \
+	-bam "${bam_mapped_high_coverage}" \
+	--feature-file "${wgs_bed_file}" \
+	--paint-chromosome-limits \
+	--genome-gc-distr HUMAN \
+	-nt 8 \
+	-outfile "${qualimap_qc_report}"
+	-outformat HTML \
+	-outdir .
 	"""
 }
