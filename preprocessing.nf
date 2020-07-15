@@ -520,28 +520,23 @@ process extremeBamQualityControl_qualimap {
 
 	input:
 	path bam_mapped_high_coverage from input_mapped_bams_forQaulimap
-	path wgs_bed_file from gatk_bundle_wgs_bed
 
 	output:
-	path qualimap_qc_report
+	path "${bam_mapped_high_coverage.baseName}"
 
 	when:
 	params.input_format == "bam"
 	params.skip_to_qc == "yes"
 
 	script:
-	sample_id = "${bam_mapped_high_coverage}".replaceFirst(/\.bam/, "")
-	qualimap_qc_report = "${sample_id}_qualimap_report.html"
 	"""
 	qualimap --java-mem-size=12G \
 	bamqc \
 	-bam "${bam_mapped_high_coverage}" \
-	--feature-file "${wgs_bed_file}" \
 	--paint-chromosome-limits \
 	--genome-gc-distr HUMAN \
 	-nt 8 \
-	-outfile "${qualimap_qc_report}"
 	-outformat HTML \
-	-outdir .
+	-outdir "${bam_mapped_high_coverage.baseName}"
 	"""
 }
