@@ -13,6 +13,37 @@ log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
 log.info '################################################'
 log.info ''
 
+def helpMessage() {
+	log.info"""
+
+	Usage:
+
+		nextflow run preprocessing.nf -bg --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing
+
+	Mandatory Arguments:
+		--input_format			       [str]  Format of input files, either: fastq or bam
+		-profile				       [str]  Configuration profile to use, each profile described in nextflow.config file
+									          Currently available: preprocessing
+
+	Main Options:
+		-bg 					      [flag]  Runs the pipeline processes in the background, this option should be included if deploying
+		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
+		                                      environment
+		--singularity_module    [quoted str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
+		                                      this option is not needed if Singularity is natively installed on the deployment environment
+		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no 
+		                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
+		                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
+		                                      have adequate provenance to reflect this
+		--help                        [flag]  Prints this message
+
+	""".stripIndent()
+}
+
+// Print help message if requested
+if( params.help ) exit 0, helpMessage()
+
+
 // #################################################### \\
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
@@ -20,6 +51,7 @@ log.info ''
 params.input_format = "bam"
 params.output_dir = "output"
 params.skip_to_qc = "no"
+params.help = null
 
 // Set channels for reference files
 Channel
