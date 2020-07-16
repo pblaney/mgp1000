@@ -37,7 +37,7 @@ def helpMessage() {
 		                                      have adequate provenance to reflect this
 		--help                        [flag]  Prints this message
 
-	""".stripIndent()
+	"""
 }
 
 // Print help message if requested
