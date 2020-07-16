@@ -113,50 +113,28 @@ process haplotypeCaller_gatk {
 	"""
 }
 
-
-
-// Collect all GVCF files into one singular list
-
-
-// GATK SortVcf ~ merge and sort all GVCF files
-process mergeAndSortGvcfs_gatk {
-	publishDir "${params.output_dir}/germline/mergedAndSortedGvcfs", mode: 'symlink'
-
-	input:
-	tuple path(gvcf_raw), path(gvcf_raw_index) from raw_gvcfs
-
-	output:
-	tuple path(gvcf_merged_sorted), path(gvcf_merged_sorted_index) into merged_sorted_gvcfs
-
-	script:
-	gvcf_merged_sorted = "${gvcf_raw}".replaceFirst(/\.g\.vcf/, ".ms.g.vcf")
-	gvcf_merged_sorted_index = "${gvcf_merged_sorted}.idx"
-	"""
-	gatk SortVcf \
-	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
-
-	"""
-
-}
-
-/*
-
 // GATK GenomicsDBImport ~ import GVCF into data storage system to make data more accessible to tools
 process createGenomicsDb_gatk {
 	
 	input:
+	tuple path(gvcf_raw), path(gvcf_raw_index) from raw_gvcfs
 
 	output:
+	path genomics_db_workspace into joint_genotyping_db
 
 	script:
-
+	genomics_db_workspace = "genomics_db_workspace"
 	"""
 	gatk GenomicsDBImport \
-	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
-	
+	--java-options "-Xmx14G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts -Djava.io.tmpdir=/tmp" \
+	--verbosity ERROR \
+	-V "${gvcf_raw}".collect() \
+	--tmp-dir=/tmp \
+	--genomicsdb-workspace-path "${genomics_db_workspace}"
 	"""
 }
 
+/*
 
 // GATK GenotypeGVCFs ~ perform joint genotyping using the GenomicsDB workspace
 process jointGenotyping_gatk {
@@ -175,6 +153,36 @@ process jointGenotyping_gatk {
 	"""
 }
 
+
+
+
+
+
+
+// Collect all GVCF files into one singular list
+
+
+// GATK SortVcf ~ merge and sort all GVCF files
+process mergeAndSortGvcfs_gatk {
+	publishDir "${params.output_dir}/germline/mergedAndSortedGvcfs", mode: 'symlink'
+
+	input:
+	tuple path(gvcf_raw), path(gvcf_raw_index) from raw_gvcfs
+
+	output:
+	tuple path(gvcf_merged_sorted), path(gvcf_merged_sorted_index) into merged_sorted_gvcfs.groupTuple()
+
+	script:
+	gvcf_merged_sorted = "${gvcf_raw}".replaceFirst(/\.g\.vcf/, ".ms.g.vcf")
+	gvcf_merged_sorted_index = "${gvcf_merged_sorted}.idx"
+	"""
+	gatk SortVcf \
+	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	"${gvcf_raw}.collect"
+
+	"""
+
+}
 
 
 
