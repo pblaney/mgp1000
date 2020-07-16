@@ -21,12 +21,12 @@ def helpMessage() {
 		nextflow run preprocessing.nf -bg --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing
 
 	Mandatory Arguments:
-		--input_format			       [str]  Format of input files, either: fastq or bam
-		-profile				       [str]  Configuration profile to use, each profile described in nextflow.config file
+		--input_format                 [str]  Format of input files, either: fastq or bam
+		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
 									          Currently available: preprocessing
 
 	Main Options:
-		-bg 					      [flag]  Runs the pipeline processes in the background, this option should be included if deploying
+		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
 		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
 		                                      environment
 		--singularity_module    [quoted str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
@@ -37,7 +37,9 @@ def helpMessage() {
 		                                      have adequate provenance to reflect this
 		--help                        [flag]  Prints this message
 
-	"""
+
+
+	""".stripIndent()
 }
 
 // Print help message if requested
