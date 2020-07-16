@@ -113,7 +113,7 @@ process haplotypeCaller_gatk {
 	"""
 }
 
-/*
+
 
 // Collect all GVCF files into one singular list
 
@@ -139,7 +139,7 @@ process mergeAndSortGvcfs_gatk {
 
 }
 
-
+/*
 
 // GATK GenomicsDBImport ~ import GVCF into data storage system to make data more accessible to tools
 process createGenomicsDb_gatk {
