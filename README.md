@@ -114,7 +114,7 @@ Launching `preprocessing.nf` [jolly_majorana] - revision: f5a75c24b1
 ~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
 ################################################
 
-Usage:
+Usage Example:
 
 	nextflow run preprocessing.nf -bg --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing
 
