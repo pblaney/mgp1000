@@ -23,7 +23,7 @@ def helpMessage() {
 	Mandatory Arguments:
 		--input_format                 [str]  Format of input files, either: fastq or bam
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-									          Currently available: preprocessing
+		                                      Currently available: preprocessing
 
 	Main Options:
 		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
@@ -37,7 +37,7 @@ def helpMessage() {
 		                                      have adequate provenance to reflect this
 		--help                        [flag]  Prints this message
 
-
+	################################################
 
 	""".stripIndent()
 }
