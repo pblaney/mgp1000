@@ -104,18 +104,37 @@ $ cp -r </normal/samples/directory/*.bam> input/
 
 ## Run the Preprocessing Step of the Pipeline
 Now the simplicity of Nextflow takes over. The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
-The command to execute the Preprocessing step will require the user to define the `input_format` of the files and the `singularity_module` to be loaded for use. The other parameters will not change from user to user. The `bg` option will run the script in the background and the `profile` option will use the correct process configuration profile for this step.
 ```
-$ nextflow run preprocessing.nf -bg --input_format bam --singularity_module "singularity/3.1" -profile preprocessing
-### Example output ###
-# $ N E X T F L O W  ~  version 20.04.1
-# Launching `preprocessing.nf` [insane_turing] - revision: 576a8a5fde
-# 
-# ##### Myeloma Genome Project 1000 Pipeline #####
-# ################################################
-# ~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
-# ################################################
-# 
-# [94/79af23] Submitted process > revertMappedBam_gatk (1)
+$ nextflow run preprocessing.nf --help
+N E X T F L O W  ~  version 20.04.1
+Launching `preprocessing.nf` [jolly_majorana] - revision: f5a75c24b1
+
+##### Myeloma Genome Project 1000 Pipeline #####
+################################################
+~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
+################################################
+
+Usage:
+
+	nextflow run preprocessing.nf -bg --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing
+
+Mandatory Arguments:
+	--input_format                 [str]  Format of input files, either: fastq or bam
+	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
+	                                      Currently available: preprocessing
+
+Main Options:
+	-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
+	                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
+	                                      environment
+	--singularity_module    [quoted str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
+	                                      this option is not needed if Singularity is natively installed on the deployment environment
+	--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no 
+	                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
+	                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
+	                                      have adequate provenance to reflect this
+	--help                        [flag]  Prints this message
+
+################################################
 ```
 
