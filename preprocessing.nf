@@ -90,10 +90,6 @@ Channel
 	.set{ gatk_bundle_wgs_interval_list }
 
 Channel
-	.fromPath( 'references/hg38/wgs_calling_regions.hg38.bed' )
-	.set{ gatk_bundle_wgs_bed}
-
-Channel
 	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
 	.set{ gatk_bundle_mills_1000G }
 
