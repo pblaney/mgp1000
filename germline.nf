@@ -18,22 +18,65 @@ log.info ''
 
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
+params.cohort_name = null
 
 // Set channels for reference files
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta' )
 	.into{ reference_genome_fasta_forHaplotypeCaller;
-	       reference_genome_fasta_forCNNScoreVariants }
+	       reference_genome_fasta_forJointGenotyping;
+	       reference_genome_fasta_forIndelVariantRecalibration;
+	       reference_genome_fasta_forSnpVariantRecalibration }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
 	.into{ reference_genome_fasta_index_forHaplotypeCaller;
-		   reference_genome_fasta_index_forCNNScoreVariants }
+		   reference_genome_fasta_index_forJointGenotyping;
+		   reference_genome_fasta_index_forIndelVariantRecalibration;
+		   reference_genome_fasta_index_forSnpVariantRecalibration }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
 	.into{ reference_genome_fasta_dict_forHaplotypeCaller;
-	       reference_genome_fasta_dict_forCNNScoreVariants }
+	       reference_genome_fasta_dict_forJointGenotyping;
+	       reference_genome_fasta_dict_forIndelVariantRecalibration;
+	       reference_genome_fasta_dict_forSnpVariantRecalibration }
+
+Channel
+	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
+	.set{ gatk_bundle_mills_1000G }
+
+Channel
+	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi' )
+	.set{ gatk_bundle_mills_1000G_index }
+
+Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
+	.into{ gatk_bundle_dbsnp138_forJointGenotyping;
+	       gatk_bundle_dbsnp138_forIndelVariantRecalibration;
+	       gatk_bundle_dbsnp138_forSnpVariantRecalibration }
+
+Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
+	.into{ gatk_bundle_dbsnp138_index_forJointGenotyping;
+	       gatk_bundle_dbsnp138_index_forIndelVariantRecalibration;
+	       gatk_bundle_dbsnp138_index_forSnpVariantRecalibration }
+
+Channel
+	.fromPath( 'references/hg38/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz' )
+	.set{ gatk_bundle_axiom }
+
+Channel
+	.fromPath( 'references/hg38/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz.tbi' )
+	.set{ gatk_bundle_axiom_index }
+
+Channel
+	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz' )
+	.set{ gatk_bundle_hapmap }
+
+Channel
+	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz.tbi' )
+	.set{ gatk_bundle_hapmap_index }
 
 Channel
 	.fromPath( 'references/hg38/1000G_Omni2.5.hg38.vcf.gz' )
@@ -44,12 +87,12 @@ Channel
 	.set{ gatk_bundle_1000G_omni_index }
 
 Channel
-	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz' )
-	.set{ gatk_bundle_hapmap }
+	.fromPath( 'references/hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz' )
+	.set{ gatk_bundle_1000G_snps }
 
 Channel
-	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz.tbi' )
-	.set{ gatk_bundle_hapmap_index }
+	.fromPath( 'references/hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi' )
+	.set{ gatk_bundle_1000G_snps_index }
 
 
 // #################################################### \\
@@ -134,124 +177,139 @@ process createGenomicsDb_gatk {
 	"""
 }
 
-/*
+// Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK GenotypeGVCFs process
+gatk_bundle_dbsnp138.combine( gatk_bundle_dbsnp138_index )
+	.set{ gatk_reference_bundle_forJointGenotyping }
+
+reference_genome_fasta_forJointGenotyping.combine( reference_genome_fasta_index_forJointGenotyping )
+	.combine( reference_genome_fasta_dict_forJointGenotyping )
+	.set{ reference_genome_bundle_forJointGenotyping }
 
 // GATK GenotypeGVCFs ~ perform joint genotyping using the GenomicsDB workspace
 process jointGenotyping_gatk {
 	publishDir "${params.output_dir}/germline/genotypedVcf", mode: 'symlink'
 
 	input:
+	path genomics_db_workspace from joint_genotyping_db
+	tuple path(reference_genome_fasta_forJointGenotyping), path(reference_genome_fasta_index_forJointGenotyping), path(reference_genome_fasta_dict_forJointGenotyping) from reference_genome_bundle_forJointGenotyping
+	tuple path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from gatk_reference_bundle_forJointGenotyping
 
 	output:
+	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) into joint_genotyped_vcfs
 
 	script:
-
+	vcf_joint_genotyped = "${params.cohort_name}.vcf"
+	vcf_joint_genotyped_index = "${vcf_joint_genotyped}.idx"
 	"""
 	gatk GenotypeGVCFs \
 	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
-
+	--verbosity ERROR \
+	--dbsnp "${gatk_bundle_dbsnp138}" \
+	--reference "${reference_genome_fasta_forJointGenotyping}" \
+	-V gendb://"${genomics_db_workspace}"
+	--annotation-group StandardAnnotation \
+	--standard-min-confidence-threshold-for-calling 50 \
+	-O "${vcf_joint_genotyped}"
 	"""
 }
 
-
-
-
-
-
-
-// Collect all GVCF files into one singular list
-
-
-// GATK SortVcf ~ merge and sort all GVCF files
-process mergeAndSortGvcfs_gatk {
-	publishDir "${params.output_dir}/germline/mergedAndSortedGvcfs", mode: 'symlink'
+// GATK VariantFiltration/SelectVariants ~ hard filter test for excess heterozygosity
+// ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
+// than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
+process excessHeterozygosityHardFilter_gatk {
+	publishDir "${params.output_dir}/germline/excessHetHardFilter", mode: 'symlink'
 
 	input:
-	tuple path(gvcf_raw), path(gvcf_raw_index) from raw_gvcfs
+	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) from joint_genotyped_vcfs
 
 	output:
-	tuple path(gvcf_merged_sorted), path(gvcf_merged_sorted_index) into merged_sorted_gvcfs.groupTuple()
+	tuple path(vcf_genotyped_filtered), path(vcf_genotyped_filtered_index) into genotyped_filtered_vcfs_forIndelVariantRecalibration, genotyped_filtered_vcfs_forSnvVariantRecalibration
 
 	script:
-	gvcf_merged_sorted = "${gvcf_raw}".replaceFirst(/\.g\.vcf/, ".ms.g.vcf")
-	gvcf_merged_sorted_index = "${gvcf_merged_sorted}.idx"
+	intermediate_vcf_genotyped_filtered = "${vcf_joint_genotyped}".replaceFirst(/\.vcf/, ".markedforfilter.vcf")
+	vcf_genotyped_filtered = "${vcf_joint_genotyped}".replaceFirst(/\.vcf/, ".filtered.vcf")
+	vcf_genotyped_filtered_index = "${vcf_genotyped_filtered}.idx"
 	"""
-	gatk SortVcf \
-	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
-	"${gvcf_raw}.collect"
+	gatk VariantFiltration \
+	--java-options "-Xmx8G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--filter-name ExcessHet \
+	--filter-expression "ExcessHet > 54.69" \
+	-V "${vcf_joint_genotyped}" \
+	-O "${intermediate_vcf_genotyped_filtered}"
 
+	gatk SelectVariants \
+	--java-options "-Xmx8G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--exclude-filtered \
+	-V "${intermediate_vcf_genotyped_filtered}" \
+	-O "${vcf_genotyped_filtered}"
 	"""
-
 }
 
+// Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK Indel VariantRecalibratior process
+gatk_bundle_mills_1000G.combine( gatk_bundle_mills_1000G_index )
+	.combine( gatk_bundle_axiom )
+	.combine( gatk_bundle_axiom_index )
+	.combine( gatk_bundle_dbsnp138_forIndelVariantRecalibration )
+	.combine( gatk_bundle_dbsnp138_index_forIndelVariantRecalibration)
+	.set{ gatk_reference_bundle_forIndelVariantRecalibration}
 
+reference_genome_fasta_forIndelVariantRecalibration.combine( reference_genome_fasta_index_forIndelVariantRecalibration )
+	.combine( reference_genome_fasta_dict_forIndelVariantRecalibration )
+	.set{ reference_genome_bundle_forIndelVariantRecalibration }
 
-
-
-
-// Combine all needed reference FASTA files into one channel for use in GATK CNNScoreVariants process
-reference_genome_fasta_forCNNScoreVariants.combine( reference_genome_fasta_index_forCNNScoreVariants )
-	.combine( reference_genome_fasta_dict_forCNNScoreVariants )
-	.set{ reference_genome_bundle_forCNNScoreVariants }
-
-// GATK CNNScoreVariants ~ apply a convolutional neural network to score annotated variants for filtering
-process cnnScoreVariants_gatk {
-	publishDir "${params.output_dir}/germline/cnnScoreVariants", mode: 'symlink'
+// GATK VariantRecalibrator (Indels) ~ build recalibration model to score indel variant quality for filtering
+process indelVariantRecalibration_gatk {
+	publishDir "${params.output_dir}/germline/indelVariantRecal", mode: 'symlink'
 
 	input:
-	path bam_preprocessed from input_preprocessed_bams_forCNNScoreVariants
-	tuple path(reference_genome_fasta_forCNNScoreVariants), path(reference_genome_fasta_index_forCNNScoreVariants), path(reference_genome_fasta_dict_forCNNScoreVariants) from reference_genome_bundle_forCNNScoreVariants
-	path vcf_raw from raw_vcfs
+	tuple path(vcf_genotyped_filtered), path(vcf_genotyped_filtered_index) from genotyped_filtered_vcfs_forIndelVariantRecalibration
+	tuple path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_axiom), path(gatk_bundle_axiom_index), path(gatk_bundle_dbsnp138_forIndelVariantRecalibration), path(gatk_bundle_dbsnp138_index_forIndelVariantRecalibration) from gatk_reference_bundle_forIndelVariantRecalibration
+	tuple path(reference_genome_fasta_forIndelVariantRecalibration), path(reference_genome_fasta_index_forIndelVariantRecalibration), path(reference_genome_fasta_dict_forIndelVariantRecalibration) from reference_genome_bundle_forIndelVariantRecalibration
 
 	output:
-	path vcf_annotated into annotated_vcfs
+	tuple path(indel_vqsr_table), path(indel_vqsr_table_index), path(indel_vqsr_tranches) into indel_vqsr_files
 
 	script:
-	vcf_annotated = "${vcf_raw}".replaceFirst(/\.raw\.vcf\.gz/, ".annotated.vcf.gz")
+	indel_vqsr_table = "${params.cohort_name}.indel.recaldata.table"
+	indel_vqsr_table_index = "${indel_vqsr_table}.idx"
+	indel_vqsr_tranches = "${params.cohort_name}.indel.tranches"
 	"""
-	gatk CNNScoreVariants \
+	gatk VariantRecalibrator \
 	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
-	--tensor-type read_tensor \
-	-I "${bam_preprocessed}" \
-	-R "${reference_genome_fasta_forCNNScoreVariants}" \
-	-V "${vcf_raw}" \
-	-O "${vcf_annotated}"
+	--mode INDEL \
+	-an QD -an DP -an FS -an SOR -an ReadPosRankSum -an MQRankSum -an InbreedingCoeff \
+	--max-gaussians 4 \
+	--trust-all-polymorphic \
+	--reference "${reference_genome_fasta_forIndelVariantRecalibration}" \
+	--resource:mills,known=false,training=true,truth=true,prior=12 "${gatk_bundle_mills_1000G}" \
+	--resource:axiomPoly,known=false,training=true,truth=false,prior=10 "${gatk_bundle_axiom}" \
+	--resource:dbsnp,,known=true,training=false,truth=false,prior=2 "${gatk_bundle_dbsnp138_forIndelVariantRecalibration}" \
+	-V "${vcf_genotyped_filtered}" \
+	--output "${indel_vqsr_table}" \
+	--tranches-file "${indel_vqsr_tranches}"
 	"""
 }
 
-// Combine GATK bundle files into one channel for use in GATK FilterVariantTranches process
-gatk_bundle_1000G_omni.combine( gatk_bundle_1000G_omni_index )
-	.combine( gatk_bundle_hapmap )
-	.combine( gatk_bundle_hapmap_index)
-	.set{ gatk_reference_bundle }
+// Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK SNV VariantRecalibratior process
+gatk_bundle_hapmap.combine( gatk_bundle_hapmap_index )
+	.combine( gatk_bundle_1000G_omni )
+	.combine( gatk_bundle_1000G_omni_index )
+	.combine( gatk_bundle_1000G_snps )
+	.combine( gatk_bundle_1000G_snps_index)
+	.combine( gatk_bundle_dbsnp138_forSnpVariantRecalibration )
+	.combine( gatk_bundle_dbsnp138_index_forSnpVariantRecalibration )
+	.set{ gatk_reference_bundle_forSnvVariantRecalibration }
 
-// GATK FilterVariantTranches ~ apply tranche filtering to VCF based on CNN scores
-process trancheFilterVariants_gatk {
-	publishDir "${params.output_dir}/germline/trancheFilterVariants", mode: 'symlink'
+reference_genome_fasta_forSnvVariantRecalibration.combine( reference_genome_fasta_index_forSnvVariantRecalibration )
+	.combine( reference_genome_fasta_dict_forSnvVariantRecalibration )
+	.set{ reference_genome_bundle_forSnvVariantRecalibration }
+
+// GATK VariantRecalibrator (SNPs) ~ build recalibration model to score SNP variant quality for filtering
+process snpVariantRecalibration_gatk {
+	publishDir "${params.output_dir}/germline/snpVariantRecal", mode: 'symlink'
 
 	input:
-	path vcf_annotated from annotated_vcfs
-	tuple path(gatk_bundle_1000G_omni), path(gatk_bundle_1000G_omni_index), path(gatk_bundle_hapmap), path(gatk_bundle_hapmap_index) from gatk_reference_bundle
 
-	output:
-	path vcf_filtered
 
-	script:
-	vcf_filtered = "${vcf_annotated}".replaceFirst(/\.annotated\.vcf\.gz/, ".filtered.vcf.gz")
-	"""
-	gatk FilterVariantTranches \
-	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
-	--verbosity ERROR \
-	--info-key CNN_2D \
-	-V "${vcf_annotated}" \
-	--resource "${gatk_bundle_1000G_omni}" \
-	--resource "${gatk_bundle_hapmap}" \
-	--snp-tranche 99.9 \
-	--indel-tranche 99.6 \
-	--invalidate-previous-filters \
-	-O "${vcf_filtered}"
-	"""
 }
-
-*/
