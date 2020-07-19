@@ -178,7 +178,7 @@ process createGenomicsDb_gatk {
 }
 
 // Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK GenotypeGVCFs process
-gatk_bundle_dbsnp138.combine( gatk_bundle_dbsnp138_index )
+gatk_bundle_dbsnp138_forJointGenotyping.combine( gatk_bundle_dbsnp138_index_forJointGenotyping )
 	.set{ gatk_reference_bundle_forJointGenotyping }
 
 reference_genome_fasta_forJointGenotyping.combine( reference_genome_fasta_index_forJointGenotyping )
@@ -291,6 +291,8 @@ process indelVariantRecalibration_gatk {
 	"""
 }
 
+/*
+
 // Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK SNV VariantRecalibratior process
 gatk_bundle_hapmap.combine( gatk_bundle_hapmap_index )
 	.combine( gatk_bundle_1000G_omni )
@@ -313,3 +315,5 @@ process snpVariantRecalibration_gatk {
 
 
 }
+
+*/
