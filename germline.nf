@@ -103,6 +103,7 @@ Channel
 	.fromPath( 'input/preprocessedBams/*.bam' )
 	.into{ input_preprocessed_bams_forTelomereLengthEstimation;
 	       input_preprocessed_bams_forHaplotypeCaller; }
+
 /*
 
 // TelSeq ~ estimate telomere length of sample
@@ -145,7 +146,7 @@ process haplotypeCaller_gatk {
 	gvcf_raw_index = "${gvcf_raw}.idx"
 	"""
 	gatk HaplotypeCaller \
-	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx14G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--max-alternate-alleles 3 \
 	--standard-min-confidence-threshold-for-calling 50 \
@@ -171,7 +172,7 @@ process createGenomicsDb_gatk {
 	gatk GenomicsDBImport \
 	--java-options "-Xmx14G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts -Djava.io.tmpdir=/tmp" \
 	--verbosity ERROR \
-	-V "${gvcf_raw}".collect() \
+	-V ${gvcf_raw.collect()} \
 	--tmp-dir=/tmp \
 	--genomicsdb-workspace-path "${genomics_db_workspace}"
 	"""
