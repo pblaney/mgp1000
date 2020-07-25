@@ -18,7 +18,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run preprocessing.nf -bg --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing
+		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing 
 
 	Mandatory Arguments:
 		--input_format                 [str]  Format of input files, either: fastq or bam
@@ -29,9 +29,11 @@ def helpMessage() {
 		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
 		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
 		                                      environment
-		--singularity_module    [quoted str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
+		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
+		                                      previously completed tasks are skipped while maintaining their output
+		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
-		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no 
+		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
 		                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
 		                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
 		                                      have adequate provenance to reflect this
@@ -42,10 +44,6 @@ def helpMessage() {
 	""".stripIndent()
 }
 
-// Print help message if requested
-if( params.help ) exit 0, helpMessage()
-
-
 // #################################################### \\
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
@@ -54,6 +52,9 @@ params.input_format = "bam"
 params.output_dir = "output"
 params.skip_to_qc = "no"
 params.help = null
+
+// Print help message if requested
+if( params.help ) exit 0, helpMessage()
 
 // Set channels for reference files
 Channel
@@ -117,11 +118,29 @@ Channel
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
-// Set the channel for all input BAM files
-Channel
-	.fromPath( 'input/*.bam' )
-	.into{ input_mapped_bams;
-	       input_mapped_bams_forQaulimap }
+// if input files are BAMs, set the up channels for them to go through the pipeline or straight to BAM QC process
+if( params.input_format == "bam" ) {
+	Channel
+		.fromPath( 'input/*.bam' )
+		.into{ input_mapped_bams; 
+		       input_mapped_bams_forQaulimap }
+} else {
+	Channel
+		.empty()
+		.into{ input_mapped_bams;
+			   input_mapped_bams_forQaulimap }
+}
+
+// If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
+if( params.input_format == "fastq" ) {
+	Channel
+		.fromFilePairs( 'input/*R{1,2}*.f*q*', flat:true )
+		.set{ input_fastqs }
+} else {
+	Channel
+		.empty()
+		.set{ input_fastqs }
+}
 
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
 process revertMappedBam_gatk {
@@ -151,19 +170,20 @@ process revertMappedBam_gatk {
 
 // biobambam bamtofastq ~ convert unmapped BAM files to paired FASTQ files
 process bamToFastq_biobambam {
-	publishDir "${params.output_dir}/preprocessing/biobambam", mode: 'symlink'
+	publishDir "${params.output_dir}/preprocessing/bamToFastq", mode: 'symlink'
 
 	input:
 	path bam_unmapped from unmapped_bams
 
 	output:
-	tuple path(fastq_R1), path(fastq_R2) into converted_fastqs_forFastqc, converted_fastqs_forAlignment
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2) into converted_fastqs_forFastqc, converted_fastqs_forAlignment
 
 	when:
 	params.input_format == "bam"
 	params.skip_to_qc == "no"
 
 	script:
+	sample_id = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "")
 	fastq_R1 = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "_R1.fastq.gz")
 	fastq_R2 = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "_R2.fastq.gz")
 	"""
@@ -174,11 +194,6 @@ process bamToFastq_biobambam {
 	"""
 }
 
-// If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
-input_R1_fastqs = Channel.fromPath( 'input/*R1*.f*q*' )
-input_R2_fastqs = Channel.fromPath( 'input/*R2*.f*q*' )
-input_fastqs = input_R1_fastqs.merge( input_R2_fastqs )
-
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process fastqTrimming_trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R1_trimmed}"	
@@ -186,22 +201,21 @@ process fastqTrimming_trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'move', pattern: "*${fastq_trim_log}"
 
 	input:
-	tuple path(input_R1_fastqs), path(input_R2_fastqs) from input_fastqs
-	path trimmomatic_contaminants
+	tuple val(sample_id), path(input_R1_fastqs), path(input_R2_fastqs), path(trimmomatic_contaminants) from input_fastqs.combine(trimmomatic_contaminants)
 
 	output:
-	tuple path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
+	tuple val(sample_id), path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
 	path fastq_trim_log
 
 	when:
 	params.input_format == "fastq"
 
 	script:
-	fastq_R1_trimmed = "${input_R1_fastqs}".replaceFirst(/\.f.*q*/, ".trim.fastq.gz")
-	fastq_R2_trimmed = "${input_R2_fastqs}".replaceFirst(/\.f.*q*/, ".trim.fastq.gz")
-	fastq_R1_unpaired = "${input_R1_fastqs}".replaceFirst(/\.f.*q*/, ".unpaired.fastq.gz")
-	fastq_R2_unpaired = "${input_R2_fastqs}".replaceFirst(/\.f.*q*/, ".unpaired.fastq.gz")
-	fastq_trim_log = "${input_R1_fastqs}".replaceFirst(/[_\.]R1.*\.f.*q*/, ".trim.log")
+	fastq_R1_trimmed = "${sample_id}_R1_trim.fastq.gz"
+	fastq_R2_trimmed = "${sample_id}_R2_trim.fastq.gz"
+	fastq_R1_unpaired = "${sample_id}_R1_unpaired.fastq.gz"
+	fastq_R2_unpaired = "${sample_id}_R2_unpaired.fastq.gz"
+	fastq_trim_log = "${sample_id}.trim.log"
 	"""
 	trimmomatic PE -threads 4 \
 	"${input_R1_fastqs}" "${input_R2_fastqs}" \
@@ -225,7 +239,7 @@ process fastqQualityControlMetrics_fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'move'
 
 	input:
-	tuple path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
 
 	output:
 	tuple path(fastqc_R1_html), path(fastqc_R2_html)
@@ -259,8 +273,7 @@ process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'move', pattern: "*${bam_flagstat_log}"
 
 	input:
-	tuple path(fastq_R1), path(fastq_R2) from fastqs_forAlignment
-	path bwa_reference_dir
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
 
 	output:
 	path bam_aligned into aligned_bams
@@ -270,7 +283,6 @@ process alignment_bwa {
 	params.skip_to_qc == "no"
 
 	script:
-	sample_id = "${fastq_R1}".replaceFirst(/[_\.]R1.*\.f.*q*/, "")
 	bam_aligned = "${sample_id}.bam"
 	bam_flagstat_log = "${sample_id}.flagstat.log"
 	"""
@@ -311,7 +323,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
@@ -402,14 +414,17 @@ reference_genome_fasta_forBaseRecalibrator.combine( reference_genome_fasta_index
 	.combine( reference_genome_fasta_dict_forBaseRecalibrator )
 	.set{ reference_genome_bundle_forBaseRecalibrator }
 
+// Combine the the input BAM, GATK bundle, and reference FASTA files into one channel
+downsampled_makred_dup_bams.combine( reference_genome_bundle_forBaseRecalibrator )
+	.combine( gatk_reference_bundle )
+	.set{ input_and_reference_files_forBaseRecalibrator }
+
 // GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
 	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
 
 	input:
-	path bam_marked_dup_downsampled from downsampled_makred_dup_bams
-	tuple path(reference_genome_fasta_forBaseRecalibrator), path(reference_genome_fasta_index_forBaseRecalibrator), path(reference_genome_fasta_dict_forBaseRecalibrator) from reference_genome_bundle_forBaseRecalibrator
-	tuple path(gatk_bundle_wgs_interval_list), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from gatk_reference_bundle
+	tuple path(bam_marked_dup_downsampled), path(reference_genome_fasta_forBaseRecalibrator), path(reference_genome_fasta_index_forBaseRecalibrator), path(reference_genome_fasta_dict_forBaseRecalibrator), path(gatk_bundle_wgs_interval_list), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from input_and_reference_files_forBaseRecalibrator
 
 	output:
 	path bqsr_table into base_quality_score_recalibration_data
@@ -439,23 +454,32 @@ reference_genome_fasta_forApplyBqsr.combine( reference_genome_fasta_index_forApp
 	.combine( reference_genome_fasta_dict_forApplyBqsr )
 	.set{ reference_genome_bundle_forApplyBqsr }
 
+// First merge the input BAM files with their respective BQSR recalibration table, then combine that with the
+// reference FASTA files into one channel
+marked_dup_bams_forApplyBqsr.merge( base_quality_score_recalibration_data )
+	.set{ bams_and_bqsr_tables }
+
+bams_and_bqsr_tables.combine( reference_genome_bundle_forApplyBqsr )
+	.set{ input_and_reference_files_forApplyBqsr }
+
 // GATK ApplyBQSR ~ apply base quality score recalibration using generated table
 process applyBqsr_gatk {
-	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: '*.{bam,bai}'
+	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final}"
+	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final_index}"
 
 	input:
-	path bam_marked_dup from marked_dup_bams_forApplyBqsr
-	tuple path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from reference_genome_bundle_forApplyBqsr
-	path bqsr_table from base_quality_score_recalibration_data
+	tuple path(bam_marked_dup), path(bqsr_table), path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from input_and_reference_files_forApplyBqsr
 
 	output:
 	path bam_preprocessed_final into final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics
+	path bam_preprocessed_final_index
 
 	when:
 	params.skip_to_qc == "no"
 
 	script:
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bam")
+	bam_preprocessed_final_index = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bai")
 	"""
 	gatk ApplyBQSR \
 	--java-options "-Xmx4G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -478,8 +502,7 @@ process collectWgsMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'move'
 
 	input:
-	path bam_preprocessed_final from final_preprocessed_bams_forCollectWgsMetrics
-	tuple path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from reference_genome_bundle_forCollectWgsMetrics
+	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from final_preprocessed_bams_forCollectWgsMetrics.combine( reference_genome_bundle_forCollectWgsMetrics )
 
 	output:
 	path coverage_metrics
@@ -513,8 +536,7 @@ process collectGcBiasMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'move'
 
 	input:
-	path bam_preprocessed_final from final_preprocessed_bams_forCollectGcBiasMetrics
-	tuple path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from reference_genome_bundle_forCollectGcBiasMetrics
+	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from final_preprocessed_bams_forCollectGcBiasMetrics.combine(reference_genome_bundle_forCollectGcBiasMetrics)
 
 	output:
 	path gc_bias_metrics
