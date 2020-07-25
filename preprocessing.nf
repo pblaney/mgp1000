@@ -6,10 +6,19 @@
 // Both FASTQ and BAM files are supported formats for the input WGS files.
 // The pipeline assumes that the input BAM reads were trimmed before alignment and that all FASTQs are in raw form.
 
+import java.text.SimpleDateFormat;
+def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
+
 log.info ''
 log.info '##### Myeloma Genome Project 1000 Pipeline #####'
 log.info '################################################'
 log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
+log.info '################################################'
+log.info ''
+log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info ''
+log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/preprocessing"
+log.info ''
 log.info '################################################'
 log.info ''
 
@@ -18,7 +27,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing 
+		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 -profile preprocessing 
 
 	Mandatory Arguments:
 		--input_format                 [str]  Format of input files, either: fastq or bam
@@ -323,7 +332,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx16G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
