@@ -156,6 +156,7 @@ if( params.input_format == "fastq" ) {
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
 process revertMappedBam_gatk {
 	publishDir "${params.output_dir}/preprocessing/revertedBams", mode: 'symlink'
+	tag "${bam_mapped.baseName}"
 
 	input:
 	path bam_mapped from input_mapped_bams
@@ -182,6 +183,7 @@ process revertMappedBam_gatk {
 // biobambam bamtofastq ~ convert unmapped BAM files to paired FASTQ files
 process bamToFastq_biobambam {
 	publishDir "${params.output_dir}/preprocessing/bamToFastq", mode: 'symlink'
+	tag "${bam_unmapped.baseName}"
 
 	input:
 	path bam_unmapped from unmapped_bams
@@ -249,6 +251,7 @@ else {
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqQualityControlMetrics_fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'move'
+	tag "${sample_id}"
 
 	input:
 	tuple val(sample_id), path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
@@ -283,6 +286,7 @@ else {
 process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
 	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'move', pattern: "*${bam_flagstat_log}"
+	tag "${sample_id}"
 
 	input:
 	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
@@ -321,6 +325,7 @@ process alignment_bwa {
 // GATK FixMateInformation ~ veryify/fix mate-pair information and sort output BAM by coordinate
 process fixMateInformationAndSort_gatk {
 	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'symlink'
+	tag "${bam_aligned.baseName}"
 
 	input:
 	path bam_aligned from aligned_bams
@@ -350,6 +355,7 @@ process fixMateInformationAndSort_gatk {
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
+	tag "${bam_fixed_mate.baseName}"
 
 	input:
 	path bam_fixed_mate from fixed_mate_bams
@@ -386,6 +392,7 @@ process markDuplicatesAndIndex_sambamba {
 // GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
 process downsampleBam_gatk {
 	publishDir  "${params.output_dir}/preprocessing/downsampleBams", mode: 'symlink'
+	tag "${bam_marked_dup.baseName}"
 
 	input:
 	path bam_marked_dup from marked_dup_bams_forDownsampleBam
@@ -434,6 +441,7 @@ downsampled_makred_dup_bams.combine( reference_genome_bundle_forBaseRecalibrator
 // GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
 	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
+	tag "${bam_marked_dup_downsampled.baseName}"
 
 	input:
 	tuple path(bam_marked_dup_downsampled), path(reference_genome_fasta_forBaseRecalibrator), path(reference_genome_fasta_index_forBaseRecalibrator), path(reference_genome_fasta_dict_forBaseRecalibrator), path(gatk_bundle_wgs_interval_list), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from input_and_reference_files_forBaseRecalibrator
@@ -478,6 +486,7 @@ bams_and_bqsr_tables.combine( reference_genome_bundle_forApplyBqsr )
 process applyBqsr_gatk {
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final}"
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final_index}"
+	tag "${bam_marked_dup.baseName}"
 
 	input:
 	tuple path(bam_marked_dup), path(bqsr_table), path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from input_and_reference_files_forApplyBqsr
@@ -512,6 +521,7 @@ reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_inde
 // GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
 process collectWgsMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'move'
+	tag "${bam_preprocessed_final.baseName}"
 
 	input:
 	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from final_preprocessed_bams_forCollectWgsMetrics.combine( reference_genome_bundle_forCollectWgsMetrics )
@@ -546,6 +556,7 @@ reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_i
 // GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
 process collectGcBiasMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'move'
+	tag "${bam_preprocessed_final.baseName}"
 
 	input:
 	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from final_preprocessed_bams_forCollectGcBiasMetrics.combine(reference_genome_bundle_forCollectGcBiasMetrics)
@@ -581,6 +592,7 @@ process collectGcBiasMetrics_gatk {
 // Qualimap BAM QC ~ perform quality control analysis on extreme coverage (>100x) BAMs
 process extremeBamQualityControl_qualimap {
 	publishDir "${params.output_dir}/preprocessing/qualimapBamQc", mode: 'move'
+	tag "${bam_mapped_high_coverage.baseName}"
 
 	input:
 	path bam_mapped_high_coverage from input_mapped_bams_forQaulimap
