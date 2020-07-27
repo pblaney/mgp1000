@@ -620,6 +620,7 @@ process extremeBamQualityControl_qualimap {
 	"""
 }
 
+/*
 workflow.onComplete {
 
 	def status = "NA"
@@ -656,3 +657,4 @@ workflow.onComplete {
 		""".stripIndent()
 	}
 }
+*/
