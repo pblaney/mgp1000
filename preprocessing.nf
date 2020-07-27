@@ -650,6 +650,9 @@ workflow.onComplete {
 		to "${params.email}"
 		from "${params.email}"
 		subject "Nexflow - ${workflow.runName} - ${tatus}"
-		body "${msg}""
+		body
+		"""
+		${msg}
+		""".stripIndent()
 	}
 }
