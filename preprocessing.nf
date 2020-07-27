@@ -60,7 +60,7 @@ def helpMessage() {
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
 params.input_format = "bam"
-params.email = "placeholder"
+params.email = "patrick.blaney@nyulangone.org"
 params.skip_to_qc = "no"
 params.help = null
 
