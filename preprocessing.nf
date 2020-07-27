@@ -355,7 +355,7 @@ process fixMateInformationAndSort_gatk {
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
-	tag "${bam_fixed_mate.replaceFirst(/\.fixedmate\.bam/, "")}"
+	tag "${bam_fixed_mate.baseName.replaceFirst(/\.fixedmate/, "")}"
 
 	input:
 	path bam_fixed_mate from fixed_mate_bams
@@ -392,7 +392,7 @@ process markDuplicatesAndIndex_sambamba {
 // GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
 process downsampleBam_gatk {
 	publishDir  "${params.output_dir}/preprocessing/downsampleBams", mode: 'symlink'
-	tag "${bam_marked_dup.replaceFirst(/\.markdup\.bam/, "")}"
+	tag "${bam_marked_dup.baseName.replaceFirst(/\.markdup/, "")}"
 
 	input:
 	path bam_marked_dup from marked_dup_bams_forDownsampleBam
@@ -441,7 +441,7 @@ downsampled_makred_dup_bams.combine( reference_genome_bundle_forBaseRecalibrator
 // GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
 	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
-	tag "${bam_marked_dup_downsampled.replaceFirst(/\.markdup\.downsampled\.bam/, "")}"
+	tag "${bam_marked_dup_downsampled.baseName.replaceFirst(/\.markdup\.downsampled/, "")}"
 
 	input:
 	tuple path(bam_marked_dup_downsampled), path(reference_genome_fasta_forBaseRecalibrator), path(reference_genome_fasta_index_forBaseRecalibrator), path(reference_genome_fasta_dict_forBaseRecalibrator), path(gatk_bundle_wgs_interval_list), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from input_and_reference_files_forBaseRecalibrator
@@ -486,7 +486,7 @@ bams_and_bqsr_tables.combine( reference_genome_bundle_forApplyBqsr )
 process applyBqsr_gatk {
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final}"
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final_index}"
-	tag "${bam_marked_dup.replaceFirst(/\.markdup\.bam/, "")}"
+	tag "${bam_marked_dup.baseName.replaceFirst(/\.markdup/, "")}"
 
 	input:
 	tuple path(bam_marked_dup), path(bqsr_table), path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from input_and_reference_files_forApplyBqsr
