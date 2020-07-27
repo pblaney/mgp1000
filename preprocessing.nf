@@ -210,6 +210,7 @@ process fastqTrimming_trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R1_trimmed}"	
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R2_trimmed}"
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'move', pattern: "*${fastq_trim_log}"
+	tag "${sample_id}"
 
 	input:
 	tuple val(sample_id), path(input_R1_fastqs), path(input_R2_fastqs), path(trimmomatic_contaminants) from input_fastqs.combine(trimmomatic_contaminants)
