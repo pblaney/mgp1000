@@ -27,11 +27,11 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 -profile preprocessing 
+		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
 
 	Mandatory Arguments:
 		--input_format                 [str]  Format of input files, either: fastq or bam
-		--email_for_notification       [str]  Email address to send workflow completion notification
+		--email                        [str]  Email address to send workflow completion notification
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
 		                                      Currently available: preprocessing
 
@@ -60,12 +60,15 @@ def helpMessage() {
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
 params.input_format = "bam"
-params.email_for_notification = null
+params.email = null
 params.skip_to_qc = "no"
 params.help = null
 
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
+
+// Print help message no email is provided
+if( !params.email ) exit 0, helpMessage()
 
 // Set channels for reference files
 Channel
