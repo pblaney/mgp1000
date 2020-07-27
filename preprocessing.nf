@@ -31,6 +31,7 @@ def helpMessage() {
 
 	Mandatory Arguments:
 		--input_format                 [str]  Format of input files, either: fastq or bam
+		--email                        [str]  Email address to send workflow completion notification
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
 		                                      Currently available: preprocessing
 
