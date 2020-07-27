@@ -31,7 +31,7 @@ def helpMessage() {
 
 	Mandatory Arguments:
 		--input_format                 [str]  Format of input files, either: fastq or bam
-		--email                        [str]  Email address to send workflow completion notification
+		--email_for_notification       [str]  Email address to send workflow completion notification
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
 		                                      Currently available: preprocessing
 
@@ -60,7 +60,7 @@ def helpMessage() {
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
 params.input_format = "bam"
-params.email = null
+params.email_for_notification = null
 params.skip_to_qc = "no"
 params.help = null
 
