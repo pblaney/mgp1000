@@ -355,13 +355,13 @@ process fixMateInformationAndSort_gatk {
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
-	tag "${bam_fixed_mate.baseName.replaceFirst(/\.fixedmate/, "")}"
+	tag "${sample_id}"
 
 	input:
 	path bam_fixed_mate from fixed_mate_bams
 
 	output:
-	path bam_marked_dup into marked_dup_bams_forDownsampleBam, marked_dup_bams_forApplyBqsr
+	tuple val(sample_id), path(bam_marked_dup) into marked_dup_bams_forDownsampleBam, marked_dup_bams_forApplyBqsr
 	path bam_marked_dup_index
 	path bam_markdup_flagstat_log
 
@@ -369,10 +369,11 @@ process markDuplicatesAndIndex_sambamba {
 	params.skip_to_qc == "no"
 
 	script:
-	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.bam")
+	sample_id = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, "")
+	bam_marked_dup = "${sample_id}.markdup.bam"
 	bam_marked_dup_index = "${bam_marked_dup}.bai"
-	markdup_output_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.log")
-	bam_markdup_flagstat_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.flagstat.log")
+	markdup_output_log = "${sample_id}.markdup.log"
+	bam_markdup_flagstat_log = "${sample_id}.markdup.flagstat.log"
 	"""
 	sambamba markdup \
 	--remove-duplicates \
@@ -389,13 +390,21 @@ process markDuplicatesAndIndex_sambamba {
 	"""	
 }
 
+/*
+	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.bam")
+	bam_marked_dup_index = "${bam_marked_dup}.bai"
+	markdup_output_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.log")
+	bam_markdup_flagstat_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.flagstat.log")
+*/
+
+
 // GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
 process downsampleBam_gatk {
 	publishDir  "${params.output_dir}/preprocessing/downsampleBams", mode: 'symlink'
-	tag "${bam_marked_dup.baseName.replaceFirst(/\.markdup/, "")}"
+	tag "${sample_id}"
 
 	input:
-	path bam_marked_dup from marked_dup_bams_forDownsampleBam
+	tuple val(sample_id), path(bam_marked_dup) from marked_dup_bams_forDownsampleBam
 
 	output:
 	path bam_marked_dup_downsampled into downsampled_makred_dup_bams
@@ -404,7 +413,7 @@ process downsampleBam_gatk {
 	params.skip_to_qc == "no"
 
 	script:
-	bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".markdup.downsampled.bam")
+	bam_marked_dup_downsampled = "${sample_id}.markdup.downsampled.bam"
 	"""
 	gatk DownsampleSam \
 	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -419,6 +428,12 @@ process downsampleBam_gatk {
 	-O "${bam_marked_dup_downsampled}"
 	"""
 }
+
+/*
+bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".markdup.downsampled.bam")
+*/
+
+
 
 // Combine all needed GATK bundle files and reference FASTA into one channel for use in GATK BaseRecalibrator process
 gatk_bundle_wgs_interval_list.combine( gatk_bundle_mills_1000G )
@@ -441,19 +456,20 @@ downsampled_makred_dup_bams.combine( reference_genome_bundle_forBaseRecalibrator
 // GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
 	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
-	tag "${bam_marked_dup_downsampled.baseName.replaceFirst(/\.markdup\.downsampled/, "")}"
+	tag "${sample_id}"
 
 	input:
 	tuple path(bam_marked_dup_downsampled), path(reference_genome_fasta_forBaseRecalibrator), path(reference_genome_fasta_index_forBaseRecalibrator), path(reference_genome_fasta_dict_forBaseRecalibrator), path(gatk_bundle_wgs_interval_list), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from input_and_reference_files_forBaseRecalibrator
 
 	output:
-	path bqsr_table into base_quality_score_recalibration_data
+	tuple val(sample_id), path(bqsr_table) into base_quality_score_recalibration_data
 
 	when:
 	params.skip_to_qc == "no"
 
 	script:
-	bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, ".recaldata.table")
+	sample_id = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, "")
+	bqsr_table = "${sample_id}.recaldata.table"
 	"""
 	gatk BaseRecalibrator \
 	--java-options "-Xmx4G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -469,6 +485,11 @@ process baseRecalibrator_gatk {
 	"""
 }
 
+/*
+bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, ".recaldata.table")
+*/
+
+
 // Create additional channel for the reference FASTA to be used in GATK ApplyBQSR process
 reference_genome_fasta_forApplyBqsr.combine( reference_genome_fasta_index_forApplyBqsr )
 	.combine( reference_genome_fasta_dict_forApplyBqsr )
@@ -476,7 +497,7 @@ reference_genome_fasta_forApplyBqsr.combine( reference_genome_fasta_index_forApp
 
 // First merge the input BAM files with their respective BQSR recalibration table, then combine that with the
 // reference FASTA files into one channel
-marked_dup_bams_forApplyBqsr.merge( base_quality_score_recalibration_data )
+marked_dup_bams_forApplyBqsr.join( base_quality_score_recalibration_data )
 	.set{ bams_and_bqsr_tables }
 
 bams_and_bqsr_tables.combine( reference_genome_bundle_forApplyBqsr )
@@ -486,10 +507,10 @@ bams_and_bqsr_tables.combine( reference_genome_bundle_forApplyBqsr )
 process applyBqsr_gatk {
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final}"
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final_index}"
-	tag "${bam_marked_dup.baseName.replaceFirst(/\.markdup/, "")}"
+	tag "${sample_id}"
 
 	input:
-	tuple path(bam_marked_dup), path(bqsr_table), path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from input_and_reference_files_forApplyBqsr
+	tuple val(sample_id), path(bam_marked_dup), path(bqsr_table), path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from input_and_reference_files_forApplyBqsr
 
 	output:
 	path bam_preprocessed_final into final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics
