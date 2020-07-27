@@ -30,6 +30,12 @@ prep-pipeline:
 
 ###############################################################################
 
+# Test run the pipeline within production environment to validate setup
+test-run:
+	nextflow run preprocessing.nf -bg -resume --input_format fastq -profile preprocessing
+
+###############################################################################
+
 # Save the necessary output files and clean the directory of any unneeded files after 
 # successful completion of the Preprocessing step
 preprocessing-completion:
