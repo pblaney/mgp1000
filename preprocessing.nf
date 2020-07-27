@@ -60,7 +60,7 @@ def helpMessage() {
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
 params.input_format = "bam"
-params.email = "patrick.blaney@nyulangone.org"
+//params.email = "patrick.blaney@nyulangone.org"
 params.skip_to_qc = "no"
 params.help = null
 
@@ -68,7 +68,7 @@ params.help = null
 if( params.help ) exit 0, helpMessage()
 
 // Print help message no email is provided
-if( !params.email ) exit 0, helpMessage()
+//if( !params.email ) exit 0, helpMessage()
 
 // Set channels for reference files
 Channel
