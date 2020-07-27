@@ -131,6 +131,7 @@ Channel
 if( params.input_format == "bam" ) {
 	Channel
 		.fromPath( 'input/*.bam' )
+		.ifEmpty{ error "BAM format specified but cannot find files with .bam extension in input directory" }
 		.into{ input_mapped_bams; 
 		       input_mapped_bams_forQaulimap }
 } else {
@@ -144,6 +145,7 @@ if( params.input_format == "bam" ) {
 if( params.input_format == "fastq" ) {
 	Channel
 		.fromFilePairs( 'input/*R{1,2}*.f*q*', flat:true )
+		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention" }
 		.set{ input_fastqs }
 } else {
 	Channel
