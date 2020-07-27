@@ -183,7 +183,7 @@ process revertMappedBam_gatk {
 // biobambam bamtofastq ~ convert unmapped BAM files to paired FASTQ files
 process bamToFastq_biobambam {
 	publishDir "${params.output_dir}/preprocessing/bamToFastq", mode: 'symlink'
-	tag "${bam_unmapped.baseName}"
+	tag "${sample_id}"
 
 	input:
 	path bam_unmapped from unmapped_bams
@@ -355,7 +355,7 @@ process fixMateInformationAndSort_gatk {
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
-	tag "${bam_fixed_mate.baseName.replaceFirst(/\.fixedmate/, "")}"
+	tag "${bam_fixed_mate.replaceFirst(/\.fixedmate\.bam/, "")}"
 
 	input:
 	path bam_fixed_mate from fixed_mate_bams
@@ -392,7 +392,7 @@ process markDuplicatesAndIndex_sambamba {
 // GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
 process downsampleBam_gatk {
 	publishDir  "${params.output_dir}/preprocessing/downsampleBams", mode: 'symlink'
-	tag "${bam_marked_dup.baseName}"
+	tag "${bam_marked_dup.replaceFirst(/\.markdup\.bam/, "")}"
 
 	input:
 	path bam_marked_dup from marked_dup_bams_forDownsampleBam
@@ -441,7 +441,7 @@ downsampled_makred_dup_bams.combine( reference_genome_bundle_forBaseRecalibrator
 // GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
 	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
-	tag "${bam_marked_dup_downsampled.baseName}"
+	tag "${bam_marked_dup_downsampled.replaceFirst(/\.markdup\.downsampled\.bam/, "")}"
 
 	input:
 	tuple path(bam_marked_dup_downsampled), path(reference_genome_fasta_forBaseRecalibrator), path(reference_genome_fasta_index_forBaseRecalibrator), path(reference_genome_fasta_dict_forBaseRecalibrator), path(gatk_bundle_wgs_interval_list), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from input_and_reference_files_forBaseRecalibrator
@@ -486,7 +486,7 @@ bams_and_bqsr_tables.combine( reference_genome_bundle_forApplyBqsr )
 process applyBqsr_gatk {
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final}"
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: "*${bam_preprocessed_final_index}"
-	tag "${bam_marked_dup.baseName}"
+	tag "${bam_marked_dup.replaceFirst(/\.markdup\.bam/, "")}"
 
 	input:
 	tuple path(bam_marked_dup), path(bqsr_table), path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from input_and_reference_files_forApplyBqsr
@@ -521,7 +521,7 @@ reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_inde
 // GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
 process collectWgsMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'move'
-	tag "${bam_preprocessed_final.baseName}"
+	tag "${sample_id}"
 
 	input:
 	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from final_preprocessed_bams_forCollectWgsMetrics.combine( reference_genome_bundle_forCollectWgsMetrics )
@@ -556,7 +556,7 @@ reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_i
 // GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
 process collectGcBiasMetrics_gatk {
 	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'move'
-	tag "${bam_preprocessed_final.baseName}"
+	tag "${sample_id}"
 
 	input:
 	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from final_preprocessed_bams_forCollectGcBiasMetrics.combine(reference_genome_bundle_forCollectGcBiasMetrics)
