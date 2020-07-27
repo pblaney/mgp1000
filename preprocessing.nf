@@ -390,14 +390,6 @@ process markDuplicatesAndIndex_sambamba {
 	"""	
 }
 
-/*
-	bam_marked_dup = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.bam")
-	bam_marked_dup_index = "${bam_marked_dup}.bai"
-	markdup_output_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.log")
-	bam_markdup_flagstat_log = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, ".markdup.flagstat.log")
-*/
-
-
 // GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
 process downsampleBam_gatk {
 	publishDir  "${params.output_dir}/preprocessing/downsampleBams", mode: 'symlink'
@@ -428,12 +420,6 @@ process downsampleBam_gatk {
 	-O "${bam_marked_dup_downsampled}"
 	"""
 }
-
-/*
-bam_marked_dup_downsampled = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".markdup.downsampled.bam")
-*/
-
-
 
 // Combine all needed GATK bundle files and reference FASTA into one channel for use in GATK BaseRecalibrator process
 gatk_bundle_wgs_interval_list.combine( gatk_bundle_mills_1000G )
@@ -484,11 +470,6 @@ process baseRecalibrator_gatk {
 	--known-sites "${gatk_bundle_dbsnp138}"
 	"""
 }
-
-/*
-bqsr_table = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, ".recaldata.table")
-*/
-
 
 // Create additional channel for the reference FASTA to be used in GATK ApplyBQSR process
 reference_genome_fasta_forApplyBqsr.combine( reference_genome_fasta_index_forApplyBqsr )
