@@ -355,7 +355,7 @@ process fixMateInformationAndSort_gatk {
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
-	tag "${bam_fixed_mate.baseName}"
+	tag "${bam_fixed_mate.baseName.replaceFirst(/\.fixedmate\.bam/, "")}"
 
 	input:
 	path bam_fixed_mate from fixed_mate_bams
