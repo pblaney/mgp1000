@@ -8,3 +8,5 @@ trace.txt*
 work
 output
 input
+*.bam
+*.f*q*
