@@ -57,8 +57,9 @@ def helpMessage() {
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
 // Declare the defaults for all pipeline parameters
-params.input_format = "bam"
 params.output_dir = "output"
+params.input_format = "bam"
+params.email = null
 params.skip_to_qc = "no"
 params.help = null
 
@@ -617,4 +618,38 @@ process extremeBamQualityControl_qualimap {
 	-outformat HTML \
 	-outdir "${bam_mapped_high_coverage.baseName}"
 	"""
+}
+
+workflow.onComplete {
+
+	def status = "NA"
+
+    if(workflow.success) {
+        status = "SUCCESS"
+
+    } else {
+        status = "FAILED"
+    }
+	
+	def msg = """
+		~~~~~~~~~~ Pipeline Summary ~~~~~~~~~~
+
+		Run Name           ~   ${workflow.runName}
+		Status             ~   ${workflow.success}
+		Exit Code          ~   ${workflow.exitStatus}
+		Launch Time        ~   ${workflow.start.format('MM-dd-yyyy HH:mm')}
+		Ending Time        ~   ${workflow.complete.format('MM-dd-yyyy HH:mm')} 
+		Duration           ~   ${workflow.duration}
+		Nexflow Version    ~   ${workflow.nextflow.version}
+		Pipeline Command   ~   ${workflow.commandLine}
+
+		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		""".stripIndent()
+
+	sendMail{
+		to "${params.email}"
+		from "${params.email}"
+		subject "Nexflow - ${workflow.runName} - ${tatus}"
+		body "${msg}""
+	}
 }
