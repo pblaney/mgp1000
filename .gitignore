@@ -7,8 +7,4 @@ timeline_report.html*
 trace.txt*
 work
 output
-*.bam
-*.f*q*
-input/*.bam
-input/*.f*q*
-input/preprocessedBams
+input
