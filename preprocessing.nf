@@ -305,6 +305,7 @@ process alignment_bwa {
 	"""
 	bwa mem \
 	-M -v 1 \
+	-K 100000000 \
 	-t 6 \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
@@ -341,7 +342,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
@@ -409,7 +410,7 @@ process downsampleBam_gatk {
 	bam_marked_dup_downsampled = "${sample_id}.markdup.downsampled.bam"
 	"""
 	gatk DownsampleSam \
-	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 8000000 \
 	--STRATEGY Chained \
@@ -459,7 +460,7 @@ process baseRecalibrator_gatk {
 	bqsr_table = "${sample_id}.recaldata.table"
 	"""
 	gatk BaseRecalibrator \
-	--java-options "-Xmx4G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forBaseRecalibrator}" \
@@ -506,7 +507,7 @@ process applyBqsr_gatk {
 	bam_preprocessed_final_index = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bai")
 	"""
 	gatk ApplyBQSR \
-	--java-options "-Xmx4G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forApplyBqsr}" \
@@ -540,7 +541,7 @@ process collectWgsMetrics_gatk {
 	coverage_metrics = "${sample_id}.coverage.metrics.txt"
 	"""
 	gatk CollectWgsMetrics \
-	--java-options "-Xmx6G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--INCLUDE_BQ_HISTOGRAM \
 	--MINIMUM_BASE_QUALITY 20 \
@@ -579,7 +580,7 @@ process collectGcBiasMetrics_gatk {
 	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
 	"""
 	gatk CollectGcBiasMetrics \
-	--java-options "-Xmx6G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
 	-I "${bam_preprocessed_final}" \
