@@ -141,7 +141,7 @@ Launching `preprocessing.nf` [jolly_majorana] - revision: f5a75c24b1
 		                                      have adequate provenance to reflect this
 		--help                        [flag]  Prints this message
 
-	################################################
+################################################
 ```
 
 
