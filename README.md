@@ -96,10 +96,13 @@ $ make prep-pipeline
 ```
 
 ## Stage Input BAM or FASTQ Files
-For the Preprocessing step of the pipeline, all input files are handled out of `input` directory that was created. Given the sheer size of the input data, the samples will have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs. One key assumption is that any input BAM file was trimmed for quality before being previously aligned. Another assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files.
+For the Preprocessing step of the pipeline, all input files are handled out of `input` directory that was created. Given the sheer size of the input data, the samples will have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs. One key assumption is that any input BAM file was trimmed for quality before being previously aligned. Another assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files. Check the `testSample` directory to see examples of FASTQ naming conventions that are accepted. It is recommended that these be used as a sanity check of the pipeline if deploying for the first time.
 ```
 # Example of staging input data files
-$ cp -r </normal/samples/directory/*.bam> input/ 
+$ cp -r </normal/samples/directory/*.bam> input/
+
+# Example of staging test sample FASTQs
+$ cp -r testSamples/* input/
 ```
 
 ## Run the Preprocessing Step of the Pipeline
@@ -114,27 +117,31 @@ Launching `preprocessing.nf` [jolly_majorana] - revision: f5a75c24b1
 ~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
 ################################################
 
-Usage Example:
+	Usage Example:
 
-	nextflow run preprocessing.nf -bg --input_format fastq --singularity_module "singularity/3.1" -profile preprocessing
+		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
 
-Mandatory Arguments:
-	--input_format                 [str]  Format of input files, either: fastq or bam
-	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-	                                      Currently available: preprocessing
+	Mandatory Arguments:
+		--input_format                 [str]  Format of input files, either: fastq or bam
+		--email                        [str]  Email address to send workflow completion/stoppage notification
+		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
+		                                      Currently available: preprocessing
 
-Main Options:
-	-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
-	                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
-	                                      environment
-	--singularity_module    [quoted str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
-	                                      this option is not needed if Singularity is natively installed on the deployment environment
-	--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no 
-	                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
-	                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
-	                                      have adequate provenance to reflect this
-	--help                        [flag]  Prints this message
+	Main Options:
+		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
+		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
+		                                      environment
+		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
+		                                      previously completed tasks are skipped while maintaining their output
+		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
+		                                      this option is not needed if Singularity is natively installed on the deployment environment
+		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
+		                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
+		                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
+		                                      have adequate provenance to reflect this
+		--help                        [flag]  Prints this message
 
-################################################
+	################################################
 ```
+
 
