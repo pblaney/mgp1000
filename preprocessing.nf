@@ -146,7 +146,7 @@ if( params.input_format == "bam" ) {
 if( params.input_format == "fastq" ) {
 	Channel
 		.fromFilePairs( 'input/*R{1,2}*.f*q*', flat:true )
-		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention" }
+		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention, check test samples for example" }
 		.set{ input_fastqs }
 } else {
 	Channel
