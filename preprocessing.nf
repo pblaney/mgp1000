@@ -173,7 +173,7 @@ process revertMappedBam_gatk {
 	bam_unmapped = "${bam_mapped}".replaceFirst(/\.bam/, ".unmapped.bam")
 	"""
 	gatk RevertSam \
-	--java-options "-Xmx36G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 8000000 \
 	-I "${bam_mapped}" \
