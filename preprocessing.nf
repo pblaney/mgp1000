@@ -305,7 +305,6 @@ process alignment_bwa {
 	"""
 	bwa mem \
 	-M -v 1 \
-	-K 100000000 \
 	-t 6 \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
