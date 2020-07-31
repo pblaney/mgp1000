@@ -6,12 +6,48 @@
 // It can be run on any preprocessed BAM files, even if not run through the Preprocessing step of
 // this pipeline.
 
+import java.text.SimpleDateFormat;
+def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
+
 log.info ''
 log.info '##### Myeloma Genome Project 1000 Pipeline #####'
 log.info '################################################'
 log.info '~~~~~~~~~~~ GERMLINE VARIANT ANALYSIS ~~~~~~~~~~'
 log.info '################################################'
 log.info ''
+log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info ''
+log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/germline"
+log.info ''
+log.info '################################################'
+log.info ''
+
+def helpMessage() {
+	log.info"""
+
+	Usage Example:
+
+		nextflow run germline.nf -bg -resume --singularity_module singularity/3.1 --email someperson@gmail.com -profile germline 
+
+	Mandatory Arguments:
+		--email                        [str]  Email address to send workflow completion/stoppage notification
+		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
+		                                      Currently available: preprocessing
+
+	Main Options:
+		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
+		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
+		                                      environment
+		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
+		                                      previously completed tasks are skipped while maintaining their output
+		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
+		                                      this option is not needed if Singularity is natively installed on the deployment environment
+		--help                        [flag]  Prints this message
+
+	################################################
+
+	""".stripIndent()
+}
 
 // #################################################### \\
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
@@ -19,6 +55,11 @@ log.info ''
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
 params.cohort_name = null
+params.sample_sheet = "samplesheet.csv"
+params.help = null
+
+// Print help message if requested
+if( params.help ) exit 0, helpMessage()
 
 // Set channels for reference files
 Channel
@@ -98,17 +139,18 @@ Channel
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
-// Set all channels for input BAM files
+// Read user provided sample sheet to find Normal sample BAM files
 Channel
-	.fromPath( 'input/preprocessedBams/*.bam' )
+	.fromPath( params.samplesheet )
+	.splitCsv( header:true )
+	.map{ row -> file("input/preprocessedBams/${row.normal}") }
 	.into{ input_preprocessed_bams_forTelomereLengthEstimation;
-	       input_preprocessed_bams_forHaplotypeCaller; }
-
-/*
+	       input_preprocessed_bams_forHaplotypeCaller }
 
 // TelSeq ~ estimate telomere length of sample
 process telomereLengthEstimation_telseq {
-	publishDir "${params.output_dir}/germline/telomereLength", mode: 'move'
+	publishDir "${params.output_dir}/germline/telomereLengthEstimations", mode: 'move'
+	tag "${bam_preprocessed.baseName}"
 
 	input:
 	path bam_preprocessed from input_preprocessed_bams_forTelomereLengthEstimation
@@ -123,8 +165,6 @@ process telomereLengthEstimation_telseq {
 	"""
 }
 
-*/
-
 // Combine all needed reference FASTA files into one channel for use in GATK HaplotypeCaller process
 reference_genome_fasta_forHaplotypeCaller.combine( reference_genome_fasta_index_forHaplotypeCaller )
 	.combine( reference_genome_fasta_dict_forHaplotypeCaller )
@@ -133,10 +173,10 @@ reference_genome_fasta_forHaplotypeCaller.combine( reference_genome_fasta_index_
 // GATK HaplotypeCaller ~ call germline SNPs and indels via local re-assembly
 process haplotypeCaller_gatk {
 	publishDir "${params.output_dir}/germline/haplotypeCaller", mode: 'symlink'
+	tag "${bam_preprocessed.baseName}"
 
 	input:
-	path bam_preprocessed from input_preprocessed_bams_forHaplotypeCaller
-	tuple path(reference_genome_fasta_forHaplotypeCaller), path(reference_genome_fasta_index_forHaplotypeCaller), path(reference_genome_fasta_dict_forHaplotypeCaller) from reference_genome_bundle_forHaplotypeCaller
+	tuple path(bam_preprocessed), path(reference_genome_fasta_forHaplotypeCaller), path(reference_genome_fasta_index_forHaplotypeCaller), path(reference_genome_fasta_dict_forHaplotypeCaller) from input_preprocessed_bams_forHaplotypeCaller.combine(reference_genome_bundle_forHaplotypeCaller)
 
 	output:
 	tuple path(gvcf_raw), path(gvcf_raw_index) into raw_gvcfs
@@ -156,6 +196,8 @@ process haplotypeCaller_gatk {
 	-O "${gvcf_raw}"
 	"""
 }
+
+/*
 
 // GATK GenomicsDBImport ~ import GVCF into data storage system to make data more accessible to tools
 process createGenomicsDb_gatk {
@@ -292,7 +334,6 @@ process indelVariantRecalibration_gatk {
 	"""
 }
 
-/*
 
 // Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK SNV VariantRecalibratior process
 gatk_bundle_hapmap.combine( gatk_bundle_hapmap_index )
