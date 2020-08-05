@@ -411,7 +411,7 @@ process downsampleBam_gatk {
 	gatk DownsampleSam \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
-	--MAX_RECORDS_IN_RAM 8000000 \
+	--MAX_RECORDS_IN_RAM 4000000 \
 	--STRATEGY Chained \
 	--RANDOM_SEED 1000 \
 	--CREATE_INDEX \
