@@ -176,6 +176,7 @@ process revertMappedBam_gatk {
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 8000000 \
+	--TMP_DIR . \
 	-I "${bam_mapped}" \
 	-O "${bam_unmapped}"
 	"""
@@ -345,7 +346,8 @@ process fixMateInformationAndSort_gatk {
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
-	--MAX_RECORDS_IN_RAM 8000000 \
+	--MAX_RECORDS_IN_RAM 4000000 \
+	--TMP_DIR . \
 	--SORT_ORDER coordinate \
 	-I "${bam_aligned}" \
 	-O "${bam_fixed_mate}"
@@ -412,6 +414,7 @@ process downsampleBam_gatk {
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
+	--TMP_DIR . \
 	--STRATEGY Chained \
 	--RANDOM_SEED 1000 \
 	--CREATE_INDEX \
@@ -461,6 +464,7 @@ process baseRecalibrator_gatk {
 	gatk BaseRecalibrator \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
+	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forBaseRecalibrator}" \
 	-L "${gatk_bundle_wgs_interval_list}" \
@@ -508,6 +512,7 @@ process applyBqsr_gatk {
 	gatk ApplyBQSR \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--verbosity ERROR \
+	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forApplyBqsr}" \
 	-I "${bam_marked_dup}" \
@@ -542,6 +547,7 @@ process collectWgsMetrics_gatk {
 	gatk CollectWgsMetrics \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
+	--TMP_DIR . \
 	--INCLUDE_BQ_HISTOGRAM \
 	--MINIMUM_BASE_QUALITY 20 \
 	--MINIMUM_MAPPING_QUALITY 20 \
@@ -581,6 +587,7 @@ process collectGcBiasMetrics_gatk {
 	gatk CollectGcBiasMetrics \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
+	--TMP_DIR . \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
 	-I "${bam_preprocessed_final}" \
 	-O "${gc_bias_metrics}" \
