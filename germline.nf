@@ -355,7 +355,7 @@ process excessHeterozygosityHardFilter_gatk {
 	tuple path(vcf_filtered_sites_only), path(vcf_filtered_sites_only_index) into filtered_sites_only_vcfs_forIndelVariantRecalibration, filtered_sites_only_vcfs_forSnvVariantRecalibration, filtered_sites_only_vcfs_forApplyVqsr
 
 	script:
-	intermediate_vcf_genotyped_filtered = "${vcf_joint_genotyped}".replaceFirst(/\.vcf/, ".markedforfilter.vcf")
+	//intermediate_vcf_genotyped_filtered = "${vcf_joint_genotyped}".replaceFirst(/\.vcf/, ".markedforfilter.vcf")
 	vcf_filtered_sites_only = "${vcf_joint_genotyped}".replaceFirst(/\.vcf/, ".filtered.vcf")
 	vcf_filtered_sites_only_index = "${vcf_filtered_sites_only}.idx"
 	"""
@@ -366,16 +366,21 @@ process excessHeterozygosityHardFilter_gatk {
 	--filter-name ExcessHet \
 	--filter-expression "ExcessHet > 54.69" \
 	--variant "${vcf_joint_genotyped}" \
-	--output "${intermediate_vcf_genotyped_filtered}"
+	--output "${vcf_filtered_sites_only}"
+	"""
+}
 
+/*
 	gatk MakeSitesOnlyVcf \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--INPUT "${intermediate_vcf_genotyped_filtered}" \
 	--OUTPUT "${vcf_filtered_sites_only}"
-	"""
-}
+*/
+
+
+
 
 // Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK Indel VariantRecalibratior process
 gatk_bundle_mills_1000G.combine( gatk_bundle_mills_1000G_index )
