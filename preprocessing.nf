@@ -380,9 +380,10 @@ process markDuplicatesAndIndex_sambamba {
 	"""
 	sambamba markdup \
 	--remove-duplicates \
-	--nthreads 2 \
-	--hash-table-size 525000 \
-	--overflow-list-size 525000 \
+	--nthreads 4 \
+	--hash-table-size 1000000 \
+	--overflow-list-size 1000000 \
+	--tmpdir . \
 	"${bam_fixed_mate}" \
 	"${bam_marked_dup}" \
 	2> "${markdup_output_log}"
