@@ -177,8 +177,8 @@ process revertMappedBam_gatk {
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 8000000 \
 	--TMP_DIR . \
-	-I "${bam_mapped}" \
-	-O "${bam_unmapped}"
+	--INPUT "${bam_mapped}" \
+	--OUTPUT "${bam_unmapped}"
 	"""
 }
 
@@ -204,7 +204,8 @@ process bamToFastq_biobambam {
 	"""
 	bamtofastq \
 	filename="${bam_unmapped}" \
-	F="${fastq_R1}" F2="${fastq_R2}" \
+	F="${fastq_R1}" \
+	F2="${fastq_R2}" \
 	gz=1
 	"""
 }
@@ -234,10 +235,16 @@ process fastqTrimming_trimmomatic {
 	fastq_trim_log = "${sample_id}.trim.log"
 	"""
 	trimmomatic PE -threads 4 \
-	"${input_R1_fastqs}" "${input_R2_fastqs}" \
-	"${fastq_R1_trimmed}" "${fastq_R1_unpaired}" \
-	"${fastq_R2_trimmed}" "${fastq_R2_unpaired}" \
-	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true TRAILING:5 SLIDINGWINDOW:4:15 MINLEN:35 \
+	"${input_R1_fastqs}" \
+	"${input_R2_fastqs}" \
+	"${fastq_R1_trimmed}" \
+	"${fastq_R1_unpaired}" \
+	"${fastq_R2_trimmed}" \
+	"${fastq_R2_unpaired}" \
+	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true \
+	TRAILING:5 \
+	SLIDINGWINDOW:4:15 \
+	MINLEN:35 \
 	2> "${fastq_trim_log}"
 	"""
 }
@@ -305,7 +312,8 @@ process alignment_bwa {
 	bam_flagstat_log = "${sample_id}.flagstat.log"
 	"""
 	bwa mem \
-	-M -v 1 \
+	-M \
+	-v 1 \
 	-t 6 \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
@@ -324,7 +332,7 @@ process alignment_bwa {
 	"""
 }
 
-// GATK FixMateInformation ~ veryify/fix mate-pair information and sort output BAM by coordinate
+// GATK FixMateInformation / SortSam~ veryify/fix mate-pair information and sort output BAM by coordinate
 process fixMateInformationAndSort_gatk {
 	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'symlink'
 	tag "${bam_aligned.baseName}"
@@ -339,6 +347,7 @@ process fixMateInformationAndSort_gatk {
 	params.skip_to_qc == "no"
 
 	script:
+	bam_fixed_mate_unsorted = "${bam_aligned}".replaceFirst(/\.bam/, ".unsorted.fixedmate.bam")
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
@@ -347,10 +356,18 @@ process fixMateInformationAndSort_gatk {
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
 	--MAX_RECORDS_IN_RAM 4000000 \
+	--ASSUME_SORTED true \
+	--TMP_DIR . \
+	--INPUT "${bam_aligned}" \
+	--OUTPUT "${bam_fixed_mate_unsorted}"
+
+	gatk SortSam \
+	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--SORT_ORDER coordinate \
-	-I "${bam_aligned}" \
-	-O "${bam_fixed_mate}"
+	--INPUT "${bam_fixed_mate_unsorted}" \
+	--OUTPUT "${bam_fixed_mate}"
 	"""
 }
 
@@ -420,9 +437,9 @@ process downsampleBam_gatk {
 	--RANDOM_SEED 1000 \
 	--CREATE_INDEX \
 	--VALIDATION_STRINGENCY SILENT \
-	-P 0.1 \
-	-I "${bam_marked_dup}" \
-	-O "${bam_marked_dup_downsampled}"
+	--PROBABILITY 0.1 \
+	--INPUT "${bam_marked_dup}" \
+	--OUTPUT "${bam_marked_dup_downsampled}"
 	"""
 }
 
@@ -468,9 +485,9 @@ process baseRecalibrator_gatk {
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forBaseRecalibrator}" \
-	-L "${gatk_bundle_wgs_interval_list}" \
-	-I "${bam_marked_dup_downsampled}" \
-	-O "${bqsr_table}" \
+	--intervals "${gatk_bundle_wgs_interval_list}" \
+	--input "${bam_marked_dup_downsampled}" \
+	--output "${bqsr_table}" \
 	--known-sites "${gatk_bundle_mills_1000G}" \
 	--known-sites "${gatk_bundle_known_indels}" \
 	--known-sites "${gatk_bundle_dbsnp138}"
@@ -516,8 +533,8 @@ process applyBqsr_gatk {
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
 	--reference "${reference_genome_fasta_forApplyBqsr}" \
-	-I "${bam_marked_dup}" \
-	-O "${bam_preprocessed_final}" \
+	--input "${bam_marked_dup}" \
+	--output "${bam_preprocessed_final}" \
 	--bqsr-recal-file "${bqsr_table}"
 	"""
 }
@@ -553,8 +570,8 @@ process collectWgsMetrics_gatk {
 	--MINIMUM_BASE_QUALITY 20 \
 	--MINIMUM_MAPPING_QUALITY 20 \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectWgsMetrics}" \
-	-I "${bam_preprocessed_final}" \
-	-O "${coverage_metrics}"
+	--INPUT "${bam_preprocessed_final}" \
+	--OUTPUT "${coverage_metrics}"
 	"""
 }
 
@@ -590,8 +607,8 @@ process collectGcBiasMetrics_gatk {
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
-	-I "${bam_preprocessed_final}" \
-	-O "${gc_bias_metrics}" \
+	--INPUT "${bam_preprocessed_final}" \
+	--OUTPUT "${gc_bias_metrics}" \
 	--CHART_OUTPUT "${gc_bias_chart}" \
 	--SUMMARY_OUTPUT "${gc_bias_summary}"
 	"""
