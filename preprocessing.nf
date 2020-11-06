@@ -433,7 +433,7 @@ process downsampleBam_gatk {
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
-	--STRATEGY Chained \
+	--STRATEGY ConstantMemory \
 	--RANDOM_SEED 1000 \
 	--CREATE_INDEX \
 	--VALIDATION_STRINGENCY SILENT \
