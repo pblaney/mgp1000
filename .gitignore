@@ -10,3 +10,4 @@ output
 input
 *.bam
 *.f*q*
+references/.DS_Store
