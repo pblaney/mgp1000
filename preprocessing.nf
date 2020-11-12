@@ -292,7 +292,7 @@ else {
 	fastqs_forAlignment = trimmed_fastqs_forAlignment
 }
 
-// BWA MEM + Sambamba ~ align trimmed FASTQ files to reference genome
+// BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
 	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'move', pattern: "*${bam_flagstat_log}"
@@ -335,7 +335,7 @@ process alignment_bwa {
 	"""
 }
 
-// GATK FixMateInformation / SortSam~ veryify/fix mate-pair information and sort output BAM by coordinate
+// GATK FixMateInformation / SortSam ~ veryify/fix mate-pair information and sort output BAM by coordinate
 process fixMateInformationAndSort_gatk {
 	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'symlink'
 	tag "${bam_aligned.baseName}"
@@ -374,7 +374,7 @@ process fixMateInformationAndSort_gatk {
 	"""
 }
 
-// Sambamba ~ mark duplicate alignments, remove them, and create BAM index
+// Sambamba markdup ~ mark duplicate alignments, remove them, and create BAM index
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
@@ -408,9 +408,11 @@ process markDuplicatesAndIndex_sambamba {
 	"${bam_marked_dup}" \
 	2> "${markdup_output_log}"
 
-	sambamba flagstat "${bam_marked_dup}" > "${bam_markdup_flagstat_log}"
+	sambamba flagstat \
+	"${bam_marked_dup}" > "${bam_markdup_flagstat_log}"
 
-	sambamba index "${bam_marked_dup}" "${bam_marked_dup_index}"
+	sambamba index \
+	"${bam_marked_dup}" "${bam_marked_dup_index}"
 	"""	
 }
 
