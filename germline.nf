@@ -355,7 +355,7 @@ process combineAllGvcfs_gatk {
 	${gvcf_merged_raw.collect {" --variant $it" }.join()} \
 	--output "${gvcf_cohort_combined_unzipped}"
 
-	bgzip < "${gvcf_cohort_combined_unzipped}" > "${gvcf_cohort_combined}"
+	bgzip --threads ${task.cpus} < "${gvcf_cohort_combined_unzipped}" > "${gvcf_cohort_combined}"
 	tabix "${gvcf_cohort_combined}"
 	"""
 }
@@ -599,13 +599,13 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	zcat "${final_vqsr_germline_vcf}" \
 	| \
 	bcftools norm \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--multiallelics -both \
 	--output-type z \
 	- 2>"${multiallelics_stats}" \
 	| \
 	bcftools norm \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--fasta-ref "${reference_genome_fasta_forSplitAndNorm}" \
 	--output-type z \
 	- 2>"${realign_normalize_stats}" \
@@ -643,18 +643,18 @@ process referenceVcfPrep_bcftools {
 	whole_genome_ref_vcf_index = "ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi"
 	"""
 	bcftools concat \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--output-type z \
 	${per_chromosome_ref_vcf.collect { "$it "}.join()} \
 	| \
 	bcftools annotate \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--output-type z \
 	--rename-chrs "${chr_name_conversion_map}" \
 	- \
 	| \
 	bcftools view \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--output-type z \
 	--samples-file "${ref_vcf_samples_to_keep_list}" \
 	- > "${whole_genome_ref_vcf}"
@@ -690,7 +690,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 	vcf_germline_final_gt_only = "${vcf_germline_final}".replaceFirst(/\.germline\.vcf\.gz/, ".germline.gto.vcf.gz")
 	"""
 	bcftools annotate \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--remove FORMAT \
 	--output-type z \
 	--output "${vcf_germline_final_gt_only}" \
@@ -699,7 +699,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 	tabix "${vcf_germline_final_gt_only}"
 
 	bcftools merge \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--merge none \
 	--missing-to-ref \
 	--output-type z \
@@ -757,7 +757,7 @@ process filterPlinkFilesForAdmixture_plink {
 	pruned_filtered_plink_fam_file = "${pruned_filtered_plink_file_prefix}.fam"
 	"""
 	plink \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--file "${hard_filtered_plink_file_prefix}" \
 	--out "${maf_gt_filtered_plink_file_prefix}" \
 	--make-bed \
@@ -766,7 +766,7 @@ process filterPlinkFilesForAdmixture_plink {
 	--indep-pairwise 50 10 0.5
 
 	plink \
-	--threads 4 \
+	--threads ${task.cpus} \
 	--bfile "${maf_gt_filtered_plink_file_prefix}" \
 	--extract "${maf_gt_filtered_plink_file_prefix}.prune.in" \
 	--make-bed \
@@ -799,8 +799,8 @@ process ancestryEstimation_admixture {
 	"${pruned_filtered_plink_file_prefix}.pop"
 
 	admixture \
-	-j4 \
-	-B200 \
+	-j${task.cpus}\
+	-B50 \
 	--supervised \
 	--haploid="male:23"
 	"${pruned_filtered_plink_file_prefix}.bed" \
