@@ -234,7 +234,8 @@ process fastqTrimming_trimmomatic {
 	fastq_R2_unpaired = "${sample_id}_R2_unpaired.fastq.gz"
 	fastq_trim_log = "${sample_id}.trim.log"
 	"""
-	trimmomatic PE -threads 4 \
+	trimmomatic PE \
+	-threads ${task.cpus} \
 	"${input_R1_fastqs}" \
 	"${input_R2_fastqs}" \
 	"${fastq_R1_trimmed}" \
@@ -312,23 +313,25 @@ process alignment_bwa {
 	bam_flagstat_log = "${sample_id}.flagstat.log"
 	"""
 	bwa mem \
+	-K 100000000 \
 	-M \
 	-v 1 \
-	-t 6 \
+	-t ${task.cpus} \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
 	"${fastq_R1}" "${fastq_R2}" \
 	| \
 	sambamba view \
 	--sam-input \
-	--nthreads=6 \
+	--nthreads=${task.cpus} \
 	--filter='mapping_quality>=10' \
 	--format=bam \
 	--compression-level=0 \
 	--output-filename "${bam_aligned}" \
 	/dev/stdin
 
-	sambamba flagstat "${bam_aligned}" > "${bam_flagstat_log}"
+	sambamba flagstat \
+	"${bam_aligned}" > "${bam_flagstat_log}"
 	"""
 }
 
@@ -397,7 +400,7 @@ process markDuplicatesAndIndex_sambamba {
 	"""
 	sambamba markdup \
 	--remove-duplicates \
-	--nthreads 4 \
+	--nthreads ${task.cpus} \
 	--hash-table-size 1000000 \
 	--overflow-list-size 1000000 \
 	--tmpdir . \
@@ -639,7 +642,7 @@ process extremeBamQualityControl_qualimap {
 	-bam "${bam_mapped_high_coverage}" \
 	--paint-chromosome-limits \
 	--genome-gc-distr HUMAN \
-	-nt 8 \
+	-nt ${task.cpus} \
 	-outformat HTML \
 	-outdir "${bam_mapped_high_coverage.baseName}"
 	"""
