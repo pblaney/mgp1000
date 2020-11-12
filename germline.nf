@@ -3,7 +3,7 @@
 // https://github.com/pblaney/mgp1000
 
 // This portion of the pipeline is used for germline variant analysis of normal WGS samples.
-// It can be run on any preprocessed BAM files, even if not run through the Preprocessing step of
+// It is designed to be run with BAMs that were genereated via the Preprocessing step of
 // this pipeline.
 
 import java.text.SimpleDateFormat;
@@ -27,9 +27,15 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run germline.nf -bg -resume --singularity_module singularity/3.1 --email someperson@gmail.com -profile germline 
+		nextflow run germline.nf -bg -resume --sample_sheet samplelist.csv --cohort_name batch1 --singularity_module singularity/3.1 --email someperson@gmail.com -profile germline 
 
 	Mandatory Arguments:
+    	--sample_sheet                 [str]  CSV file containing the list of samples where the first column designates the file name of the
+    	                                      normal sample, the second column for the file name of the match tumor sample, and the third
+    	                                      column has the sex of the sample, example of the format for this file is in the testSamples
+    	                                      directory
+    	--cohort_name                  [str]  A user defined collective name of the group of samples being run through this step of the
+    	                                      pipeline, this will be used as the name of the final output genotyped VCF
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
 		                                      Currently available: preprocessing
@@ -56,6 +62,7 @@ def helpMessage() {
 params.output_dir = "output"
 params.cohort_name = null
 params.sample_sheet = "samplesheet.csv"
+params.ref_vcf_concatenated = "yes"
 params.help = null
 
 // Print help message if requested
@@ -69,7 +76,8 @@ Channel
 		   reference_genome_fasta_forCombineGvcfs;
 	       reference_genome_fasta_forJointGenotyping;
 	       reference_genome_fasta_forIndelVariantRecalibration;
-	       reference_genome_fasta_forSnpVariantRecalibration }
+	       reference_genome_fasta_forSnpVariantRecalibration;
+	       reference_genome_fasta_forSplitAndNorm }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
@@ -78,7 +86,8 @@ Channel
 	       reference_genome_fasta_index_forCombineGvcfs;
 		   reference_genome_fasta_index_forJointGenotyping;
 		   reference_genome_fasta_index_forIndelVariantRecalibration;
-		   reference_genome_fasta_index_forSnpVariantRecalibration }
+		   reference_genome_fasta_index_forSnpVariantRecalibration;
+		   reference_genome_fasta_index_forSplitAndNorm }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
@@ -87,7 +96,8 @@ Channel
 	       reference_genome_fasta_dict_forCombineGvcfs;
 	       reference_genome_fasta_dict_forJointGenotyping;
 	       reference_genome_fasta_dict_forIndelVariantRecalibration;
-	       reference_genome_fasta_dict_forSnpVariantRecalibration }
+	       reference_genome_fasta_dict_forSnpVariantRecalibration;
+	       reference_genome_fasta_dict_forSplitAndNorm }
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions.hg38.interval_list' )
@@ -145,16 +155,59 @@ Channel
 	.fromPath( 'references/hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi' )
 	.set{ gatk_bundle_1000G_snps_index }
 
+Channel
+	.fromPath( 'references/hg38/ALL.chr[0-9].shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
+	.toSortedList()
+	.set{ reference_vcf_1000G_chromosomes1_9 }
+
+Channel
+	.fromPath( 'references/hg38/ALL.chr[0-9][0-9].shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
+	.toSortedList()
+	.set{ reference_vcf_1000G_chromosomes10_22 }
+
+Channel
+	.fromPath( 'references/hg38/ALL.chrX.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
+	.set{ reference_vcf_1000G_chromosomeX }
+
+Channel
+	.fromPath( 'references/hg38/ALL.chr*.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi' )
+	.set{ reference_vcf_1000G_per_chromosome_index }
+
+Channel
+	.fromPath( 'references/hg38/ref_vcf_samples_to_keep.txt' )
+	.set{ reference_vcf_1000G_samples_to_keep }
+
+Channel
+	.fromPath( 'references/hg38/ref_vcf_chr_name_conversion_map.txt' )
+	.set{ reference_vcf_1000G_chr_name_conversion_map }
+
+Channel
+	.fromPath( 'references/hg38/ref_vcf_samples_known_ancestry.txt' )
+	.set{ reference_vcf_1000G_known_ancestry }
+
+if( params.ref_vcf_concatenated == "yes" ) {
+	Channel
+		.fromPath( 'references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz', checkIfExists: true )
+		.ifEmpty{ error "The run command issued has the '--ref_vcf_concatenated' parameter set to 'yes', however the file does not exist. Please, set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run germline.nf --help'"}
+		.set{ reference_vcf_1000G_preBuilt }
+
+	Channel
+		.fromPath( 'references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi', checkIfExists: true )
+		.ifEmpty{ error "The '--ref_vcf_concatenated' parameter set to 'yes', however the index file does not exist for the reference VCF. Please, set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. Alternatively, use Tabix to index the reference VCF."}
+		.set{ reference_vcf_1000G_index_preBuilt }
+}
+
 
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 // Read user provided sample sheet to find Normal sample BAM files
 Channel
-	.fromPath( params.samplesheet )
+	.fromPath( params.sample_sheet )
 	.ifEmpty{ error "No sample sheet provided, an example is given in the testSamples directory" }
 	.splitCsv( header:true )
 	.map{ row -> file("input/preprocessedBams/${row.normal}") }
+	.unique()
 	.into{ input_preprocessed_bams_forTelomereLengthEstimation;
 	       input_preprocessed_bams_forHaplotypeCaller }
 
@@ -290,8 +343,9 @@ process combineAllGvcfs_gatk {
 	tuple path(gvcf_cohort_combined), path(gvcf_cohort_combined_index) into combined_cohort_gvcf
 
 	script:
-	gvcf_cohort_combined = "${params.cohort_name}.g.vcf"
-	gvcf_cohort_combined_index = "${gvcf_cohort_combined}.idx"
+	gvcf_cohort_combined_unzipped = "${params.cohort_name}.g.vcf"
+	gvcf_cohort_combined = "${params.cohort_name}.g.vcf.gz"
+	gvcf_cohort_combined_index = "${gvcf_cohort_combined}.tbi"
 	"""
 	gatk CombineGVCFs \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -299,7 +353,10 @@ process combineAllGvcfs_gatk {
 	--tmp-dir . \
 	--reference "${reference_genome_fasta_forCombineGvcfs}" \
 	${gvcf_merged_raw.collect {" --variant $it" }.join()} \
-	--output "${gvcf_cohort_combined}"
+	--output "${gvcf_cohort_combined_unzipped}"
+
+	bgzip < "${gvcf_cohort_combined_unzipped}" > "${gvcf_cohort_combined}"
+	tabix "${gvcf_cohort_combined}"
 	"""
 }
 
@@ -311,7 +368,7 @@ reference_genome_fasta_forJointGenotyping.combine( reference_genome_fasta_index_
 	.combine( reference_genome_fasta_dict_forJointGenotyping )
 	.set{ reference_genome_bundle_forJointGenotyping }
 
-// GATK GenotypeGVCFs ~ perform joint genotyping using the GenomicsDB workspace
+// GATK GenotypeGVCFs ~ perform joint genotyping
 process jointGenotyping_gatk {
 	publishDir "${params.output_dir}/germline/genotypedVcf", mode: 'symlink'
 
@@ -324,8 +381,8 @@ process jointGenotyping_gatk {
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) into joint_genotyped_vcfs
 
 	script:
-	vcf_joint_genotyped = "${params.cohort_name}.vcf"
-	vcf_joint_genotyped_index = "${vcf_joint_genotyped}.idx"
+	vcf_joint_genotyped = "${params.cohort_name}.vcf.gz"
+	vcf_joint_genotyped_index = "${vcf_joint_genotyped}.tbi"
 	"""
 	gatk GenotypeGVCFs \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -341,7 +398,7 @@ process jointGenotyping_gatk {
 	"""
 }
 
-// GATK VariantFiltration/MakeSitesOnlyVcf ~ hard filter test for excess heterozygosity then remove non-site level genotype information
+// GATK VariantFiltration ~ hard filter test for excess heterozygosity then remove non-site level genotype information
 // ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
 // than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
 process excessHeterozygosityHardFilter_gatk {
@@ -352,12 +409,11 @@ process excessHeterozygosityHardFilter_gatk {
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) from joint_genotyped_vcfs
 
 	output:
-	tuple path(vcf_filtered_sites_only), path(vcf_filtered_sites_only_index) into filtered_sites_only_vcfs_forIndelVariantRecalibration, filtered_sites_only_vcfs_forSnvVariantRecalibration, filtered_sites_only_vcfs_forApplyVqsr
+	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnvVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
 
 	script:
-	//intermediate_vcf_genotyped_filtered = "${vcf_joint_genotyped}".replaceFirst(/\.vcf/, ".markedforfilter.vcf")
-	vcf_filtered_sites_only = "${vcf_joint_genotyped}".replaceFirst(/\.vcf/, ".filtered.vcf")
-	vcf_filtered_sites_only_index = "${vcf_filtered_sites_only}.idx"
+	vcf_hard_filtered = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtered.vcf.gz")
+	vcf_hard_filtered_index = "${vcf_hard_filtered}.tbi"
 	"""
 	gatk VariantFiltration \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -366,21 +422,9 @@ process excessHeterozygosityHardFilter_gatk {
 	--filter-name ExcessHet \
 	--filter-expression "ExcessHet > 54.69" \
 	--variant "${vcf_joint_genotyped}" \
-	--output "${vcf_filtered_sites_only}"
+	--output "${vcf_hard_filtered}"
 	"""
 }
-
-/*
-	gatk MakeSitesOnlyVcf \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
-	--VERBOSITY ERROR \
-	--TMP_DIR . \
-	--INPUT "${intermediate_vcf_genotyped_filtered}" \
-	--OUTPUT "${vcf_filtered_sites_only}"
-*/
-
-
-
 
 // Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK Indel VariantRecalibratior process
 gatk_bundle_mills_1000G.combine( gatk_bundle_mills_1000G_index )
@@ -400,7 +444,7 @@ process indelVariantRecalibration_gatk {
 	tag "Indel Variant Recalibration"
 
 	input:
-	tuple path(vcf_filtered_sites_only), path(vcf_filtered_sites_only_index) from filtered_sites_only_vcfs_forIndelVariantRecalibration
+	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forIndelVariantRecalibration
 	tuple path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_axiom), path(gatk_bundle_axiom_index), path(gatk_bundle_dbsnp138_forIndelVariantRecalibration), path(gatk_bundle_dbsnp138_index_forIndelVariantRecalibration) from gatk_reference_bundle_forIndelVariantRecalibration
 	tuple path(reference_genome_fasta_forIndelVariantRecalibration), path(reference_genome_fasta_index_forIndelVariantRecalibration), path(reference_genome_fasta_dict_forIndelVariantRecalibration) from reference_genome_bundle_forIndelVariantRecalibration
 
@@ -424,7 +468,7 @@ process indelVariantRecalibration_gatk {
 	--resource:mills,known=false,training=true,truth=true,prior=12 "${gatk_bundle_mills_1000G}" \
 	--resource:axiomPoly,known=false,training=true,truth=false,prior=10 "${gatk_bundle_axiom}" \
 	--resource:dbsnp,known=true,training=false,truth=false,prior=2 "${gatk_bundle_dbsnp138_forIndelVariantRecalibration}" \
-	--variant "${vcf_filtered_sites_only}" \
+	--variant "${vcf_hard_filtered}" \
 	--output "${indel_vqsr_table}" \
 	--tranches-file "${indel_vqsr_tranches}"
 	"""
@@ -450,7 +494,7 @@ process snpVariantRecalibration_gatk {
 	tag "SNP Variant Recalibration"
 
 	input:
-	tuple path(vcf_filtered_sites_only), path(vcf_filtered_sites_only_index) from filtered_sites_only_vcfs_forSnvVariantRecalibration
+	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forSnvVariantRecalibration
 	tuple path(gatk_bundle_hapmap), path(gatk_bundle_hapmap_index), path(gatk_bundle_1000G_omni), path(gatk_bundle_1000G_omni_index), path(gatk_bundle_1000G_snps), path(gatk_bundle_1000G_snps_index), path(gatk_bundle_dbsnp138_forSnpVariantRecalibration), path(gatk_bundle_dbsnp138_index_forSnpVariantRecalibration) from gatk_reference_bundle_forSnvVariantRecalibration
 	tuple path(reference_genome_fasta_forSnpVariantRecalibration), path(reference_genome_fasta_index_forSnpVariantRecalibration), path(reference_genome_fasta_dict_forSnpVariantRecalibration) from reference_genome_bundle_forSnpVariantRecalibration
 
@@ -475,7 +519,7 @@ process snpVariantRecalibration_gatk {
 	--resource:omni,known=false,training=true,truth=true,prior=12 "${gatk_bundle_1000G_omni}" \
 	--resource:1000G,known=false,training=true,truth=false,prior=10 "${gatk_bundle_1000G_snps}" \
 	--resource:dbsnp,known=true,training=false,truth=false,prior=7 "${gatk_bundle_dbsnp138_forSnpVariantRecalibration}" \
-	--variant "${vcf_filtered_sites_only}" \
+	--variant "${vcf_hard_filtered}" \
 	--output "${snp_vqsr_table}" \
 	--tranches-file "${snp_vqsr_tranches}"
 	"""
@@ -483,21 +527,21 @@ process snpVariantRecalibration_gatk {
 
 // GATK ApplyVQSR ~ apply variant quality score recalibration for Indels and SNPs
 process applyIndelAndSnpVqsr_gatk {
-	publishDir "${params.output_dir}/germline/finalGermlineVcfs", mode: 'symlink'
+	publishDir "${params.output_dir}/germline/vqsrVcfs", mode: 'symlink'
 	tag "Applying Variant Quality Score Recalibration to Indels and SNPs"
 
 	input:
-	tuple path(vcf_filtered_sites_only), path(vcf_filtered_sites_only_index) from filtered_sites_only_vcfs_forApplyVqsr
+	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forApplyVqsr
 	tuple path(indel_vqsr_table), path(indel_vqsr_table_index), path(indel_vqsr_tranches) from indel_vqsr_files
 	tuple path(snp_vqsr_table), path(snp_vqsr_table_index), path(snp_vqsr_tranches) from snp_vqsr_files
 
 	output:
-	tuple path(vcf_germline_final), path(vcf_germline_final_index) into final_germline_vcfs
+	tuple path(final_vqsr_germline_vcf), path(final_vqsr_germline_vcf_index) into vqsr_germline_vcfs
 
 	script:
-	intermediate_vcf_germline_final = "${vcf_filtered_sites_only}".replaceFirst(/\.filtered\.vcf/, ".intermediate.vcf")
-	vcf_germline_final = "${vcf_filtered_sites_only}".replaceFirst(/\.filtered\.vcf/, ".final.vcf")
-	vcf_germline_final_index = "${vcf_germline_final}.idx"
+	intermediate_vqsr_germline_vcf = "${vcf_hard_filtered}".replaceFirst(/\.filtered\.vcf\.gz/, ".intermediate.vqsr.vcf.gz")
+	final_vqsr_germline_vcf = "${vcf_hard_filtered}".replaceFirst(/\.filtered\.vcf\.gz/, ".final.vqsr.vcf.gz")
+	final_vqsr_germline_vcf_index = "${final_vqsr_germline_vcf}.tbi"
 	"""
 	gatk ApplyVQSR \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -506,11 +550,11 @@ process applyIndelAndSnpVqsr_gatk {
 	--mode INDEL \
 	--truth-sensitivity-filter-level 99.0 \
 	--exclude-filtered \
-	--variant "${vcf_filtered_sites_only}" \
+	--variant "${vcf_hard_filtered}" \
 	--recal-file "${indel_vqsr_table}" \
 	--tranches-file "${indel_vqsr_tranches}" \
 	--create-output-variant-index true \
-	--output "${intermediate_vcf_germline_final}"
+	--output "${intermediate_vqsr_germline_vcf}"
 
 	gatk ApplyVQSR \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
@@ -519,10 +563,247 @@ process applyIndelAndSnpVqsr_gatk {
 	--mode SNP \
 	--truth-sensitivity-filter-level 99.5 \
 	--exclude-filtered \
-	--variant "${intermediate_vcf_germline_final}" \
+	--variant "${intermediate_vqsr_germline_vcf}" \
 	--recal-file "${snp_vqsr_table}" \
 	--tranches-file "${snp_vqsr_tranches}" \
 	--create-output-variant-index true \
-	--output "${vcf_germline_final}"
+	--output "${final_vqsr_germline_vcf}"
+	"""
+}
+
+//Combine all needed reference FASTA files into one channel for use in BCFtools Norm process
+reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_forSplitAndNorm )
+	.combine( reference_genome_fasta_dict_forSplitAndNorm )
+	.set{ reference_genome_bundle_forSplitAndNorm }
+
+// BCFtools Norm ~ Split multiallelic sites into multiple rows then left-align and normalize indels
+process splitMultiallelicAndLeftNormalizeVcf_bcftools {
+	publishDir "${params.output_dir}/germline/finalGermlineVcfs", mode: 'symlink'
+	tag "Splitting multiallelic sites and left-normalizing indels"
+
+	input:
+	tuple path(final_vqsr_germline_vcf), path(final_vqsr_germline_vcf_index) from vqsr_germline_vcfs
+	tuple path(reference_genome_fasta_forSplitAndNorm), path(reference_genome_fasta_index_forSplitAndNorm), path(reference_genome_fasta_dict_forSplitAndNorm) from reference_genome_bundle_forSplitAndNorm
+
+	output:
+	tuple path(final_germline_vcf), path(final_germline_vcf_index) into final_germline_vcf
+	path multiallelics_stats
+	path realign_normalize_stats
+
+	script:
+	final_germline_vcf = "${final_vqsr_germline_vcf}".replaceFirst(/\.final\.vqsr\.vcf\.gz/, ".germline.vcf.gz")
+	final_germline_vcf_index = "${final_germline_vcf}.tbi"
+	multiallelics_stats = "${params.cohort_name}.multiallelicsstats.txt"
+	realign_normalize_stats = "${params.cohort_name}.realignnormalizestats.txt"
+	"""
+	zcat "${final_vqsr_germline_vcf}" \
+	| \
+	bcftools norm \
+	--threads 4 \
+	--multiallelics -both \
+	--output-type z \
+	- 2>"${multiallelics_stats}" \
+	| \
+	bcftools norm \
+	--threads 4 \
+	--fasta-ref "${reference_genome_fasta_forSplitAndNorm}" \
+	--output-type z \
+	- 2>"${realign_normalize_stats}" \
+	> "${final_germline_vcf}"
+
+	tabix "${final_germline_vcf}"
+	"""
+}
+
+// Merge all reference VCFs per chromosome into one sorted channel for concatenation
+reference_vcf_1000G_chromosomes1_9
+	.merge( reference_vcf_1000G_chromosomes10_22 )
+	.merge( reference_vcf_1000G_chromosomeX )
+	.set{ reference_vcf_1000G_per_chromosome }
+
+// BCFtools Concat/Annotate/View ~ Prepare the 1000 Genomes Project reference VCFs for use in ADMIXTURE process, if needed
+process referenceVcfPrep_bcftools {
+	publishDir "references/hg38", mode: 'copy'
+	tag "Concatenating reference genome for ADMIXTURE projection analysis"
+
+	input:
+	path per_chromosome_ref_vcf from reference_vcf_1000G_per_chromosome
+	path per_chromosome_ref_vcf_index from reference_vcf_1000G_per_chromosome_index.toList()
+	path ref_vcf_samples_to_keep_list from reference_vcf_1000G_samples_to_keep
+	path chr_name_conversion_map from reference_vcf_1000G_chr_name_conversion_map
+
+	output:
+	tuple path(whole_genome_ref_vcf), path(whole_genome_ref_vcf_index) into reference_vcf_1000G_fromProcess
+
+	when:
+	params.ref_vcf_concatenated == "no"
+
+	script:
+	whole_genome_ref_vcf = "ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz"
+	whole_genome_ref_vcf_index = "ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi"
+	"""
+	bcftools concat \
+	--threads 4 \
+	--output-type z \
+	${per_chromosome_ref_vcf.collect { "$it "}.join()} \
+	| \
+	bcftools annotate \
+	--threads 4 \
+	--output-type z \
+	--rename-chrs "${chr_name_conversion_map}" \
+	- \
+	| \
+	bcftools view \
+	--threads 4 \
+	--output-type z \
+	--samples-file "${ref_vcf_samples_to_keep_list}" \
+	- > "${whole_genome_ref_vcf}"
+
+	tabix "${whole_genome_ref_vcf}"
+	"""
+}
+
+// Depending on whether the 1000 Genomes Project whole-genome reference VCF was pre-built, set the input
+// channel for the BCFtools merge VCF process
+if( params.ref_vcf_concatenated == "yes" ) {
+	reference_vcf_1000G = reference_vcf_1000G_preBuilt.combine( reference_vcf_1000G_index_preBuilt )
+}
+else {
+	reference_vcf_1000G = reference_vcf_1000G_fromProcess
+}
+
+// BCFtools Annotate/Merge ~ Preprocessing of VCF to remove all FORMAT fields except genotype needed for merging with reference VCF
+// and merge cohort VCF with 1000G ref VCF for supervised projection analysis, output no new multiallelic records
+process mergeCohortAndReferenceVcf_bcftools {
+	publishDir "${params.output_dir}/germline/cohortAndRefMergedVcf", mode: 'symlink'
+	tag "Merging cohort VCF with reference VCF"
+
+	input:
+	tuple path(vcf_germline_final), path(vcf_germline_final_index) from final_germline_vcf
+	tuple path(whole_genome_ref_vcf), path(whole_genome_ref_vcf_index) from reference_vcf_1000G
+
+	output:
+	path sample_ref_merged_vcf into merged_unfiltered_vcf
+
+	script:
+	sample_ref_merged_vcf = "${params.cohort_name}.refmerged.vcf.gz"
+	vcf_germline_final_gt_only = "${vcf_germline_final}".replaceFirst(/\.germline\.vcf\.gz/, ".germline.gto.vcf.gz")
+	"""
+	bcftools annotate \
+	--threads 4 \
+	--remove FORMAT \
+	--output-type z \
+	--output "${vcf_germline_final_gt_only}" \
+	"${vcf_germline_final}"
+
+	tabix "${vcf_germline_final_gt_only}"
+
+	bcftools merge \
+	--threads 4 \
+	--merge none \
+	--missing-to-ref \
+	--output-type z \
+	--output "${sample_ref_merged_vcf}" \
+	"${vcf_germline_final_gt_only}" "${whole_genome_ref_vcf}"
+	"""
+}
+
+// VCFtools ~ Hard filter the merged VCF to only contain biallelic, non-singleton SNP sites that are a minimum of 2kb apart from each other
+process hardFilterCohortReferenceMergedVcf_vcftools {
+	publishDir "${params.output_dir}/germline/hardFilteredMergedVcfPlinkFiles", mode: 'symlink'
+	tag "Hard filtering cohort and reference merged VCF"
+
+	input:
+	path sample_ref_merged_vcf from merged_unfiltered_vcf
+
+	output:
+	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) into hard_filtered_refmerged_plink_files
+
+	script:
+	hard_filtered_plink_file_prefix = "${params.cohort_name}.hardfiltered.refmerged"
+	hard_filtered_plink_ped_file = "${hard_filtered_plink_file_prefix}.ped"
+	hard_filtered_plink_map_file = "${hard_filtered_plink_file_prefix}.map"
+	"""
+	vcftools \
+	--gzvcf "${sample_ref_merged_vcf}" \
+	--thin 2000 \
+	--min-alleles 2 \
+	--max-alleles 2 \
+	--non-ref-ac 2 \
+	--plink \
+	--temp . \
+	--out "${hard_filtered_plink_file_prefix}"
+	"""
+}
+
+// PLINK ~ Generate ADMIXTURE ready PLINK files keeping only sites with a minor allele freq > 0.05, no missing genotype, then
+// prune the markers for linkage disequilibrium (remove SNPs that have an R-squared value of greater than 0.5 with any
+// other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
+process filterPlinkFilesForAdmixture_plink {
+	publishDir "${params.output_dir}/germline/mafGenotypeAndLinkeageDiseqFilteredPlinkFiles", mode: 'symlink'
+	tag "Filtering PLINK files for MAF < 0.05, no missing genotypes, and pruned for linkage disequilibrium"
+
+	input:
+	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) from hard_filtered_refmerged_plink_files
+
+	output:
+	tuple val(pruned_filtered_plink_file_prefix), path(pruned_filtered_plink_bed_file), path(pruned_filtered_plink_bim_file), path(pruned_filtered_plink_fam_file) into pruned_filtered_refmerged_plink_files
+
+	script:
+	maf_gt_filtered_plink_file_prefix = "${params.cohort_name}.maf.gt.filtered.refmerged"
+	pruned_filtered_plink_file_prefix = "${params.cohort_name}.pruned.maf.gt.filtered.refmerged"
+	pruned_filtered_plink_bed_file = "${pruned_filtered_plink_file_prefix}.bed"
+	pruned_filtered_plink_bim_file = "${pruned_filtered_plink_file_prefix}.bim"
+	pruned_filtered_plink_fam_file = "${pruned_filtered_plink_file_prefix}.fam"
+	"""
+	plink \
+	--threads 4 \
+	--file "${hard_filtered_plink_file_prefix}" \
+	--out "${maf_gt_filtered_plink_file_prefix}" \
+	--make-bed \
+	--maf 0.05 \
+	--geno 0.1 \
+	--indep-pairwise 50 10 0.5
+
+	plink \
+	--threads 4 \
+	--bfile "${maf_gt_filtered_plink_file_prefix}" \
+	--extract "${maf_gt_filtered_plink_file_prefix}.prune.in" \
+	--make-bed \
+	--out "${pruned_filtered_plink_file_prefix}"
+	"""
+}
+
+// ADMIXTURE ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised and haploid aware fashion 
+process ancestryEstimation_admixture {
+	publishDir "${params.output_dir}/germline/admixutreAncestryEstimation", mode: 'symlink'
+	tag "Calculating ancestry estimations"
+
+	input:
+	tuple val(pruned_filtered_plink_file_prefix), path(pruned_filtered_plink_bed_file), path(pruned_filtered_plink_bim_file), path(pruned_filtered_plink_fam_file) from pruned_filtered_refmerged_plink_files
+	path known_ancestry_file_ref_vcf from reference_vcf_1000G_known_ancestry
+
+	output:
+	path admixture_ancestry_fractions
+	path admixture_allele_frequencies
+	path admixture_standard_error
+
+	script:
+	admixture_ancestry_fractions = "${pruned_filtered_plink_file_prefix}.13.Q"
+	admixture_allele_frequencies = "${pruned_filtered_plink_file_prefix}.13.P"
+	admixture_standard_error = "${pruned_filtered_plink_file_prefix}.13.Q_se"
+	"""
+	cohort_pop_file_creator.sh \
+	"${pruned_filtered_plink_file_prefix}.fam" \
+	"${known_ancestry_file_ref_vcf}" \
+	"${pruned_filtered_plink_file_prefix}.pop"
+
+	admixture \
+	-j4 \
+	-B200 \
+	--supervised \
+	--haploid="male:23"
+	"${pruned_filtered_plink_file_prefix}.bed" \
+	13
 	"""
 }
