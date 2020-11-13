@@ -27,7 +27,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run germline.nf -bg -resume --sample_sheet samplelist.csv --cohort_name batch1 --singularity_module singularity/3.1 --email someperson@gmail.com -profile germline 
+		nextflow run germline.nf -bg -resume --sample_sheet samplelist.csv --cohort_name batch1 --singularity_module singularity/3.1 --email someperson@gmail.com --ref_vcf_concatenated no -profile germline 
 
 	Mandatory Arguments:
     	--sample_sheet                 [str]  CSV file containing the list of samples where the first column designates the file name of the
@@ -48,6 +48,9 @@ def helpMessage() {
 		                                      previously completed tasks are skipped while maintaining their output
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
+		--ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project reference VCF used for ADMIXTURE analysis has
+		                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
+		                                      need to be done for every separate run after the first 
 		--help                        [flag]  Prints this message
 
 	################################################
