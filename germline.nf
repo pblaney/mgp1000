@@ -355,7 +355,7 @@ process combineAllGvcfs_gatk {
 	${gvcf_merged_raw.collect {" --variant $it" }.join()} \
 	--output "${gvcf_cohort_combined_unzipped}"
 
-	bgzip --threads ${task.cpus} < "${gvcf_cohort_combined_unzipped}" > "${gvcf_cohort_combined}"
+	bgzip < "${gvcf_cohort_combined_unzipped}" > "${gvcf_cohort_combined}"
 	tabix "${gvcf_cohort_combined}"
 	"""
 }
