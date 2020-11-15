@@ -167,7 +167,7 @@ Channel
 
 if( params.vep_ref_cached == "yes" ) {
 	Channel
-		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: dir, checkIfExists: true )
+		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: 'dir', checkIfExists: true )
 		.ifEmpty{ error "The run command issued has the '--vep_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--vep_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run germline.nf --help'"}
 		.set{ vep_ref_dir_preDownloaded }
 }
