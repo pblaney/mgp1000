@@ -27,7 +27,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run germline.nf -bg -resume --sample_sheet samplelist.csv --cohort_name batch1 --singularity_module singularity/3.1 --email someperson@gmail.com --ref_vcf_concatenated no -profile germline 
+		nextflow run germline.nf -bg -resume --sample_sheet samplepairlist.csv --cohort_name batch1 --singularity_module singularity/3.1 --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
 
 	Mandatory Arguments:
     	--sample_sheet                 [str]  CSV file containing the list of samples where the first column designates the file name of the
@@ -48,6 +48,9 @@ def helpMessage() {
 		                                      previously completed tasks are skipped while maintaining their output
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
+		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
+		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
+		                                      done for every separate run after the first
 		--ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project reference VCF used for ADMIXTURE analysis has
 		                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
 		                                      need to be done for every separate run after the first 
@@ -63,8 +66,9 @@ def helpMessage() {
 
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
+params.sample_sheet = null
 params.cohort_name = null
-params.sample_sheet = "samplesheet.csv"
+params.vep_ref_cached = "yes"
 params.ref_vcf_concatenated = "yes"
 params.help = null
 
@@ -80,7 +84,8 @@ Channel
 	       reference_genome_fasta_forJointGenotyping;
 	       reference_genome_fasta_forIndelVariantRecalibration;
 	       reference_genome_fasta_forSnpVariantRecalibration;
-	       reference_genome_fasta_forSplitAndNorm }
+	       reference_genome_fasta_forSplitAndNorm;
+	       reference_genome_fasta_forAnnotation }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
@@ -90,7 +95,8 @@ Channel
 		   reference_genome_fasta_index_forJointGenotyping;
 		   reference_genome_fasta_index_forIndelVariantRecalibration;
 		   reference_genome_fasta_index_forSnpVariantRecalibration;
-		   reference_genome_fasta_index_forSplitAndNorm }
+		   reference_genome_fasta_index_forSplitAndNorm;
+		   reference_genome_fasta_index_forAnnotation }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
@@ -100,7 +106,8 @@ Channel
 	       reference_genome_fasta_dict_forJointGenotyping;
 	       reference_genome_fasta_dict_forIndelVariantRecalibration;
 	       reference_genome_fasta_dict_forSnpVariantRecalibration;
-	       reference_genome_fasta_dict_forSplitAndNorm }
+	       reference_genome_fasta_dict_forSplitAndNorm;
+	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions.hg38.interval_list' )
@@ -158,6 +165,13 @@ Channel
 	.fromPath( 'references/hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi' )
 	.set{ gatk_bundle_1000G_snps_index }
 
+if( params.vep_ref_cached == "yes" ) {
+	Channel
+		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: dir, checkIfExists: true )
+		.ifEmpty{ error "The run command issued has the '--vep_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--vep_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run germline.nf --help'"}
+		.set{ vep_ref_dir_preDownloaded }
+}
+
 Channel
 	.fromPath( 'references/hg38/ALL.chr[0-9].shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
 	.toSortedList()
@@ -191,12 +205,12 @@ Channel
 if( params.ref_vcf_concatenated == "yes" ) {
 	Channel
 		.fromPath( 'references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz', checkIfExists: true )
-		.ifEmpty{ error "The run command issued has the '--ref_vcf_concatenated' parameter set to 'yes', however the file does not exist. Please, set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run germline.nf --help'"}
+		.ifEmpty{ error "The run command issued has the '--ref_vcf_concatenated' parameter set to 'yes', however the file does not exist. Please set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run germline.nf --help'"}
 		.set{ reference_vcf_1000G_preBuilt }
 
 	Channel
 		.fromPath( 'references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi', checkIfExists: true )
-		.ifEmpty{ error "The '--ref_vcf_concatenated' parameter set to 'yes', however the index file does not exist for the reference VCF. Please, set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. Alternatively, use Tabix to index the reference VCF."}
+		.ifEmpty{ error "The '--ref_vcf_concatenated' parameter set to 'yes', however the index file does not exist for the reference VCF. Please set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. Alternatively, use Tabix to index the reference VCF."}
 		.set{ reference_vcf_1000G_index_preBuilt }
 }
 
@@ -589,7 +603,7 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	tuple path(reference_genome_fasta_forSplitAndNorm), path(reference_genome_fasta_index_forSplitAndNorm), path(reference_genome_fasta_dict_forSplitAndNorm) from reference_genome_bundle_forSplitAndNorm
 
 	output:
-	tuple path(final_germline_vcf), path(final_germline_vcf_index) into final_germline_vcf
+	tuple path(final_germline_vcf), path(final_germline_vcf_index) into final_germline_vcf_forAnnotation, final_germline_vcf_forAdmixture
 	path multiallelics_stats
 	path realign_normalize_stats
 
@@ -615,6 +629,85 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	> "${final_germline_vcf}"
 
 	tabix "${final_germline_vcf}"
+	"""
+}
+
+// VEP ~ Download the reference files used for VEP annotation, if needed
+process downloadVepAnnotationReferences_vep {
+	publishDir "references/hg38", mode: 'copy'
+	tag "Downloading references files for VEP annotation"
+
+	output:
+	path cached_ref_dir_vep into vep_ref_dir_fromProcess
+
+	when:
+	params.vep_ref_cached == "no"
+
+	script:
+	cached_ref_dir_vep = "homo_sapiens_vep_101_GRCh38"
+	"""
+	curl -O ftp://ftp.ensembl.org/pub/release-101/variation/indexed_vep_cache/homo_sapiens_vep_101_GRCh38.tar.gz && \
+	mkdir -p "${cached_ref_dir_vep}" && \
+	mv homo_sapiens_vep_101_GRCh38.tar.gz "${cached_ref_dir_vep}/" && \
+	cd "${cached_ref_dir_vep}/" && \
+	tar xzf homo_sapiens_vep_101_GRCh38.tar.gz && \
+	rm homo_sapiens_vep_101_GRCh38.tar.gz
+	"""
+}
+
+// Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
+// channel for the VEP annotation process
+if( params.vep_ref_cached == "yes" ) {
+	vep_ref_dir = vep_ref_dir_preDownloaded
+}
+else {
+	vep_ref_dir = vep_ref_dir_fromProcess
+}
+
+//Combine all needed reference FASTA files into one channel for use in VEP annotation process
+reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAnnotation )
+	.combine( reference_genome_fasta_dict_forAnnotation )
+	.set{ reference_genome_bundle_forAnnotation }
+
+// VEP ~ Annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
+process annotateGermlineVcf_vep {
+	publishDir "${params.output_dir}/germline/vepAnnotatedVcf", mode: 'symlink'
+	tag "Annotating ${params.cohort} germline VCF"
+
+	input:
+	tuple path(final_germline_vcf), path(final_germline_vcf_index) from final_germline_vcf_forAnnotation
+	path cached_ref_dir_vep from vep_ref_dir
+	tuple path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from reference_genome_bundle_forAnnotation
+
+	output:
+	path final_annotated_germline_vcf
+	path annotation_summary
+
+	script:
+	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.germline\.vcf\.gz/, "annotated.germline.vcf.gz")
+	annotation_summary = "${params.cohort_name}.vep.summary.html"
+	"""
+	vep \
+	--offline \
+	--cache \
+	--dir "${cached_ref_dir_vep}" \
+	--assembly GRCh38 \
+	--fasta "${reference_genome_fasta_forAnnotation}" \
+	--input_file "${final_germline_vcf}" \
+	--format vcf \
+	--hgvs \
+	--hgvsg \
+	--protein \
+	--symbol \
+	--ccds \
+	--canonical \
+	--biotype \
+	--sift b \
+	--polyphen b \
+	--stats_file "${annotation_summary}" \
+	--output_file "${final_annotated_germline_vcf}" \
+	--compress_output bgzip \
+	--vcf
 	"""
 }
 
@@ -682,7 +775,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 	tag "Merging cohort VCF with reference VCF"
 
 	input:
-	tuple path(vcf_germline_final), path(vcf_germline_final_index) from final_germline_vcf
+	tuple path(vcf_germline_final), path(vcf_germline_final_index) from final_germline_vcf_forAdmixture
 	tuple path(whole_genome_ref_vcf), path(whole_genome_ref_vcf_index) from reference_vcf_1000G
 
 	output:
@@ -805,7 +898,7 @@ process ancestryEstimation_admixture {
 	-j${task.cpus}\
 	-B50 \
 	--supervised \
-	--haploid="male:23"
+	--haploid="male:23" \
 	"${pruned_filtered_plink_file_prefix}.bed" \
 	13
 	"""
