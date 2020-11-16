@@ -50,10 +50,10 @@ def helpMessage() {
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
 		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
-		                                      done for every separate run after the first
+		                                      done for every separate run after the first, either: yes or no
 		--ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project reference VCF used for ADMIXTURE analysis has
 		                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
-		                                      need to be done for every separate run after the first 
+		                                      need to be done for every separate run after the first, either: yes or no
 		--help                        [flag]  Prints this message
 
 	################################################
