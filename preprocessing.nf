@@ -27,7 +27,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
+		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
 
 	Mandatory Arguments:
 		--input_format                 [str]  Format of input files, either: fastq or bam
