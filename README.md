@@ -16,7 +16,7 @@ The pipeline was developed to be run on various HPCs without concern of environm
 * Git
 * GNU Utilities
 * Java 8 (or later)
-* Singularity (validated on v3.1, other versions will be tested)
+* Singularity (validated on v3.1, v3.5.2, other versions will be tested)
 
 ## Installing Git LFS
 In an effort to containerize the pipeline further, all the necessary reference files used are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
@@ -39,7 +39,7 @@ The first step in the deployment process is to clone the MGP1000 GitHub reposito
 ```
 $ cd <scratch dir>
 
-$ git lfs clone https://github.com/pblaney/mgp1000.git
+$ git clone https://github.com/pblaney/mgp1000.git
 ### Example output ###
 # Cloning into 'mgp1000'...
 # remote: Enumerating objects: 90, done.
@@ -109,39 +109,58 @@ $ cp -r testSamples/* input/
 Now the simplicity of Nextflow takes over. The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
 ```
 $ nextflow run preprocessing.nf --help
-N E X T F L O W  ~  version 20.04.1
-Launching `preprocessing.nf` [jolly_majorana] - revision: f5a75c24b1
+N E X T F L O W  ~  version 20.01.0
+Launching `preprocessing.nf` [nasty_marconi] - revision: 74bde0d727
 
 ##### Myeloma Genome Project 1000 Pipeline #####
 ################################################
 ~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
 ################################################
 
-	Usage Example:
+~~~ Launch Time ~~~		11-16-2020 16:42
 
-		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
-
-	Mandatory Arguments:
-		--input_format                 [str]  Format of input files, either: fastq or bam
-		--email                        [str]  Email address to send workflow completion/stoppage notification
-		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-		                                      Currently available: preprocessing
-
-	Main Options:
-		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
-		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
-		                                      environment
-		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
-		                                      previously completed tasks are skipped while maintaining their output
-		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
-		                                      this option is not needed if Singularity is natively installed on the deployment environment
-		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
-		                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
-		                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
-		                                      have adequate provenance to reflect this
-		--help                        [flag]  Prints this message
+~~~ Output Directory ~~~ 	/Users/blanep01/morganLab/mgp1000/development/mgp1000/output/preprocessing
 
 ################################################
+
+Usage Example:
+
+	nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
+
+Mandatory Arguments:
+	--input_format                 [str]  Format of input files, either: fastq or bam
+	--email                        [str]  Email address to send workflow completion/stoppage notification
+	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
+	                                      Currently available: preprocessing
+
+Main Options:
+	-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
+	                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
+	                                      environment
+	-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
+	                                      previously completed tasks are skipped while maintaining their output
+	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
+	                                      this option is not needed if Singularity is natively installed on the deployment environment
+	--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
+	                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
+	                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
+	                                      have adequate provenance to reflect this
+	--help                        [flag]  Prints this message
+
+################################################
+```
+
+# Collect Preprocessing Output
+Upon completion of the Preprocessing step, Nextflow will ensure each relevent output files will be copied into a process-specific directory within the `output/preprocessing` folder. However, there are some additional steps such as saving the current run's Nextflow log files, clearing up space in the `work` directory, and preping the input for the Germline Variant Analysis step. This can be done with the following `make` command. Please note that the log files are not uniquely named for each run of the pipeline.
+```
+$ make preprocessing-completion
+### Example output ###
+#	mkdir -p logs/preprocessing
+#	mv nextflow_report.html logs/preprocessing
+#	mv timeline_report.html logs/preprocessing
+#	mv trace.txt logs/preprocessing
+#	mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
+#	rm -rf work/*
 ```
 
 
