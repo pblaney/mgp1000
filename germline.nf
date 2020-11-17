@@ -686,7 +686,7 @@ process annotateGermlineVcf_vep {
 	path annotation_summary
 
 	script:
-	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.germline\.vcf\.gz/, "annotated.germline.vcf.gz")
+	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.germline\.vcf\.gz/, ".annotated.germline.vcf.gz")
 	annotation_summary = "${params.cohort_name}.vep.summary.html"
 	"""
 	vep \
@@ -839,7 +839,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 // other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
 process filterPlinkFilesForAdmixture_plink {
 	publishDir "${params.output_dir}/germline/mafGenotypeAndLinkeageDiseqFilteredPlinkFiles", mode: 'copy'
-	tag "Filtering PLINK files for MAF < 0.05, no missing genotypes, and pruned for linkage disequilibrium"
+	tag "Filtering PLINK files for MAF > 0.05, no missing genotypes, and pruned for linkage disequilibrium"
 
 	input:
 	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) from hard_filtered_refmerged_plink_files
