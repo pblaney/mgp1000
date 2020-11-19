@@ -32,10 +32,10 @@ def helpMessage() {
 		nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
 
 	Mandatory Arguments:
-		--run_id					   [str]  Unique identifier for pipeline run
+		--run_id                       [str]  Unique identifier for pipeline run
 		--input_format                 [str]  Format of input files, either: fastq or bam
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-		                                      Currently available: preprocessing
+		                                      Currently available: preprocessing, germline
 
 	Main Options:
 		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
