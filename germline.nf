@@ -3,8 +3,7 @@
 // https://github.com/pblaney/mgp1000
 
 // This portion of the pipeline is used for germline variant analysis of normal WGS samples.
-// It is designed to be run with BAMs that were genereated via the Preprocessing step of
-// this pipeline.
+// It is designed to be run with BAMs that were genereated via the Preprocessing step of this pipeline.
 
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
@@ -19,6 +18,8 @@ log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
 log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/germline"
 log.info ''
+log.info "~~~ Run Report File ~~~ 	nextflow_report.germline_${params.run_id}.html"
+log.info ''
 log.info '################################################'
 log.info ''
 
@@ -27,18 +28,17 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run germline.nf -bg -resume --sample_sheet samplepairlist.csv --cohort_name batch1 --singularity_module singularity/3.1 --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
+		nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name mmrf_set --singularity_module singularity/3.1 --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
 
 	Mandatory Arguments:
+    	--run_id                       [str]  Unique identifier for pipeline run
     	--sample_sheet                 [str]  CSV file containing the list of samples where the first column designates the file name of the
-    	                                      normal sample, the second column for the file name of the match tumor sample, and the third
-    	                                      column has the sex of the sample, example of the format for this file is in the testSamples
-    	                                      directory
+    	                                      normal sample, the second column for the file name of the match tumor sample, example of the
+    	                                      format for this file is in the testSamples directory
     	--cohort_name                  [str]  A user defined collective name of the group of samples being run through this step of the
-    	                                      pipeline, this will be used as the name of the final output genotyped VCF
-		--email                        [str]  Email address to send workflow completion/stoppage notification
+    	                                      pipeline, this will be used as the name of the final output multi-sample GVCF
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-		                                      Currently available: preprocessing
+		                                      Currently available: preprocessing, germline
 
 	Main Options:
 		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
@@ -46,6 +46,7 @@ def helpMessage() {
 		                                      environment
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
+		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
@@ -66,6 +67,7 @@ def helpMessage() {
 
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
+params.run_id = null
 params.sample_sheet = null
 params.cohort_name = null
 params.vep_ref_cached = "yes"
@@ -74,6 +76,13 @@ params.help = null
 
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
+
+// Print error messages if required parameters are not set
+if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
+
+if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair samplesheet CSV."
+
+if( params.cohort_name == null ) exit 1, "The run command issued does not have the '--cohort_name' parameter set. Please set the '--cohort_name' parameter to a unique identifier for the multi-sample germline GVCF."
 
 // Set channels for reference files
 Channel
