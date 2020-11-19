@@ -19,6 +19,8 @@ log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
 log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/preprocessing"
 log.info ''
+log.info "~~~ Run Report File ~~~ 	nextflow_report.preprocessing_${params.run_id}.html"
+log.info ''
 log.info '################################################'
 log.info ''
 
@@ -27,11 +29,11 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
+		nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
 
 	Mandatory Arguments:
+		--run_id					   [str]  Unique identifier for pipeline run
 		--input_format                 [str]  Format of input files, either: fastq or bam
-		--email                        [str]  Email address to send workflow completion/stoppage notification
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
 		                                      Currently available: preprocessing
 
@@ -41,6 +43,7 @@ def helpMessage() {
 		                                      environment
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
+		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
@@ -59,12 +62,18 @@ def helpMessage() {
 
 // Declare the defaults for all pipeline parameters
 params.output_dir = "output"
-params.input_format = "bam"
+params.run_id = null
+params.input_format = null
 params.skip_to_qc = "no"
 params.help = null
 
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
+
+// Print error messages if required parameters are not set
+if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
+
+if( params.input_format == null ) exit 1, "The run command issued does not have the '--input_format' parameter set. Please set the '--run_id' parameter to either bam or fastq depending on input data."
 
 // Set channels for reference files
 Channel
