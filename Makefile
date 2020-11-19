@@ -30,8 +30,8 @@ prep-pipeline:
 
 ###############################################################################
 
-# Save the necessary output files and clean the directory of any unneeded files after 
-# successful completion of the Preprocessing step
+# Save the necessary output files and clean the directories of any unneeded files after 
+# successful completion of the steps of the pipeline
 preprocessing-completion:
 	mkdir -p logs/preprocessing
 	mv nextflow_report.preprocessing_*.html logs/preprocessing
@@ -40,21 +40,28 @@ preprocessing-completion:
 	mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
 	rm -rf work/*
 
+germline-completion:
+	mkdir -p logs/germline
+	mv nextflow_report.germline_*.html logs/germline
+	mv timeline_report.germline_*.html logs/germline
+	mv trace.germline_*.txt logs/germline
+	rm -rf work/*
+
 ###############################################################################
 
 # Test Preprocessing step locally with Docker and BAM or FASTQ input files
 dev-preprocessing-bam:
-	nextflow run preprocessing.nf -bg -resume --input_format bam -profile dev_preprocessing
+	nextflow run preprocessing.nf -resume --run_id preprocessing_bam_test --input_format bam --skip_to_qc no -profile dev_preprocessing
 
 dev-preprocessing-fastq:
-	nextflow run preprocessing.nf -bg -resume --input_format fastq -profile dev_preprocessing
+	nextflow run preprocessing.nf -resume --run_id preprocessing_fastq_test --input_format fastq --skip_to_qc no -profile dev_preprocessing
 
 dev-preprocessing-bigbam:
-	nextflow run preprocessing.nf -bg --input_format bam --skip_to_qc yes -profile dev_preprocessing
+	nextflow run preprocessing.nf -resume --run_id preprocessing_bigbam_test --input_format bam --skip_to_qc yes -profile dev_preprocessing
 
 # Test Germline step locally with Docker
 dev-germline:
-	nextflow run germline.nf -bg -resume -profile dev_germline
+	nextflow run germline.nf -resume --run_id germline_test --sample_sheet testSamples/samplesheet.csv --cohort_name test --vep_ref_cached yes --ref_vcf_concatenated yes -profile dev_germline
 
 ###############################################################################
 
