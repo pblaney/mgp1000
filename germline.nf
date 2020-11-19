@@ -33,7 +33,7 @@ def helpMessage() {
 	Mandatory Arguments:
     	--run_id                       [str]  Unique identifier for pipeline run
     	--sample_sheet                 [str]  CSV file containing the list of samples where the first column designates the file name of the
-    	                                      normal sample, the second column for the file name of the match tumor sample, example of the
+    	                                      normal sample, the second column for the file name of the matched tumor sample, example of the
     	                                      format for this file is in the testSamples directory
     	--cohort_name                  [str]  A user defined collective name of the group of samples being run through this step of the
     	                                      pipeline, this will be used as the name of the final output multi-sample GVCF
