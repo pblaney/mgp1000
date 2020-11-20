@@ -322,7 +322,6 @@ process alignment_bwa {
 	bam_flagstat_log = "${sample_id}.flagstat.log"
 	"""
 	bwa mem \
-	-K 100000000 \
 	-M \
 	-v 1 \
 	-t ${task.cpus} \
