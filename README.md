@@ -121,7 +121,7 @@ Mandatory Arguments:
 	--run_id                       [str]  Unique identifier for pipeline run
 	--input_format                 [str]  Format of input files, either: fastq or bam
 	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-	                                      Currently available: preprocessing
+	                                      Currently available: preprocessing, germline
 
 Main Options:
 	-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
@@ -155,4 +155,45 @@ $ make preprocessing-completion
 ```
 
 ## Run the Germline Variant Analysis Step of the Pipeline
+Next, the Germline Variant Analysis step of the pipeline can be started. The most important component of this step of the pipeline is the user-provided sample sheet CSV. This file includes two comma-separated columns: filename of normal sample BAMs and filename of corresponding paired tumor sample BAMs. An example of this is provided in `samplesheet.csv` within the `testSamples` directory. The sample sheet file should typically be within the main `mgp1000` directory.
 
+### Note on Parameters
+There are two parameters that will prepare necessary reference files as part of the pipeline, `--vep_ref_cached` and `--ref_vcf_concatenated`. These parameters needed only be set to `no` for the first run of the Germline Variant Analysis step of the pipeline.  
+```
+$ nextflow run germline.nf --help
+...
+...
+...
+################################################
+
+Usage Example:
+
+	nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name mmrf_set --singularity_module singularity/3.1 --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
+
+Mandatory Arguments:
+   	--run_id                       [str]  Unique identifier for pipeline run
+   	--sample_sheet                 [str]  CSV file containing the list of samples where the first column designates the file name of the
+   	                                      normal sample, the second column for the file name of the matched tumor sample, example of the
+   	                                      format for this file is in the testSamples directory
+   	--cohort_name                  [str]  A user defined collective name of the group of samples being run through this step of the
+   	                                      pipeline, this will be used as the name of the final output multi-sample GVCF
+	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
+	                                      Currently available: preprocessing, germline
+
+Main Options:
+	-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
+	                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
+	                                      environment
+	-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
+	                                      previously completed tasks are skipped while maintaining their output
+	--email                        [str]  Email address to send workflow completion/stoppage notification
+	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
+	                                      this option is not needed if Singularity is natively installed on the deployment environment
+	--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
+	                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
+	                                      done for every separate run after the first, either: yes or no
+	--ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project reference VCF used for ADMIXTURE analysis has
+	                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
+	                                      need to be done for every separate run after the first, either: yes or no
+	--help                        [flag]  Prints this message
+```
