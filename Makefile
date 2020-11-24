@@ -37,7 +37,7 @@ preprocessing-completion:
 	mv nextflow_report.preprocessing_*.html logs/preprocessing
 	mv timeline_report.preprocessing_*.html logs/preprocessing
 	mv trace.preprocessing_*.txt logs/preprocessing
-	mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
+	ln -s output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
 	rm -rf work/*
 
 germline-completion:

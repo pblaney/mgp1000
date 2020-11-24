@@ -109,27 +109,17 @@ $ cp -r testSamples/* input/
 Now the simplicity of Nextflow takes over. The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
 ```
 $ nextflow run preprocessing.nf --help
-N E X T F L O W  ~  version 20.01.0
-Launching `preprocessing.nf` [nasty_marconi] - revision: 74bde0d727
-
-##### Myeloma Genome Project 1000 Pipeline #####
-################################################
-~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~
-################################################
-
-~~~ Launch Time ~~~		11-16-2020 16:42
-
-~~~ Output Directory ~~~ 	/Users/blanep01/morganLab/mgp1000/development/mgp1000/output/preprocessing
-
-################################################
+...
+...
+...
 
 Usage Example:
 
-	nextflow run preprocessing.nf -bg -resume --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
+	nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
 
 Mandatory Arguments:
+	--run_id                       [str]  Unique identifier for pipeline run
 	--input_format                 [str]  Format of input files, either: fastq or bam
-	--email                        [str]  Email address to send workflow completion/stoppage notification
 	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
 	                                      Currently available: preprocessing
 
@@ -139,6 +129,7 @@ Main Options:
 	                                      environment
 	-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 	                                      previously completed tasks are skipped while maintaining their output
+	--email                        [str]  Email address to send workflow completion/stoppage notification
 	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 	                                      this option is not needed if Singularity is natively installed on the deployment environment
 	--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
@@ -156,11 +147,12 @@ Upon completion of the Preprocessing step, Nextflow will ensure each relevent ou
 $ make preprocessing-completion
 ### Example output ###
 #	mkdir -p logs/preprocessing
-#	mv nextflow_report.html logs/preprocessing
-#	mv timeline_report.html logs/preprocessing
-#	mv trace.txt logs/preprocessing
-#	mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
+#	mv nextflow_report.preprocessing_*.html logs/preprocessing
+#	mv timeline_report.preprocessing_*.html logs/preprocessing
+#	mv trace.preprocessing_*.txt logs/preprocessing
+#	ln -s output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
 #	rm -rf work/*
 ```
 
+## Run the Germline Variant Analysis Step of the Pipeline
 
