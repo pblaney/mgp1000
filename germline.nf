@@ -230,7 +230,6 @@ if( params.ref_vcf_concatenated == "yes" ) {
 // Read user provided sample sheet to find Normal sample BAM files
 Channel
 	.fromPath( params.sample_sheet )
-	.ifEmpty{ error "No sample sheet provided, an example is given in the testSamples directory" }
 	.splitCsv( header:true )
 	.map{ row -> file("input/preprocessedBams/${row.normal}") }
 	.unique()
