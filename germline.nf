@@ -248,7 +248,7 @@ process telomereLengthEstimation_telseq {
 	path telomere_length_estimation
 
 	script:
-	telomere_length_estimation = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".germline.telomerelength.csv")
+	telomere_length_estimation = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".normal.telomerelength.csv")
 	"""
 	telseq "${bam_preprocessed}" > "${telomere_length_estimation}"
 	"""
