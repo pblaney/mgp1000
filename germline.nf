@@ -237,7 +237,7 @@ Channel
 	       input_preprocessed_bams_forHaplotypeCaller }
 
 // TelSeq ~ estimate telomere length of sample
-process telomereLengthEstimation_telseq {
+process normalSampleTelomereLengthEstimation_telseq {
 	publishDir "${params.output_dir}/germline/telomereLengthEstimations", mode: 'move'
 	tag "${bam_preprocessed.baseName}"
 
