@@ -18,7 +18,7 @@ log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
 log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/germline"
 log.info ''
-log.info "~~~ Run Report File ~~~ 	nextflow_report.germline_${params.run_id}.html"
+log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
 log.info ''
 log.info '################################################'
 log.info ''
