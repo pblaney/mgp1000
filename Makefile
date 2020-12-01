@@ -34,17 +34,17 @@ prep-pipeline:
 # successful completion of the steps of the pipeline
 preprocessing-completion:
 	mkdir -p logs/preprocessing
-	mv nextflow_report.preprocessing_*.html logs/preprocessing
-	mv timeline_report.preprocessing_*.html logs/preprocessing
-	mv trace.preprocessing_*.txt logs/preprocessing
-	ln -s output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
+	mv nextflow_report.*.html logs/preprocessing
+	mv timeline_report.*.html logs/preprocessing
+	mv trace.*.txt logs/preprocessing
+	mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
 	rm -rf work/*
 
 germline-completion:
 	mkdir -p logs/germline
-	mv nextflow_report.germline_*.html logs/germline
-	mv timeline_report.germline_*.html logs/germline
-	mv trace.germline_*.txt logs/germline
+	mv nextflow_report.*.html logs/germline
+	mv timeline_report.*.html logs/germline
+	mv trace.*.txt logs/germline
 	rm -rf work/*
 
 ###############################################################################
@@ -89,9 +89,9 @@ clean-preprocessing:
 	rm -rf output/preprocessing/*
 	rm -f .nextflow.log*
 	rm -f .nextflow.pid*
-	rm -f timeline_report.preprocessing_*.html*
-	rm -f nextflow_report.preprocessing_*.html*
-	rm -f trace.preprocessing_*.txt*
+	rm -f timeline_report.*.html*
+	rm -f nextflow_report.*.html*
+	rm -f trace.*.txt*
 
 # Scrub Germline step output files
 clean-germline:
@@ -99,8 +99,8 @@ clean-germline:
 	rm -rf output/germline/*
 	rm -f .nextflow.log*
 	rm -f .nextflow.pid*
-	rm -f timeline_report.germline_*.html*
-	rm -f nextflow_report.germline_*.html*
-	rm -f trace.germline_*.txt*
+	rm -f timeline_report.*.html*
+	rm -f nextflow_report.*.html*
+	rm -f trace.*.txt*
 
 ###############################################################################
