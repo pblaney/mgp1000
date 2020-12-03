@@ -103,4 +103,14 @@ clean-germline:
 	rm -f nextflow_report.*.html*
 	rm -f trace.*.txt*
 
+# Scrub Somatic step output files
+clean-somatic:
+	rm -rf work/*
+	rm -rf output/somtic/*
+	rm -f .nextflow.log*
+	rm -f .nextflow.pid*
+	rm -f timeline_report.*.html*
+	rm -f nextflow_report.*.html*
+	rm -f trace.*.txt*	
+
 ###############################################################################
