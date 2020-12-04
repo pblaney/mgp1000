@@ -636,7 +636,7 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	--fasta-ref "${reference_genome_fasta_forSplitAndNorm}" \
 	--output-type z \
 	- 2>"${realign_normalize_stats}" \
-	> "${final_germline_vcf}"
+	--output "${final_germline_vcf}"
 
 	tabix "${final_germline_vcf}"
 	"""
