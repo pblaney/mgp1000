@@ -186,6 +186,11 @@ process revertMappedBam_gatk {
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
+	--SANITIZE true \
+	--ATTRIBUTE_TO_CLEAR XT \
+	--ATTRIBUTE_TO_CLEAR XN \
+	--ATTRIBUTE_TO_CLEAR OC \
+	--ATTRIBUTE_TO_CLEAR OP \
 	--INPUT "${bam_mapped}" \
 	--OUTPUT "${bam_unmapped}"
 	"""
