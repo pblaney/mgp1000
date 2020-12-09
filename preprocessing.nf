@@ -184,7 +184,7 @@ process revertMappedBam_gatk {
 	gatk RevertSam \
 	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
 	--VERBOSITY ERROR \
-	--MAX_RECORDS_IN_RAM 8000000 \
+	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
 	--INPUT "${bam_mapped}" \
 	--OUTPUT "${bam_unmapped}"
