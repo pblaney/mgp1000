@@ -4,7 +4,7 @@
 
 // This portion of the pipeline is used for consistent preprocessing of all input WGS files.
 // Both FASTQ and BAM files are supported formats for the input WGS files.
-// The pipeline assumes that the input BAM reads were trimmed before alignment and that all FASTQs are in raw form.
+// The pipeline assumes that all FASTQs are in raw form.
 
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
@@ -182,7 +182,7 @@ process revertMappedBam_gatk {
 	bam_unmapped = "${bam_mapped}".replaceFirst(/\.bam/, ".unmapped.bam")
 	"""
 	gatk RevertSam \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
@@ -205,7 +205,7 @@ process bamToFastq_biobambam {
 	path bam_unmapped from unmapped_bams
 
 	output:
-	tuple val(sample_id), path(fastq_R1), path(fastq_R2) into converted_fastqs_forFastqc, converted_fastqs_forAlignment
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2) into converted_fastqs_forTrimming
 
 	when:
 	params.input_format == "bam"
@@ -224,6 +224,14 @@ process bamToFastq_biobambam {
 	"""
 }
 
+// Depending on which input data type was used, set an input variable for the Trimmomatic process
+if( params.input_format == "bam" ) {
+	input_fastqs_forTrimming = converted_fastqs_forTrimming
+}
+else {
+	input_fastqs_forTrimming = input_fastqs
+}
+
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process fastqTrimming_trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R1_trimmed}"	
@@ -232,14 +240,11 @@ process fastqTrimming_trimmomatic {
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(input_R1_fastqs), path(input_R2_fastqs), path(trimmomatic_contaminants) from input_fastqs.combine(trimmomatic_contaminants)
+	tuple val(sample_id), path(input_R1_fastqs), path(input_R2_fastqs), path(trimmomatic_contaminants) from input_fastqs_forTrimming.combine(trimmomatic_contaminants)
 
 	output:
 	tuple val(sample_id), path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
 	path fastq_trim_log
-
-	when:
-	params.input_format == "fastq"
 
 	script:
 	fastq_R1_trimmed = "${sample_id}_R1_trim.fastq.gz"
@@ -264,21 +269,13 @@ process fastqTrimming_trimmomatic {
 	"""
 }
 
-// Depending on which input data type was used, set an input variable for the FastQC process
-if( params.input_format == "bam" ) {
-	fastqs_forFastqc = converted_fastqs_forFastqc
-}
-else {
-	fastqs_forFastqc = trimmed_fastqs_forFastqc
-}
-
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqQualityControlMetrics_fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'move'
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2) from trimmed_fastqs_forFastqc
 
 	output:
 	tuple path(fastqc_R1_html), path(fastqc_R2_html)
@@ -298,14 +295,6 @@ process fastqQualityControlMetrics_fastqc {
 	"""
 }
 
-// Depending on which input data type was used, set an input variable for the BWA process
-if( params.input_format == "bam" ) {
-	fastqs_forAlignment = converted_fastqs_forAlignment
-}
-else {
-	fastqs_forAlignment = trimmed_fastqs_forAlignment
-}
-
 // BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
@@ -313,7 +302,7 @@ process alignment_bwa {
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from trimmed_fastqs_forAlignment.combine(bwa_reference_dir)
 
 	output:
 	path bam_aligned into aligned_bams
@@ -328,6 +317,7 @@ process alignment_bwa {
 	"""
 	bwa mem \
 	-M \
+	-K 100000000 \
 	-v 1 \
 	-t ${task.cpus} \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
@@ -367,7 +357,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
@@ -378,7 +368,7 @@ process fixMateInformationAndSort_gatk {
 	--OUTPUT "${bam_fixed_mate_unsorted}"
 
 	gatk SortSam \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--SORT_ORDER coordinate \
@@ -447,7 +437,7 @@ process downsampleBam_gatk {
 	bam_marked_dup_downsampled = "${sample_id}.markdup.downsampled.bam"
 	"""
 	gatk DownsampleSam \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
@@ -498,7 +488,7 @@ process baseRecalibrator_gatk {
 	bqsr_table = "${sample_id}.recaldata.table"
 	"""
 	gatk BaseRecalibrator \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
@@ -546,7 +536,7 @@ process applyBqsr_gatk {
 	bam_preprocessed_final_index = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bai")
 	"""
 	gatk ApplyBQSR \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
@@ -581,7 +571,7 @@ process collectWgsMetrics_gatk {
 	coverage_metrics = "${sample_id}.coverage.metrics.txt"
 	"""
 	gatk CollectWgsMetrics \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--INCLUDE_BQ_HISTOGRAM \
@@ -621,7 +611,7 @@ process collectGcBiasMetrics_gatk {
 	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
 	"""
 	gatk CollectGcBiasMetrics \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
