@@ -273,7 +273,7 @@ process splitIntervalList_gatk {
 	script:
 	"""
 	gatk SplitIntervals \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--reference "${reference_genome_fasta_forSplitIntervals}" \
@@ -312,7 +312,7 @@ process haplotypeCaller_gatk {
 	gvcf_per_interval_raw_index = "${gvcf_per_interval_raw}.idx"
 	"""
 	gatk HaplotypeCaller \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--max-alternate-alleles 3 \
@@ -342,7 +342,7 @@ process mergeAndSortGvcfs_gatk {
 	gvcf_merged_raw_index = "${gvcf_merged_raw}.idx"
 	"""
 	gatk SortVcf \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--MAX_RECORDS_IN_RAM 4000000 \
@@ -374,7 +374,7 @@ process combineAllGvcfs_gatk {
 	gvcf_cohort_combined_index = "${gvcf_cohort_combined}.tbi"
 	"""
 	gatk CombineGVCFs \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--reference "${reference_genome_fasta_forCombineGvcfs}" \
@@ -412,7 +412,7 @@ process jointGenotyping_gatk {
 	vcf_joint_genotyped_index = "${vcf_joint_genotyped}.tbi"
 	"""
 	gatk GenotypeGVCFs \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--dbsnp "${gatk_bundle_dbsnp138}" \
@@ -443,7 +443,7 @@ process excessHeterozygosityHardFilter_gatk {
 	vcf_hard_filtered_index = "${vcf_hard_filtered}.tbi"
 	"""
 	gatk VariantFiltration \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--filter-name ExcessHet \
@@ -484,7 +484,7 @@ process indelVariantRecalibration_gatk {
 	indel_vqsr_tranches = "${params.cohort_name}.indel.tranches"
 	"""
 	gatk VariantRecalibrator \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--mode INDEL \
@@ -534,7 +534,7 @@ process snpVariantRecalibration_gatk {
 	snp_vqsr_tranches = "${params.cohort_name}.snp.tranches"	
 	"""
 	gatk VariantRecalibrator \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--mode SNP \
@@ -571,7 +571,7 @@ process applyIndelAndSnpVqsr_gatk {
 	final_vqsr_germline_vcf_index = "${final_vqsr_germline_vcf}.tbi"
 	"""
 	gatk ApplyVQSR \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--mode INDEL \
@@ -584,7 +584,7 @@ process applyIndelAndSnpVqsr_gatk {
 	--output "${intermediate_vqsr_germline_vcf}"
 
 	gatk ApplyVQSR \
-	--java-options "-Xmx${task.memory.toGiga()}G -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 -XX:+AggressiveOpts" \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--mode SNP \
