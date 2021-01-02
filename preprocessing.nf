@@ -254,7 +254,7 @@ process fastqTrimming_trimmomatic {
 	fastq_trim_log = "${sample_id}.trim.log"
 	"""
 	trimmomatic PE \
-	-threads ${task.cpus * 2} \
+	-threads ${task.cpus} \
 	"${input_R1_fastqs}" \
 	"${input_R2_fastqs}" \
 	"${fastq_R1_trimmed}" \
