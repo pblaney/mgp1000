@@ -603,7 +603,7 @@ reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_for
 	.combine( reference_genome_fasta_dict_forSplitAndNorm )
 	.set{ reference_genome_bundle_forSplitAndNorm }
 
-// BCFtools Norm ~ Split multiallelic sites into multiple rows then left-align and normalize indels
+// BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	publishDir "${params.output_dir}/germline/finalGermlineVcfs", mode: 'symlink'
 	tag "Splitting ${params.cohort} GVCF multiallelic sites and left-normalizing indels"
@@ -642,7 +642,7 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	"""
 }
 
-// VEP ~ Download the reference files used for VEP annotation, if needed
+// VEP ~ download the reference files used for VEP annotation, if needed
 process downloadVepAnnotationReferences_vep {
 	publishDir "references/hg38", mode: 'copy'
 	tag "Downloading references files for VEP annotation"
@@ -679,7 +679,7 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
 
-// VEP ~ Annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
+// VEP ~ annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateGermlineVcf_vep {
 	publishDir "${params.output_dir}/germline/vepAnnotatedVcf", mode: 'copy'
 	tag "Annotating ${params.cohort} germline VCF"
@@ -727,7 +727,7 @@ reference_vcf_1000G_chromosomes1_9
 	.merge( reference_vcf_1000G_chromosomeX )
 	.set{ reference_vcf_1000G_per_chromosome }
 
-// BCFtools Concat/Annotate/View ~ Prepare the 1000 Genomes Project reference VCFs for use in ADMIXTURE process, if needed
+// BCFtools Concat/Annotate/View ~ prepare the 1000 Genomes Project reference VCFs for use in ADMIXTURE process, if needed
 process referenceVcfPrep_bcftools {
 	publishDir "references/hg38", mode: 'copy'
 	tag "Concatenating 1000 Genomes Project reference genome for ADMIXTURE projection analysis"
@@ -778,7 +778,7 @@ else {
 	reference_vcf_1000G = reference_vcf_1000G_fromProcess
 }
 
-// BCFtools Annotate/Merge ~ Preprocessing of VCF to remove all FORMAT fields except genotype needed for merging with reference VCF
+// BCFtools Annotate/Merge ~ preprocessing of VCF to remove all FORMAT fields except genotype needed for merging with reference VCF
 // and merge cohort VCF with 1000G ref VCF for supervised projection analysis, output no new multiallelic records
 process mergeCohortAndReferenceVcf_bcftools {
 	publishDir "${params.output_dir}/germline/cohortAndRefMergedVcf", mode: 'symlink'
@@ -814,7 +814,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 	"""
 }
 
-// VCFtools ~ Hard filter the merged VCF to only contain biallelic, non-singleton SNP sites that are a minimum of 2kb apart from each other
+// VCFtools ~ hard filter the merged VCF to only contain biallelic, non-singleton SNP sites that are a minimum of 2kb apart from each other
 process hardFilterCohortReferenceMergedVcf_vcftools {
 	publishDir "${params.output_dir}/germline/hardFilteredMergedVcfPlinkFiles", mode: 'symlink'
 	tag "Hard filtering ${params.cohort} and reference merged VCF"
@@ -842,7 +842,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 	"""
 }
 
-// PLINK ~ Generate ADMIXTURE ready PLINK files keeping only sites with a minor allele freq > 0.05, no missing genotype, then
+// PLINK ~ generate ADMIXTURE ready PLINK files keeping only sites with a minor allele freq > 0.05, no missing genotype, then
 // prune the markers for linkage disequilibrium (remove SNPs that have an R-squared value of greater than 0.5 with any
 // other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
 process filterPlinkFilesForAdmixture_plink {
