@@ -33,9 +33,10 @@ def helpMessage() {
 
 	Mandatory Arguments:
 		--run_id                       [str]  Unique identifier for pipeline run
-		--input_format                 [str]  Format of input files, either: fastq or bam
+		--input_format                 [str]  Format of input files
+		                                      Available: fastq, bam
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-		                                      Currently available: preprocessing, germline
+		                                      Available: preprocessing, germline, somatic
 
 	Main Options:
 		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
@@ -46,10 +47,11 @@ def helpMessage() {
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
-		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
-		                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
-		                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
-		                                      have adequate provenance to reflect this
+		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, can only be used in conjunction with bam as the input_format,
+		                                      should only be used for extreme coverage BAMs that have been previously aligned with BWA MEM to the hg38
+		                                      reference genome and have adequate provenance to reflect this
+		                                      Available: yes, no
+		                                      Default: no
 		--help                        [flag]  Prints this message
 
 	################################################
