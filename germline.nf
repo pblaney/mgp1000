@@ -38,7 +38,7 @@ def helpMessage() {
     	--cohort_name                  [str]  A user defined collective name of the group of samples being run through this step of the
     	                                      pipeline, this will be used as the name of the final output multi-sample GVCF
 		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-		                                      Currently available: preprocessing, germline
+		                                      Available: preprocessing, germline, somatic
 
 	Main Options:
 		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
@@ -51,10 +51,14 @@ def helpMessage() {
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
 		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
-		                                      done for every separate run after the first, either: yes or no
+		                                      done for every separate run after the first
+		                                      Available: yes, no
+		                                      Default: yes
 		--ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project reference VCF used for ADMIXTURE analysis has
 		                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
-		                                      need to be done for every separate run after the first, either: yes or no
+		                                      need to be done for every separate run after the first
+		                                      Available: yes, no
+		                                      Default: yes
 		--help                        [flag]  Prints this message
 
 	################################################
