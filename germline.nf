@@ -678,7 +678,7 @@ else {
 	vep_ref_dir = vep_ref_dir_fromProcess
 }
 
-//Combine all needed reference FASTA files into one channel for use in VEP annotation process
+// Combine all needed reference FASTA files into one channel for use in VEP annotation process
 reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAnnotation )
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
