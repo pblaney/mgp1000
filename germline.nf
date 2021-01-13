@@ -312,8 +312,8 @@ process haplotypeCaller_gatk {
 	script:
 	sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
 	interval_id = "${interval}".replaceFirst(/-split\.interval_list/, "_int")
-	gvcf_per_interval_raw = "${sample_id}.${interval_id}.g.vcf"
-	gvcf_per_interval_raw_index = "${gvcf_per_interval_raw}.idx"
+	gvcf_per_interval_raw = "${sample_id}.${interval_id}.g.vcf.gz"
+	gvcf_per_interval_raw_index = "${gvcf_per_interval_raw}.tbi"
 	"""
 	gatk HaplotypeCaller \
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
@@ -342,8 +342,8 @@ process mergeAndSortGvcfs_gatk {
 	path gvcf_merged_raw_index
 
 	script:
-	gvcf_merged_raw = "${sample_id}.g.vcf"
-	gvcf_merged_raw_index = "${gvcf_merged_raw}.idx"
+	gvcf_merged_raw = "${sample_id}.g.vcf.gz"
+	gvcf_merged_raw_index = "${gvcf_merged_raw}.tbi"
 	"""
 	gatk SortVcf \
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
@@ -373,7 +373,6 @@ process combineAllGvcfs_gatk {
 	tuple path(gvcf_cohort_combined), path(gvcf_cohort_combined_index) into combined_cohort_gvcf
 
 	script:
-	gvcf_cohort_combined_unzipped = "${params.cohort_name}.g.vcf"
 	gvcf_cohort_combined = "${params.cohort_name}.g.vcf.gz"
 	gvcf_cohort_combined_index = "${gvcf_cohort_combined}.tbi"
 	"""
@@ -383,10 +382,7 @@ process combineAllGvcfs_gatk {
 	--tmp-dir . \
 	--reference "${reference_genome_fasta_forCombineGvcfs}" \
 	${gvcf_merged_raw.collect {" --variant $it" }.join()} \
-	--output "${gvcf_cohort_combined_unzipped}"
-
-	bgzip < "${gvcf_cohort_combined_unzipped}" > "${gvcf_cohort_combined}"
-	tabix "${gvcf_cohort_combined}"
+	--output "${gvcf_cohort_combined}"
 	"""
 }
 
