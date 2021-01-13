@@ -439,6 +439,7 @@ process excessHeterozygosityHardFilter_gatk {
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnvVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
 
 	script:
+	vcf_hard_filtered_marked = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtermarked.vcf.gz")
 	vcf_hard_filtered = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtered.vcf.gz")
 	vcf_hard_filtered_index = "${vcf_hard_filtered}.tbi"
 	"""
@@ -449,6 +450,14 @@ process excessHeterozygosityHardFilter_gatk {
 	--filter-name ExcessHet \
 	--filter-expression "ExcessHet > 54.69" \
 	--variant "${vcf_joint_genotyped}" \
+	--output "${vcf_hard_filtered_marked}"
+
+	gatk SelectVariants \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--verbosity ERROR \
+	--tmp-dir . \
+	--exclude-filtered \
+	--variant "${vcf_hard_filtered_marked}" \
 	--output "${vcf_hard_filtered}"
 	"""
 }
