@@ -322,9 +322,6 @@ process haplotypeCaller_gatk {
 	--max-alternate-alleles 3 \
 	--standard-min-confidence-threshold-for-calling 50 \
 	--emit-ref-confidence GVCF \
-	--annotation-group StandardAnnotation \
-	--annotation-group StandardHCAnnotation \
-	--annotation-group AS_StandardAnnotation \
 	--reference "${reference_genome_fasta_forHaplotypeCaller}" \
 	--intervals "${interval}" \
 	--input "${bam_preprocessed}" \
