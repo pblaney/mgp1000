@@ -367,7 +367,7 @@ process combineAllGvcfs_gatk {
 
 	input:
 	path gvcf_merged_raw from merged_raw_gcvfs.toList()
-	path gvcf_merged_raw_index from merged_raw_gcvfs_indicies
+	path gvcf_merged_raw_index from merged_raw_gcvfs_indicies.collect()
 	tuple path(reference_genome_fasta_forCombineGvcfs), path(reference_genome_fasta_index_forCombineGvcfs), path(reference_genome_fasta_dict_forCombineGvcfs) from reference_genome_bundle_forCombineGvcfs
 
 	output:
