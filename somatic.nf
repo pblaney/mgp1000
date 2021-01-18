@@ -28,7 +28,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --singularity_module singularity/3.1 --email someperson@gmail.com --mutect_ref_vcf_concatenated no -profile somatic 
+		nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --singularity_module singularity/3.1 --email someperson@gmail.com --mutect_ref_vcf_concatenated no --vep_ref_cached no -profile somatic 
 
 	Mandatory Arguments:
     	--run_id                       [str]  Unique identifier for pipeline run
@@ -50,6 +50,11 @@ def helpMessage() {
 		--mutect_ref_vcf_concatenated  [str]  Indicates whether or not the gnomAD allele frequency reference VCF used for MuTect2 processes has
 		                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
 		                                      need to be done for every separate run after the first
+		                                      Available: yes, no
+		                                      Default: yes
+		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
+		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
+		                                      done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
 		--help                        [flag]  Prints this message
@@ -81,6 +86,7 @@ params.output_dir = "output"
 params.run_id = null
 params.sample_sheet = null
 params.mutect_ref_vcf_concatenated = "yes"
+params.vep_ref_cached = "yes"
 params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
@@ -104,7 +110,8 @@ Channel
 	       reference_genome_fasta_forVarscanBcftoolsNorm;
 	       reference_genome_fasta_forMutectCalling;
 	       reference_genome_fasta_forMutectFilter;
-	       reference_genome_fasta_forMutectBcftools }
+	       reference_genome_fasta_forMutectBcftools;
+	       reference_genome_fasta_forAnnotation }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
@@ -114,7 +121,8 @@ Channel
 	       reference_genome_fasta_index_forVarscanBcftoolsNorm;
 	       reference_genome_fasta_index_forMutectCalling;
 	       reference_genome_fasta_index_forMutectFilter;
-	       reference_genome_fasta_index_forMutectBcftools }
+	       reference_genome_fasta_index_forMutectBcftools;
+	       reference_genome_fasta_index_forAnnotation }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
@@ -126,7 +134,8 @@ Channel
 	       reference_genome_fasta_dict_forMutectPileupGatherTumor;
 	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
 	       reference_genome_fasta_dict_forMutectFilter;
-	       reference_genome_fasta_dict_forMutectBcftools }
+	       reference_genome_fasta_dict_forMutectBcftools;
+	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions.hg38.bed' )
@@ -193,7 +202,14 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/small_exac_common_3.hg38.vcf.gz.tbi' )
-	.set{ exac_common_sites_ref_vcf_index }	
+	.set{ exac_common_sites_ref_vcf_index }
+
+if( params.vep_ref_cached == "yes" ) {
+	Channel
+		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: 'dir', checkIfExists: true )
+		.ifEmpty{ error "The run command issued has the '--vep_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--vep_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
+		.set{ vep_ref_dir_preDownloaded }
+}
 
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
@@ -620,7 +636,8 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf), path(reference_genome_fasta_forVarscanBcftoolsNorm), path(reference_genome_fasta_index_forVarscanBcftoolsNorm), path(reference_genome_fasta_dict_forVarscanBcftoolsNorm) from filtered_vcfs_forVarscanBcftools.combine(reference_genome_bundle_forVarscanBcftoolsNorm)
 
 	output:
-	tuple path(final_varscan_vcf), path(final_varscan_vcf_index)
+	path final_varscan_vcf into final_varscan_vcf_forAnnotation
+	path final_varscan_vcf_index into final_varscan_vcf_index_forAnnotation
 	path varscan_multiallelics_stats
 	path varscan_realign_normalize_stats
 
@@ -1009,7 +1026,8 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 	tuple val(tumor_normal_sample_id), path(filtered_vcf), path(filtered_vcf_index), path(reference_genome_fasta_forMutectBcftools), path(reference_genome_fasta_index_forMutectBcftools), path(reference_genome_fasta_dict_forMutectBcftools) from filtered_vcf_forMutectBcftools.combine(reference_genome_bundle_forMutectBcftools)
 
 	output:
-	tuple path(final_mutect_vcf), path(final_mutect_vcf_index)
+	path final_mutect_vcf into final_mutect_vcf_forAnnotation
+	path final_mutect_vcf_index into final_mutect_vcf_index_forAnnotation
 	path mutect_multiallelics_stats
 	path mutect_realign_normalize_stats
 
@@ -1045,3 +1063,95 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// VEP ~ download the reference files used for VEP annotation, if needed
+process downloadVepAnnotationReferences_vep {
+	publishDir "references/hg38", mode: 'copy'
+	tag "Downloading references files for VEP annotation"
+
+	output:
+	path cached_ref_dir_vep into vep_ref_dir_fromProcess
+
+	when:
+	params.vep_ref_cached == "no"
+
+	script:
+	cached_ref_dir_vep = "homo_sapiens_vep_101_GRCh38"
+	"""
+	curl -O ftp://ftp.ensembl.org/pub/release-101/variation/indexed_vep_cache/homo_sapiens_vep_101_GRCh38.tar.gz && \
+	mkdir -p "${cached_ref_dir_vep}" && \
+	mv homo_sapiens_vep_101_GRCh38.tar.gz "${cached_ref_dir_vep}/" && \
+	cd "${cached_ref_dir_vep}/" && \
+	tar xzf homo_sapiens_vep_101_GRCh38.tar.gz && \
+	rm homo_sapiens_vep_101_GRCh38.tar.gz
+	"""
+}
+
+// Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
+// channel for the VEP annotation process
+if( params.vep_ref_cached == "yes" ) {
+	vep_ref_dir = vep_ref_dir_preDownloaded
+}
+else {
+	vep_ref_dir = vep_ref_dir_fromProcess
+}
+
+// Combine all needed reference FASTA files into one channel for use in VEP annotation process
+reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAnnotation )
+	.combine( reference_genome_fasta_dict_forAnnotation )
+	.set{ reference_genome_bundle_forAnnotation }
+
+// Create a channel of each unannotated somatic VCF and index produced in the pipeline to put through the VEP annotation process
+final_varscan_vcf_forAnnotation.ifEmpty{ 'skipped' }
+	.mix( final_mutect_vcf_forAnnotation.ifEmpty{ 'skipped' } )
+	.filter{ it != 'skipped' }
+	.set{ final_somatic_vcfs_forAnnotation }
+
+final_varscan_vcf_index_forAnnotation.ifEmpty{ 'skipped' }
+	.mix( final_mutect_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
+	.filter{ it != 'skipped' }
+	.set{ final_somatic_vcfs_indicies_forAnnotation }
+
+// VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
+process annotateSomaticVcf_vep {
+	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy'
+	tag ""
+
+	input:
+	tuple path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from vep_ref_dir.combine(reference_genome_bundle_forAnnotation)
+	path final_somatic_vcfs_indicies_forAnnotation
+	each path(final_somatic_vcf) from final_somatic_vcfs_forAnnotation
+
+
+	output:
+	path final_annotated_somatic_vcfs
+	path annotation_summary
+
+	script:
+	final_annotated_somatic_vcfs = "${final_somatic_vcf}".replaceFirst(/\.somatic\.vcf\.gz/, ".annotated.somatic.vcf.gz")
+	annotation_summary = "${final_somatic_vcf}".replaceFirst(/\.somatic\.vcf\.gz/, ".vep.summary.html")
+	"""
+	vep \
+	--offline \
+	--cache \
+	--dir "${cached_ref_dir_vep}" \
+	--assembly GRCh38 \
+	--fasta "${reference_genome_fasta_forAnnotation}" \
+	--input_file "${final_somatic_vcf}" \
+	--format vcf \
+	--hgvs \
+	--hgvsg \
+	--protein \
+	--symbol \
+	--ccds \
+	--canonical \
+	--biotype \
+	--sift b \
+	--polyphen b \
+	--stats_file "${annotation_summary}" \
+	--output_file "${final_annotated_somatic_vcfs}" \
+	--compress_output bgzip \
+	--vcf
+	"""
+}
