@@ -392,6 +392,7 @@ process markDuplicatesAndIndex_sambamba {
 	output:
 	tuple val(sample_id), path(bam_marked_dup) into marked_dup_bams_forDownsampleBam, marked_dup_bams_forApplyBqsr
 	path bam_marked_dup_index
+	path markdup_output_log
 	path bam_markdup_flagstat_log
 
 	when:
