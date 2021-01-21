@@ -265,7 +265,6 @@ reference_genome_fasta_forSplitIntervals.combine( reference_genome_fasta_index_f
 
 // GATK SplitIntervals ~ divide interval list into files containing equal number of reads for better pipeline performance
 process splitIntervalList_gatk {
-	tag "Spliting interval list into 20 files"
 	
 	input:
 	tuple path(reference_genome_fasta_forSplitIntervals), path(reference_genome_fasta_index_forSplitIntervals), path(reference_genome_fasta_dict_forSplitIntervals) from reference_genome_bundle_forSplitIntervals
@@ -363,7 +362,7 @@ reference_genome_fasta_forCombineGvcfs.combine( reference_genome_fasta_index_for
 // GATK CombineGVFCs ~ combine per-sample GVCF files into a multi-sample GVCF for joint-genotyping
 process combineAllGvcfs_gatk {
 	publishDir "${params.output_dir}/germline/combinedGvcf", mode: 'symlink'
-	tag "Combining all ${params.cohort_name} GVCFs for joint-genotyping"
+	tag "${params.cohort_name}"
 
 	input:
 	path gvcf_merged_raw from merged_raw_gcvfs.toList()
@@ -398,7 +397,7 @@ reference_genome_fasta_forJointGenotyping.combine( reference_genome_fasta_index_
 // GATK GenotypeGVCFs ~ perform joint genotyping
 process jointGenotyping_gatk {
 	publishDir "${params.output_dir}/germline/genotypedVcf", mode: 'symlink'
-	tag "Joint-Genotyping ${params.cohort_name} GVCF"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(gvcf_cohort_combined), path(gvcf_cohort_combined_index) from combined_cohort_gvcf
@@ -431,7 +430,7 @@ process jointGenotyping_gatk {
 // than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
 process excessHeterozygosityHardFilter_gatk {
 	publishDir "${params.output_dir}/germline/excessHetHardFilter", mode: 'symlink'
-	tag "Excess heterozygosity hard filter for ${params.cohort} GVCF"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) from joint_genotyped_vcfs
@@ -478,7 +477,7 @@ reference_genome_fasta_forIndelVariantRecalibration.combine( reference_genome_fa
 // GATK VariantRecalibrator (Indels) ~ build recalibration model to score indel variant quality for filtering
 process indelVariantRecalibration_gatk {
 	publishDir "${params.output_dir}/germline/indelVariantRecal", mode: 'copy'
-	tag "Indel variant recalibration for ${params.cohort} GVCF"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forIndelVariantRecalibration
@@ -528,7 +527,7 @@ reference_genome_fasta_forSnpVariantRecalibration.combine( reference_genome_fast
 // GATK VariantRecalibrator (SNPs) ~ build recalibration model to score SNP variant quality for filtering
 process snpVariantRecalibration_gatk {
 	publishDir "${params.output_dir}/germline/snpVariantRecal", mode: 'copy'
-	tag "SNP variant recalibration for ${params.cohort} GVCF"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forSnvVariantRecalibration
@@ -565,7 +564,7 @@ process snpVariantRecalibration_gatk {
 // GATK ApplyVQSR ~ apply variant quality score recalibration for Indels and SNPs
 process applyIndelAndSnpVqsr_gatk {
 	publishDir "${params.output_dir}/germline/vqsrVcfs", mode: 'symlink'
-	tag "Applying variant quality score recalibration to ${params.cohort} GVCF indels and SNPs"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forApplyVqsr
@@ -616,7 +615,7 @@ reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_for
 // BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	publishDir "${params.output_dir}/germline/finalGermlineVcfs", mode: 'symlink'
-	tag "Splitting ${params.cohort} GVCF multiallelic sites and left-normalizing indels"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(final_vqsr_germline_vcf), path(final_vqsr_germline_vcf_index) from vqsr_germline_vcfs
@@ -655,7 +654,6 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 // VEP ~ download the reference files used for VEP annotation, if needed
 process downloadVepAnnotationReferences_vep {
 	publishDir "references/hg38", mode: 'copy'
-	tag "Downloading references files for VEP annotation"
 
 	output:
 	path cached_ref_dir_vep into vep_ref_dir_fromProcess
@@ -692,7 +690,7 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 // VEP ~ annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateGermlineVcf_vep {
 	publishDir "${params.output_dir}/germline/vepAnnotatedVcf", mode: 'copy'
-	tag "Annotating ${params.cohort} germline VCF"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(final_germline_vcf), path(final_germline_vcf_index) from final_germline_vcf_forAnnotation
@@ -740,7 +738,6 @@ reference_vcf_1000G_chromosomes1_9
 // BCFtools Concat/Annotate/View ~ prepare the 1000 Genomes Project reference VCFs for use in ADMIXTURE process, if needed
 process referenceVcfPrep_bcftools {
 	publishDir "references/hg38", mode: 'copy'
-	tag "Concatenating 1000 Genomes Project reference genome for ADMIXTURE projection analysis"
 
 	input:
 	path per_chromosome_ref_vcf from reference_vcf_1000G_per_chromosome
@@ -792,7 +789,7 @@ else {
 // and merge cohort VCF with 1000G ref VCF for supervised projection analysis, output no new multiallelic records
 process mergeCohortAndReferenceVcf_bcftools {
 	publishDir "${params.output_dir}/germline/cohortAndRefMergedVcf", mode: 'symlink'
-	tag "Merging ${params.cohort} GVCF with reference VCF"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple path(vcf_germline_final), path(vcf_germline_final_index) from final_germline_vcf_forAdmixture
@@ -827,7 +824,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 // VCFtools ~ hard filter the merged VCF to only contain biallelic, non-singleton SNP sites that are a minimum of 2kb apart from each other
 process hardFilterCohortReferenceMergedVcf_vcftools {
 	publishDir "${params.output_dir}/germline/hardFilteredMergedVcfPlinkFiles", mode: 'symlink'
-	tag "Hard filtering ${params.cohort} and reference merged VCF"
+	tag "${params.cohort_name}"
 
 	input:
 	path sample_ref_merged_vcf from merged_unfiltered_vcf
@@ -857,7 +854,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 // other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
 process filterPlinkFilesForAdmixture_plink {
 	publishDir "${params.output_dir}/germline/mafGenotypeAndLinkeageDiseqFilteredPlinkFiles", mode: 'copy'
-	tag "Filtering PLINK files for MAF > 0.05, no missing genotypes, and pruned for linkage disequilibrium"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) from hard_filtered_refmerged_plink_files
@@ -893,7 +890,7 @@ process filterPlinkFilesForAdmixture_plink {
 // ADMIXTURE ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised and haploid aware fashion 
 process ancestryEstimation_admixture {
 	publishDir "${params.output_dir}/germline/admixutreAncestryEstimation", mode: 'move'
-	tag "Calculating ancestry estimations"
+	tag "${params.cohort_name}"
 
 	input:
 	tuple val(pruned_filtered_plink_file_prefix), path(pruned_filtered_plink_bed_file), path(pruned_filtered_plink_bim_file), path(pruned_filtered_plink_fam_file) from pruned_filtered_refmerged_plink_files
