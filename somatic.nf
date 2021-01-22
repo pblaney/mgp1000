@@ -269,7 +269,7 @@ reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_fo
 // Conpair ~ generate GATK pileups the tumor and normal BAMs separately
 process bamPileupForConpair_conpair {
 	publishDir "${params.output_dir}/somatic/concordanceAndContaminationEstimations", mode: 'symlink'
-	tag "T=${tumor_id} | N=${normal_id}"
+	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forConpairPileup), path(reference_genome_fasta_index_forConpairPileup), path(reference_genome_fasta_dict_forConpairPileup) from tumor_normal_pair_forConpairPileup.combine(reference_genome_bundle_forConpairPileup)
@@ -308,7 +308,7 @@ process bamPileupForConpair_conpair {
 // Conpair ~ concordance and contamination estimator for tumor–normal pileups
 process concordanceAndContaminationEstimation_conpair {
 	publishDir "${params.output_dir}/somatic/concordanceAndContaminationEstimations", mode: 'move'
-	tag "T=${tumor_id} | N=${normal_id}"
+	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
 	tuple val(tumor_id), val(normal_id) from sample_ids_forConpair
@@ -418,7 +418,7 @@ process snvAndIndelCalling_varscan {
 // BCFtools Concat ~ concatenate all VarScan SNV/indel per chromosome VCFs
 process concatenateVarscanPerChromosomeVcfs_bcftools {
 	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
-	tag "Concatenating raw VarScan ${tumor_normal_sample_id} SNV/indel VCFs"
+	tag "${tumor_normal_sample_id}"
 	
 	input:
 	tuple val(tumor_normal_sample_id), path(raw_per_chromosome_snv_vcf), path(raw_per_chromosome_snv_vcf_index), path(raw_per_chromosome_indel_vcf), path(raw_per_chromosome_indel_vcf_index) from raw_per_chromosome_vcfs_forVarscanBcftools.groupTuple()
@@ -496,7 +496,7 @@ process concatenateVarscanPerChromosomeVcfs_bcftools {
 // VarScan processSomatic ~ filter the called SNVs and indels for confidence and somatic status assignment
 process filterRawSnvAndIndels_varscan {
 	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
-	tag "Filtering raw VarScan ${tumor_normal_sample_id} SNV/indel VCFs"
+	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple val(tumor_normal_sample_id), path(raw_snv_vcf), path(raw_indel_vcf) from raw_vcfs_forVarscanHcFilter
@@ -548,7 +548,7 @@ tumor_normal_pair_forVarscanBamReadcount.combine( reference_genome_bundle_forVar
 // bam-readcount ~ generate metrics at single nucleotide positions for filtering out false positive calls
 process bamReadcountForVarscanFpFilter_bamreadcount {
 	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
-	tag "Generating read counts for false positive filtering VarScan ${tumor_normal_sample_id} high confidence SNV/indel VCFs"
+	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forVarscanBamReadcount), path(reference_genome_fasta_index_forVarscanBamReadcount), path(reference_genome_fasta_dict_forVarscanBamReadcount), val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index) from bam_and_reference_genome_bundle_forVarscanBamReadcount.combine(high_confidence_vcfs_forVarscanBamReadcount)
@@ -587,7 +587,7 @@ process bamReadcountForVarscanFpFilter_bamreadcount {
 // VarScan fpfilter ~ filter out additional false positive variants
 process falsePositivefilterSnvAndIndels_varscan {
 	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
-	tag "False positive filtering VarScan ${tumor_normal_sample_id} high confidence SNV/indel VCFs"
+	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(snv_readcount_file), path(indel_readcount_file) from high_confidence_vcfs_forVarscanFpFilter.combine(readcount_forVarscanFpFilter)
@@ -630,7 +630,7 @@ reference_genome_fasta_forVarscanBcftoolsNorm.combine( reference_genome_fasta_in
 // BCFtools Concat / Norm ~ join the SNV and indel calls, split multiallelic sites into multiple rows then left-align and normalize indels
 process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
-	tag "Concatenating ${tumor_normal_sample_id} SNV/indel VCFs, splitting multiallelic sites, and left-normalizing indels"
+	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf), path(reference_genome_fasta_forVarscanBcftoolsNorm), path(reference_genome_fasta_index_forVarscanBcftoolsNorm), path(reference_genome_fasta_dict_forVarscanBcftoolsNorm) from filtered_vcfs_forVarscanBcftools.combine(reference_genome_bundle_forVarscanBcftoolsNorm)
@@ -685,7 +685,6 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 // BCFtools Concat ~ prepare the gnomAD allele frequency reference VCF for MuTect2 process, if needed
 process mutect2GnomadReferenceVcfPrep_bcftools {
 	publishDir "references/hg38", mode: 'copy'
-	tag "Concatenating gnomAD allele frequency reference VCF for MuTect2 analysis"
 
 	input:
 	path gnomad_ref_vcf_chromosomes1_9
@@ -814,7 +813,7 @@ process mergeAndSortMutect2Vcfs_gatk {
 // GATK MergeMutectStats ~ merge the per chromosome stats output of MuTect2 variant calling
 process mergeMutect2StatsForFiltering_gatk {
 	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
-	tag "Merging ${tumor_normal_sample_id} per chromosome MuTect2 variant calling stats files"
+	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple val(tumor_normal_sample_id), path(raw_per_chromosome_mutect_stats_file) from raw_per_chromosome_mutect_stats_forMutectStatsMerge.groupTuple()
@@ -890,7 +889,7 @@ process pileupSummariesForMutect2Contamination_gatk {
 // GATK GatherPileupSummaries ~ combine tumor pileup tables for inferring contamination
 process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
-	tag ""
+	tag "${tumor_id}"
 
 	input:
 	tuple val(tumor_id), path(per_chromosome_tumor_pileup), path(reference_genome_fasta_dict) from per_chromosome_tumor_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherTumor)
@@ -917,7 +916,7 @@ process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 // GATK GatherPileupSummaries ~ combine normal pileup tables for inferring contamination
 process gatherNormalPileupSummariesForMutect2Contamination_gatk {
 	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
-	tag ""
+	tag "${normal_id}"
 
 	input:
 	tuple val(normal_id), path(per_chromosome_normal_pileup), path(reference_genome_fasta_dict) from per_chromosome_normal_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherNormal)
@@ -1068,7 +1067,6 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 // VEP ~ download the reference files used for VEP annotation, if needed
 process downloadVepAnnotationReferences_vep {
 	publishDir "references/hg38", mode: 'copy'
-	tag "Downloading references files for VEP annotation"
 
 	output:
 	path cached_ref_dir_vep into vep_ref_dir_fromProcess
@@ -1116,7 +1114,7 @@ final_varscan_vcf_index_forAnnotation.ifEmpty{ 'skipped' }
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
 	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy'
-	tag ""
+	tag "${final_somatic_vcf}.replaceFirst(/\.somatic\.vcf\.gz/, "")"
 
 	input:
 	tuple path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from vep_ref_dir.combine(reference_genome_bundle_forAnnotation)
