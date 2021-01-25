@@ -1,5 +1,3 @@
-# UNDER ACTIVE DEVELOPMENT
-
 # Myeloma Genome Project 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to deliniate the broad spectrum of somatic events
 
@@ -216,3 +214,6 @@ $ make germline-completion
 # mv timeline_report.*.html logs/germline
 # mv trace.*.txt logs/germline
 ```
+
+## Run the Somatic Variant Analysis Step of the Pipeline
+This step of the pipeline is currently under active development.
