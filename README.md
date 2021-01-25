@@ -112,6 +112,7 @@ $ nextflow run preprocessing.nf --help
 ...
 ...
 ...
+################################################
 
 Usage Example:
 
@@ -119,9 +120,10 @@ Usage Example:
 
 Mandatory Arguments:
 	--run_id                       [str]  Unique identifier for pipeline run
-	--input_format                 [str]  Format of input files, either: fastq or bam
+	--input_format                 [str]  Format of input files
+	                                      Available: fastq, bam
 	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-	                                      Currently available: preprocessing, germline
+	                                      Available: preprocessing, germline, somatic
 
 Main Options:
 	-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
@@ -132,10 +134,11 @@ Main Options:
 	--email                        [str]  Email address to send workflow completion/stoppage notification
 	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 	                                      this option is not needed if Singularity is natively installed on the deployment environment
-	--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, either: yes or no
-	                                      can only be used in conjunction with bam as the input_format, should only be used for extreme
-	                                      coverage BAMs that have been previously aligned with BWA MEM to the hg38 reference genome and
-	                                      have adequate provenance to reflect this
+	--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, can only be used in conjunction with bam as the input_format,
+	                                      should only be used for extreme coverage BAMs that have been previously aligned with BWA MEM to the hg38
+	                                      reference genome and have adequate provenance to reflect this
+	                                      Available: yes, no
+	                                      Default: no
 	--help                        [flag]  Prints this message
 
 ################################################
@@ -146,12 +149,11 @@ Upon completion of the Preprocessing step, Nextflow will ensure each relevent ou
 ```
 $ make preprocessing-completion
 ### Example output ###
-#	mkdir -p logs/preprocessing
-#	mv nextflow_report.preprocessing_*.html logs/preprocessing
-#	mv timeline_report.preprocessing_*.html logs/preprocessing
-#	mv trace.preprocessing_*.txt logs/preprocessing
-#	ln -s output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
-#	rm -rf work/*
+# mkdir -p logs/preprocessing
+# mv nextflow_report.*.html logs/preprocessing
+# mv timeline_report.*.html logs/preprocessing
+# mv trace.*.txt logs/preprocessing
+# mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
 ```
 
 ## Run the Germline Variant Analysis Step of the Pipeline
@@ -178,7 +180,7 @@ Mandatory Arguments:
    	--cohort_name                  [str]  A user defined collective name of the group of samples being run through this step of the
    	                                      pipeline, this will be used as the name of the final output multi-sample GVCF
 	-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-	                                      Currently available: preprocessing, germline
+	                                      Available: preprocessing, germline, somatic
 
 Main Options:
 	-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
@@ -191,9 +193,15 @@ Main Options:
 	                                      this option is not needed if Singularity is natively installed on the deployment environment
 	--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
 	                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
-	                                      done for every separate run after the first, either: yes or no
+	                                      done for every separate run after the first
+	                                      Available: yes, no
+	                                      Default: yes
 	--ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project reference VCF used for ADMIXTURE analysis has
 	                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
-	                                      need to be done for every separate run after the first, either: yes or no
+	                                      need to be done for every separate run after the first
+	                                      Available: yes, no
+	                                      Default: yes
 	--help                        [flag]  Prints this message
+
+################################################
 ```
