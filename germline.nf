@@ -563,7 +563,7 @@ process snpVariantRecalibration_gatk {
 
 // GATK ApplyVQSR ~ apply variant quality score recalibration for Indels and SNPs
 process applyIndelAndSnpVqsr_gatk {
-	publishDir "${params.output_dir}/germline/vqsrVcfs", mode: 'symlink'
+	publishDir "${params.output_dir}/germline/vqsrVcfs", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -614,7 +614,7 @@ reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_for
 
 // BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeVcf_bcftools {
-	publishDir "${params.output_dir}/germline/finalGermlineVcfs", mode: 'symlink'
+	publishDir "${params.output_dir}/germline/finalGermlineVcfs", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -823,7 +823,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 
 // VCFtools ~ hard filter the merged VCF to only contain biallelic, non-singleton SNP sites that are a minimum of 2kb apart from each other
 process hardFilterCohortReferenceMergedVcf_vcftools {
-	publishDir "${params.output_dir}/germline/hardFilteredMergedVcfPlinkFiles", mode: 'symlink'
+	publishDir "${params.output_dir}/germline/hardFilteredMergedVcfPlinkFiles", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
