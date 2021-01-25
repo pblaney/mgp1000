@@ -145,7 +145,7 @@ Main Options:
 ```
 
 ### Collect Preprocessing Output
-Upon completion of the Preprocessing step, Nextflow will ensure each relevent output files will be copied into a process-specific directory within the `output/preprocessing` folder. However, there are some additional steps such as saving the current run's Nextflow log files, clearing up space in the `work` directory, and preping the input for the Germline Variant Analysis step. This can be done with the following `make` command. Please note that the log files are not uniquely named for each run of the pipeline.
+Upon completion of the Preprocessing step, Nextflow will ensure each relevent output files will be copied into a process-specific directory within the `output/preprocessing` folder. However, there are some additional steps such as saving the current run's Nextflow log files, clearing up space in the `work` directory, and preping the input for the Germline Variant Analysis step. This can be done with the following `make` command.
 ```
 $ make preprocessing-completion
 ### Example output ###
