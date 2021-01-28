@@ -252,7 +252,7 @@ process normalSampleTelomereLengthEstimation_telseq {
 	path telomere_length_estimation
 
 	script:
-	telomere_length_estimation = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".normal.telomerelength.csv")
+	telomere_length_estimation = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".normal.telomerelength.txt")
 	"""
 	telseq "${bam_preprocessed}" > "${telomere_length_estimation}"
 	"""
