@@ -71,7 +71,10 @@ def helpMessage() {
 		                                      Default: on
 		--mutect                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
-		                                      Default: on                                      
+		                                      Default: on
+		--manta                        [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 
 	################################################
 
@@ -91,6 +94,7 @@ params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
+params.manta = "on"
 params.help = null
 
 // Print help message if requested
@@ -111,6 +115,7 @@ Channel
 	       reference_genome_fasta_forMutectCalling;
 	       reference_genome_fasta_forMutectFilter;
 	       reference_genome_fasta_forMutectBcftools;
+	       reference_genome_fasta_forManta;
 	       reference_genome_fasta_forAnnotation }
 
 Channel
@@ -122,6 +127,7 @@ Channel
 	       reference_genome_fasta_index_forMutectCalling;
 	       reference_genome_fasta_index_forMutectFilter;
 	       reference_genome_fasta_index_forMutectBcftools;
+	       reference_genome_fasta_index_forManta;
 	       reference_genome_fasta_index_forAnnotation }
 
 Channel
@@ -135,13 +141,15 @@ Channel
 	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
 	       reference_genome_fasta_dict_forMutectFilter;
 	       reference_genome_fasta_dict_forMutectBcftools;
+	       reference_genome_fasta_dict_forManta;
 	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions.hg38.bed' )
 	.into{ gatk_bundle_wgs_bed_forVarscanSamtoolsMpileup;
 	       gatk_bundle_wgs_bed_forMutectCalling;
-	       gatk_bundle_wgs_bed_forMutectPileup }
+	       gatk_bundle_wgs_bed_forMutectPileup;
+	       gatk_bundle_wgs_bed_forManta }
 
 Channel
 	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
@@ -227,7 +235,8 @@ Channel
 	       tumor_normal_pair_forVarscanSamtoolsMpileup; 
 	       tumor_normal_pair_forVarscanBamReadcount;
 	       tumor_normal_pair_forMutectCalling;
-	       tumor_normal_pair_forMutectPileup }
+	       tumor_normal_pair_forMutectPileup;
+	       tumor_normal_pair_forManta }
 
 // Read user provided sample sheet to find Tumor sample BAM files
 Channel
@@ -252,7 +261,7 @@ process tumorSampleTelomereLengthEstimation_telseq {
 	params.telseq == "on"
 
 	script:
-	telomere_length_estimation = "${tumor_bam}".replaceFirst(/\..*bam/, ".tumor.telomerelength.csv")
+	telomere_length_estimation = "${tumor_bam}".replaceFirst(/\..*bam/, ".tumor.telomerelength.txt")
 	"""
 	telseq "${tumor_bam}" > "${telomere_length_estimation}"
 	"""
@@ -352,7 +361,7 @@ process concordanceAndContaminationEstimation_conpair {
 // ~~~~~~~~~~~~~~~~ VarScan2 ~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all reference FASTA files and WGS .bed file into one channel for use in VarScan / SAMtools mpileup
+// Combine all reference FASTA files and WGS BED file into one channel for use in VarScan / SAMtools mpileup
 reference_genome_fasta_forVarscanSamtoolsMpileup.combine( reference_genome_fasta_index_forVarscanSamtoolsMpileup )
 	.combine( reference_genome_fasta_dict_forVarscanSamtoolsMpileup )
 	.set{ reference_genome_bundle_forVarscanSamtoolsMpileup }
@@ -727,9 +736,7 @@ else {
 // Combine all reference FASTA files, WGS BED file, and resource VCFs into one channel for use in MuTect calling process
 reference_genome_fasta_forMutectCalling.combine( reference_genome_fasta_index_forMutectCalling )
 	.combine( reference_genome_fasta_dict_forMutectCalling )
-	.set{ reference_genome_bundle_forMutectCalling }
-
-reference_genome_bundle_forMutectCalling.combine( gatk_bundle_wgs_bed_forMutectCalling )
+	.combine( gatk_bundle_wgs_bed_forMutectCalling )
 	.set{ reference_genome_bundle_and_bed_forMutectCalling }
 
 reference_genome_bundle_and_bed_forMutectCalling.combine( mutect_gnomad_ref_vcf )
@@ -1064,6 +1071,87 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+// ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all needed reference FASTA files and WGS BED into one channel for use in Manta process
+reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
+	.combine( reference_genome_fasta_dict_forManta )
+	.combine( gatk_bundle_wgs_bed_forManta )
+	.set{ reference_genome_bundle_and_bed_forManta }
+
+// Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
+process svAndIndelCalling_manta {
+	publishDir "${params.output_dir}/somatic/manta", mode: 'symlink'
+	tag "T=${tumor_id} N=${normal_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forManta), path(reference_genome_fasta_index_forManta), path(reference_genome_fasta_dict_forManta), path(gatk_bundle_wgs_bed_forManta) from tumor_normal_pair_forManta.combine(reference_genome_bundle_and_bed_forManta)
+
+	output:
+	path final_manta_somatic_sv_vcf into final_manta_vcf_forAnnotation
+	path final_manta_somatic_sv_vcf_index into final_manta_vcf_index_forAnnotation
+	tuple path(candidate_sv_vcf), path(candidate_sv_vcf_index)
+	tuple path(candidate_indels_vcf), path(candidate_indels_vcf_index)
+	tuple path(diploid_sv_vcf), path(diploid_sv_vcf_index)
+
+	when:
+	params.manta == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	zipped_wgs_bed = "${gatk_bundle_wgs_bed_forManta}.gz"
+	candidate_sv_vcf = "${tumor_normal_sample_id}.manta.candidateSV.vcf.gz"
+	candidate_sv_vcf_index = "${candidate_sv_vcf}.tbi"
+	candidate_indels_vcf = "${tumor_normal_sample_id}.manta.candidateSmallIndels.vcf.gz"
+	candidate_indels_vcf_index = "${candidate_indels_vcf}.tbi"
+	diploid_sv_vcf = "${tumor_normal_sample_id}.manta.diploid.vcf.gz"
+	diploid_sv_vcf_index = "${diploid_sv_vcf}.tbi"
+	final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.vcf.gz"
+	final_manta_somatic_sv_vcf_index = "${final_manta_somatic_sv_vcf}.tbi"
+	"""
+	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed}"
+	tabix "${zipped_wgs_bed}"
+
+	python \${MANTA_DIR}/bin/configManta.py \
+	--tumorBam "${tumor_bam}" \
+	--normalBam "${normal_bam}" \
+	--referenceFasta "${reference_genome_fasta_forManta}" \
+	--callRegions "${zipped_wgs_bed}" \
+	--runDir manta
+
+	python manta/runWorkflow.py \
+	--mode local \
+	--jobs ${task.cpus} \
+	--memGb ${task.memory.toGiga()}
+
+	mv manta/results/variants/candidateSV.vcf.gz "${candidate_sv_vcf}"
+	mv manta/results/variants/candidateSV.vcf.gz.tbi "${candidate_sv_vcf_index}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz "${candidate_indels_vcf}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi "${candidate_indels_vcf_index}"
+
+	zcat manta/results/variants/diploidSV.vcf.gz \
+	| \
+	grep -E "^#|PASS" \
+	| \
+	bgzip > "${diploid_sv_vcf}"
+	tabix "${diploid_sv_vcf}"
+
+	zcat manta/results/variants/somaticSV.vcf.gz \
+	| \
+	grep -E "^#|PASS" \
+	| \
+	bgzip > "${final_manta_somatic_sv_vcf}"
+	tabix "${final_manta_somatic_sv_vcf}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
 // VEP ~ download the reference files used for VEP annotation, if needed
 process downloadVepAnnotationReferences_vep {
 	publishDir "references/hg38", mode: 'copy'
@@ -1103,32 +1191,34 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 // Create a channel of each unannotated somatic VCF and index produced in the pipeline to put through the VEP annotation process
 final_varscan_vcf_forAnnotation.ifEmpty{ 'skipped' }
 	.mix( final_mutect_vcf_forAnnotation.ifEmpty{ 'skipped' } )
+	.mix( final_manta_vcf_forAnnotation.ifEmpty{ 'skipped' } )
 	.filter{ it != 'skipped' }
 	.set{ final_somatic_vcfs_forAnnotation }
 
 final_varscan_vcf_index_forAnnotation.ifEmpty{ 'skipped' }
 	.mix( final_mutect_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
+	.mix( final_manta_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
 	.filter{ it != 'skipped' }
 	.set{ final_somatic_vcfs_indicies_forAnnotation }
 
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
 	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy'
-	tag "${final_somatic_vcf}.replaceFirst(/\.somatic\.vcf\.gz/, "")"
+	tag "${vcf_id}"
 
 	input:
 	tuple path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from vep_ref_dir.combine(reference_genome_bundle_forAnnotation)
 	path final_somatic_vcfs_indicies_forAnnotation
 	each path(final_somatic_vcf) from final_somatic_vcfs_forAnnotation
 
-
 	output:
 	path final_annotated_somatic_vcfs
 	path annotation_summary
 
 	script:
-	final_annotated_somatic_vcfs = "${final_somatic_vcf}".replaceFirst(/\.somatic\.vcf\.gz/, ".annotated.somatic.vcf.gz")
-	annotation_summary = "${final_somatic_vcf}".replaceFirst(/\.somatic\.vcf\.gz/, ".vep.summary.html")
+	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.somatic\.vcf\.gz/, "")
+	final_annotated_somatic_vcfs = "${vcf_id}.annotated.somatic.vcf.gz"
+	annotation_summary = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
 	"""
 	vep \
 	--offline \
