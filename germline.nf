@@ -396,7 +396,7 @@ reference_genome_fasta_forJointGenotyping.combine( reference_genome_fasta_index_
 
 // GATK GenotypeGVCFs ~ perform joint genotyping
 process jointGenotyping_gatk {
-	publishDir "${params.output_dir}/germline/genotypedVcf", mode: 'symlink'
+	publishDir "${params.output_dir}/germline/jointGenotypedVcf", mode: 'symlink'
 	tag "${params.cohort_name}"
 
 	input:
@@ -436,7 +436,7 @@ process excessHeterozygosityHardFilter_gatk {
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) from joint_genotyped_vcfs
 
 	output:
-	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnvVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
+	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnpVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
 
 	script:
 	vcf_hard_filtered_marked = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtermarked.vcf.gz")
@@ -510,7 +510,7 @@ process indelVariantRecalibration_gatk {
 	"""
 }
 
-// Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK SNV VariantRecalibratior process
+// Combine all needed GATK bundle files and reference FASTA files into one channel for use in GATK SNP VariantRecalibratior process
 gatk_bundle_hapmap.combine( gatk_bundle_hapmap_index )
 	.combine( gatk_bundle_1000G_omni )
 	.combine( gatk_bundle_1000G_omni_index )
@@ -518,7 +518,7 @@ gatk_bundle_hapmap.combine( gatk_bundle_hapmap_index )
 	.combine( gatk_bundle_1000G_snps_index)
 	.combine( gatk_bundle_dbsnp138_forSnpVariantRecalibration )
 	.combine( gatk_bundle_dbsnp138_index_forSnpVariantRecalibration )
-	.set{ gatk_reference_bundle_forSnvVariantRecalibration }
+	.set{ gatk_reference_bundle_forSnpVariantRecalibration }
 
 reference_genome_fasta_forSnpVariantRecalibration.combine( reference_genome_fasta_index_forSnpVariantRecalibration )
 	.combine( reference_genome_fasta_dict_forSnpVariantRecalibration )
@@ -530,8 +530,8 @@ process snpVariantRecalibration_gatk {
 	tag "${params.cohort_name}"
 
 	input:
-	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forSnvVariantRecalibration
-	tuple path(gatk_bundle_hapmap), path(gatk_bundle_hapmap_index), path(gatk_bundle_1000G_omni), path(gatk_bundle_1000G_omni_index), path(gatk_bundle_1000G_snps), path(gatk_bundle_1000G_snps_index), path(gatk_bundle_dbsnp138_forSnpVariantRecalibration), path(gatk_bundle_dbsnp138_index_forSnpVariantRecalibration) from gatk_reference_bundle_forSnvVariantRecalibration
+	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) from hard_filtered_vcfs_forSnpVariantRecalibration
+	tuple path(gatk_bundle_hapmap), path(gatk_bundle_hapmap_index), path(gatk_bundle_1000G_omni), path(gatk_bundle_1000G_omni_index), path(gatk_bundle_1000G_snps), path(gatk_bundle_1000G_snps_index), path(gatk_bundle_dbsnp138_forSnpVariantRecalibration), path(gatk_bundle_dbsnp138_index_forSnpVariantRecalibration) from gatk_reference_bundle_forSnpVariantRecalibration
 	tuple path(reference_genome_fasta_forSnpVariantRecalibration), path(reference_genome_fasta_index_forSnpVariantRecalibration), path(reference_genome_fasta_dict_forSnpVariantRecalibration) from reference_genome_bundle_forSnpVariantRecalibration
 
 	output:
@@ -614,7 +614,7 @@ reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_for
 
 // BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeVcf_bcftools {
-	publishDir "${params.output_dir}/germline/finalGermlineVcfs", mode: 'copy'
+	publishDir "${params.output_dir}/germline/finalUnannotatedGermlineVcfs", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -689,7 +689,7 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 
 // VEP ~ annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateGermlineVcf_vep {
-	publishDir "${params.output_dir}/germline/vepAnnotatedVcf", mode: 'copy'
+	publishDir "${params.output_dir}/germline/finalVepAnnotatedGermlineVcfs", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
