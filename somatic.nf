@@ -72,6 +72,9 @@ def helpMessage() {
 		--mutect                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--control_freec                [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 		--manta                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -94,6 +97,7 @@ params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
+params.control_freec = "on"
 params.manta = "on"
 params.help = null
 
@@ -115,6 +119,8 @@ Channel
 	       reference_genome_fasta_forMutectCalling;
 	       reference_genome_fasta_forMutectFilter;
 	       reference_genome_fasta_forMutectBcftools;
+	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
+	       reference_genome_fasta_forControlFreecCalling;
 	       reference_genome_fasta_forManta;
 	       reference_genome_fasta_forAnnotation }
 
@@ -127,6 +133,8 @@ Channel
 	       reference_genome_fasta_index_forMutectCalling;
 	       reference_genome_fasta_index_forMutectFilter;
 	       reference_genome_fasta_index_forMutectBcftools;
+	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
+	       reference_genome_fasta_index_forControlFreecCalling;
 	       reference_genome_fasta_index_forManta;
 	       reference_genome_fasta_index_forAnnotation }
 
@@ -141,6 +149,8 @@ Channel
 	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
 	       reference_genome_fasta_dict_forMutectFilter;
 	       reference_genome_fasta_dict_forMutectBcftools;
+	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
+	       reference_genome_fasta_dict_forControlFreecCalling;
 	       reference_genome_fasta_dict_forManta;
 	       reference_genome_fasta_dict_forAnnotation }
 
@@ -149,6 +159,7 @@ Channel
 	.into{ gatk_bundle_wgs_bed_forVarscanSamtoolsMpileup;
 	       gatk_bundle_wgs_bed_forMutectCalling;
 	       gatk_bundle_wgs_bed_forMutectPileup;
+	       gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup;
 	       gatk_bundle_wgs_bed_forManta }
 
 Channel
@@ -158,7 +169,9 @@ Channel
 	            'chr19', 'chr20', 'chr21', 'chr22', 'chrX', 'chrY',] )
 	.into{ chromosome_list_forVarscanSamtoolsMpileup;
 	       chromosome_list_forMutectCalling;
-	       chromosome_list_forMutectPileup }
+	       chromosome_list_forMutectPileup;
+	       chromosome_list_forControlFreecSamtoolsMpileup;
+	       chromosome_list_forControlFreecMerge }
 
 Channel
 	.fromPath( 'references/hg38/1000g_pon.hg38.vcf.gz' )
@@ -212,6 +225,26 @@ Channel
 	.fromPath( 'references/hg38/small_exac_common_3.hg38.vcf.gz.tbi' )
 	.set{ exac_common_sites_ref_vcf_index }
 
+Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38_autosome_sex_chroms', type: 'dir' )
+	.set{ autosome_sex_chromosome_fasta_dir }
+
+Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38_autosome_sex_chrom_sizes.txt' )
+	.set{ autosome_sex_chromosome_sizes }
+
+Channel
+	.fromPath( 'references/hg38/common_all_20180418.vcf.gz' )
+	.set{ common_dbsnp_ref_vcf }
+
+Channel
+	.fromPath( 'references/hg38/common_all_20180418.vcf.gz.tbi' )
+	.set{ common_dbsnp_ref_vcf_index }
+
+Channel
+	.fromPath( 'references/hg38/mappability_track_100m2.hg38.zip' )
+	.set{ mappability_track_zip }
+
 if( params.vep_ref_cached == "yes" ) {
 	Channel
 		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: 'dir', checkIfExists: true )
@@ -236,6 +269,7 @@ Channel
 	       tumor_normal_pair_forVarscanBamReadcount;
 	       tumor_normal_pair_forMutectCalling;
 	       tumor_normal_pair_forMutectPileup;
+	       tumor_normal_pair_forControlFreecSamtoolsMpileup;
 	       tumor_normal_pair_forManta }
 
 // Read user provided sample sheet to find Tumor sample BAM files
@@ -1069,6 +1103,193 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+// ~~~~~~~~~~~~~ Control-FREEC ~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference FASTA files and WGS BED file into one channel for use in Control-FREEC / SAMtools mpileup
+reference_genome_fasta_forControlFreecSamtoolsMpileup.combine( reference_genome_fasta_index_forControlFreecSamtoolsMpileup )
+	.combine( reference_genome_fasta_dict_forControlFreecSamtoolsMpileup )
+	.set{ reference_genome_bundle_forControlFreecSamtoolsMpileup }
+
+reference_genome_bundle_forControlFreecSamtoolsMpileup.combine( gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup )
+	.set{ reference_genome_bundle_and_bed_forControlFreecSamtoolsMpileup }
+
+// SAMtools mpileup ~ generate mpileups for the tumor and normal BAMs separately
+process bamMpileupForControlFreec_samtools {
+	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+	tag "T=${tumor_id} N=${normal_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forControlFreecSamtoolsMpileup), path(reference_genome_fasta_index_forControlFreecSamtoolsMpileup), path(reference_genome_fasta_dict_forControlFreecSamtoolsMpileup), path(gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup) from tumor_normal_pair_forControlFreecSamtoolsMpileup.combine(reference_genome_bundle_and_bed_forControlFreecSamtoolsMpileup)
+	each chromosome from chromosome_list_forControlFreecSamtoolsMpileup
+
+	output:
+	tuple val(tumor_id), path(tumor_pileup_per_chromosome) into per_chromosome_tumor_pileups_forControlFreecMerge
+	tuple val(normal_id), path(normal_pileup_per_chromosome) into per_chromosome_normal_pileups_forControlFreecMerge
+
+	when:
+	params.control_freec == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_pileup_per_chromosome = "${tumor_id}.${chromosome}.pileup.gz"
+	normal_pileup_per_chromosome = "${normal_id}.${chromosome}.pileup.gz"
+	"""
+	samtools mpileup \
+	--positions "${gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup}" \
+	--fasta-ref "${reference_genome_fasta_forControlFreecSamtoolsMpileup}" \
+	--region "${chromosome}" \
+	"${tumor_bam}" \
+	| \
+	bgzip > "${tumor_pileup_per_chromosome}"
+
+	samtools mpileup \
+	--positions "${gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup}" \
+	--fasta-ref "${reference_genome_fasta_forControlFreecSamtoolsMpileup}" \
+	--region "${chromosome}" \
+	"${normal_bam}" \
+	| \
+	bgzip > "${normal_pileup_per_chromosome}"
+	"""
+
+}
+
+// Mpileup Merge ~ Combine all tumor and normal per chromosome mpileup files separately
+process mergeMpileupsForControlFreec_controlfreec {
+	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+	tag "T=${tumor_id} N=${normal_id}"
+
+	input:
+	tuple val(tumor_id), path(tumor_pileup_per_chromosome) from per_chromosome_tumor_pileups_forControlFreecMerge.groupTuple()
+	tuple val(normal_id), path(normal_pileup_per_chromosome) from per_chromosome_normal_pileups_forControlFreecMerge.groupTuple()
+	val chromosome_list from chromosome_list_forControlFreecMerge.collect()
+
+	output:
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into tumor_normal_pileups_forControlFreecCalling
+
+	when:
+	params.control_freec == "on"
+
+	script:
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	tumor_pileup = "${tumor_id}.pileup.gz"
+	normal_pileup = "${normal_id}.pileup.gz"
+	"""
+	chromosome_array=\$(echo "${chromosome_list}" | sed 's/[][]//g' | sed 's/,//g')
+
+	for chrom in \$chromosome_array;
+		do
+			zcat "${tumor_id}.\${chrom}.pileup.gz" >> "${tumor_id}.pileup"
+
+			zcat "${normal_id}.\${chrom}.pileup.gz" >> "${normal_id}.pileup"
+		done
+
+	bgzip < "${tumor_id}.pileup" > "${tumor_pileup}"
+	bgzip < "${normal_id}.pileup" > "${normal_pileup}"
+	"""
+}
+
+/*
+
+// Combine all reference files into one channel for use in Control-FREEC
+reference_genome_fasta_forControlFreecCalling.combine( reference_genome_fasta_index_forControlFreecCalling )
+	.combine( reference_genome_fasta_dict_forControlFreecCalling )
+	.set{ reference_genome_bundle_forControlFreecCalling }
+
+reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_fasta_dir )
+	.combine( autosome_sex_chromosome_sizes )
+	.combine( common_dbsnp_ref_vcf )
+	.combine( common_dbsnp_ref_vcf_index )
+	.combine( mappability_track_zip )
+	.set{ reference_data_bundle_forControlFreec }
+
+// Control-FREEC ~ detection of copy-number changes and allelic imbalances
+process cnvCalling_controlfreec {
+	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup), path(reference_genome_fasta_forControlFreecCalling), path(reference_genome_fasta_index_forControlFreecCalling), path(reference_genome_fasta_dict_forControlFreecCalling), path(autosome_sex_chromosome_fasta_dir), path(autosome_sex_chromosome_sizes), path(common_dbsnp_ref_vcf), path(common_dbsnp_ref_vcf_index), path(mappability_track_zip) from tumor_normal_pileups_forControlFreecCalling.combine(reference_data_bundle_forControlFreec)
+ 
+	//output:
+
+
+	when:
+	params.control_freec == "on"
+
+	script:
+	config_file = "${tumor_normal_sample_id}.config.txt"
+
+	"""
+	unzip -q "${mappability_track_zip}"
+
+	touch "${config_file}"
+	echo "[general]" >> "${config_file}"
+	echo "BedGraphOutput = TRUE" >> "${config_file}"
+	echo "chrFiles = \${PWD}/${autosome_sex_chromosome_fasta_dir}" >> "${config_file}"
+	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${config_file}"
+	echo "gemMappabilityFile = \${PWD}/out100m2_hg38.gem" >> "${config_file}"
+	echo "minimalSubclonePresence = 20" >> "${config_file}"
+	echo "maxThreads = ${task.cpus}" >> "${config_file}"
+	echo "ploidy = 2,3" "${config_file}"
+	echo "sex = " >> "${config_file}"
+	echo "window = 50000" >> "${config_file}"
+	echo "" >> "${config_file}"
+
+	echo "[sample]" >> "${config_file}"
+	echo "mateFile = ${tumor_pileup}" >> "${config_file}"
+	echo "inputFormat = pileup" >> "${config_file}"
+	echo "mateOrientation = FR" >> "${config_file}"
+	echo "" >> "${config_file}"
+
+	echo "[control]" >> "${config_file}"
+	echo "mateFile = ${normal_pileup}" >> "${config_file}"
+	echo "inputFormat = pileup" >> "${config_file}"
+	echo "mateOrientation = FR" >> "${config_file}"
+	echo "" >> "${config_file}"
+
+	echo "[BAF]" >> "${config_file}"
+	echo "SNPfile = \${PWD}/${common_dbsnp_ref_vcf}"
+	echo "" >> "${config_file}"
+
+	freec -conf "${config_file}"
+	"""
+}
+
+// Control-FREEC ~ post-processing of CNV predictions for significance, visualization, and format compatibility
+process cnvPredictionPostProcessing_controlfreec {
+	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+
+
+	output:
+
+
+	when:
+	params.control_freec == "on"
+
+	script:
+
+	"""
+	cat /home/toolshed/FREEC-11.6/scripts/assess_significance.R | R --slave --args
+
+	cat /home/toolshed/FREEC-11.6/scripts/makeGraph.R | R --slave --args 2 
+
+	perl /home/toolshed/FREEC-11.6/scripts/freec2bed.pl -f 
+	"""
+}
+
+*/
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
 
 
 // ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
