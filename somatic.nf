@@ -1231,7 +1231,7 @@ process cnvCalling_controlfreec {
 	echo "minimalSubclonePresence = 20" >> "${config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${config_file}"
 	echo "ploidy = 2,3" "${config_file}"
-	echo "sex = " >> "${config_file}"
+	echo "sex = XY" >> "${config_file}"
 	echo "window = 50000" >> "${config_file}"
 	echo "" >> "${config_file}"
 
