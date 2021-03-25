@@ -563,7 +563,7 @@ process snpVariantRecalibration_gatk {
 
 // GATK ApplyVQSR ~ apply variant quality score recalibration for Indels and SNPs
 process applyIndelAndSnpVqsr_gatk {
-	publishDir "${params.output_dir}/germline/vqsrVcfs", mode: 'copy'
+	publishDir "${params.output_dir}/germline/vqsrVcfs", mode: 'symlink'
 	tag "${params.cohort_name}"
 
 	input:
@@ -607,7 +607,7 @@ process applyIndelAndSnpVqsr_gatk {
 	"""
 }
 
-//Combine all needed reference FASTA files into one channel for use in BCFtools Norm process
+// Combine all needed reference FASTA files into one channel for use in BCFtools Norm process
 reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_forSplitAndNorm )
 	.combine( reference_genome_fasta_dict_forSplitAndNorm )
 	.set{ reference_genome_bundle_forSplitAndNorm }
