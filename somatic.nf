@@ -1226,6 +1226,7 @@ process cnvCalling_controlfreec {
 
 	"""
 	unzip -q "${mappability_track_zip}"
+	gunzip -q "${autosome_sex_chromosome_fasta_dir}/*.fa.gz"
 
 	touch "${config_file}"
 	echo "[general]" >> "${config_file}"
