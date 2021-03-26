@@ -1235,7 +1235,7 @@ process mergeMpileupsForControlFreec_samtools {
 }
 
 // Combine mpileup input files with the sample sex identity then all reference files into one channel for use in Control-FREEC
-tumor_normal_pileups_forControlFreecCalling.groupTuple( sex_of_sample_forControlFreecCalling )
+tumor_normal_pileups_forControlFreecCalling.join( sex_of_sample_forControlFreecCalling )
 	.set{ tumor_normal_pileups_and_sex_ident }
 
 reference_genome_fasta_forControlFreecCalling.combine( reference_genome_fasta_index_forControlFreecCalling )
