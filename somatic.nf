@@ -78,6 +78,9 @@ def helpMessage() {
 		--manta                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--svaba                        [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 
 	################################################
 
@@ -99,6 +102,7 @@ params.varscan = "on"
 params.mutect = "on"
 params.control_freec = "on"
 params.manta = "on"
+params.svaba = "on"
 params.help = null
 
 // Print help message if requested
@@ -1117,10 +1121,10 @@ reference_genome_fasta_forControlFreecSamtoolsMpileup.combine( reference_genome_
 reference_genome_bundle_forControlFreecSamtoolsMpileup.combine( gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup )
 	.set{ reference_genome_bundle_and_bed_forControlFreecSamtoolsMpileup }
 
-// SAMtools mpileup ~ generate mpileups for the tumor and normal BAMs separately
+// SAMtools mpileup ~ generate per chromosome mpileups for the tumor and normal BAMs separately
 process bamMpileupForControlFreec_samtools {
 	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
-	tag "T=${tumor_id} N=${normal_id}"
+	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forControlFreecSamtoolsMpileup), path(reference_genome_fasta_index_forControlFreecSamtoolsMpileup), path(reference_genome_fasta_dict_forControlFreecSamtoolsMpileup), path(gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup) from tumor_normal_pair_forControlFreecSamtoolsMpileup.combine(reference_genome_bundle_and_bed_forControlFreecSamtoolsMpileup)
@@ -1220,7 +1224,7 @@ process cnvCalling_controlfreec {
 	config_file = "${tumor_normal_sample_id}.config.txt"
 	"""
 	unzip -q "${mappability_track_zip}"
-	gunzip -q "${autosome_sex_chromosome_fasta_dir}/*.fa.gz"
+	gunzip -q "${autosome_sex_chromosome_fasta_dir}"/*.fa.gz
 
 	touch "${config_file}"
 	echo "[general]" >> "${config_file}"
@@ -1368,6 +1372,58 @@ process svAndIndelCalling_manta {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+/*
+
+
+// ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine
+BWArefgenomefilesALL
+HomosapiansdbSNPvcf
+wgsBed?
+
+
+// SvABA ~ detecting structural variants using genome-wide local assembly
+process svAndIndelCalling_svaba {
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'symlink'
+	tag "T=${tumor_id} N=${normal_id}"
+
+	input:
+
+
+	output:
+
+
+	when:
+	params.svaba == "on"
+
+	script:
+
+	"""
+	svaba run \
+	-t "${TUMBAM}" \
+	-n "${NORMBAM}" \
+	--reference-genome "${BWAREFGENOMEFILES}" \
+	## POTENTIALLY --region "${WGSBED}" \ 
+	--id-string "${TUMNORMID}" \
+	--dbsnp-vcf "${HOMOSAPDBSNPVCF}" \
+	--threads "${task.cpus}" \
+	--verbose 1 \
+	--g-zip
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+*/
+
+
 
 
 // VEP ~ download the reference files used for VEP annotation, if needed
