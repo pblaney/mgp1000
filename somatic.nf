@@ -72,7 +72,7 @@ def helpMessage() {
 		--mutect                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--control_freec                [str]  Indicates whether or not to use this tool
+		--controlfreec                 [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
 		--manta                        [str]  Indicates whether or not to use this tool
@@ -100,7 +100,7 @@ params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
-params.control_freec = "on"
+params.controlfreec = "on"
 params.manta = "on"
 params.svaba = "on"
 params.help = null
@@ -130,7 +130,8 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
-	.into{ reference_genome_fasta_index_forConpairPileup;
+	.into{ reference_genome_fasta_index_forAlleleCount;
+		   reference_genome_fasta_index_forConpairPileup;
 	       reference_genome_fasta_index_forVarscanSamtoolsMpileup;
 	       reference_genome_fasta_index_forVarscanBamReadcount;
 	       reference_genome_fasta_index_forVarscanBcftoolsNorm;
@@ -176,6 +177,10 @@ Channel
 	       chromosome_list_forMutectPileup;
 	       chromosome_list_forControlFreecSamtoolsMpileup;
 	       chromosome_list_forControlFreecMerge }
+
+Channel
+	.fromPath( 'references/hg38/sex_identification_loci.chrY.hg38.txt' )
+	.set{ sex_identification_loci }
 
 Channel
 	.fromPath( 'references/hg38/1000g_pon.hg38.vcf.gz' )
@@ -268,7 +273,8 @@ Channel
 	             def normal_bam = "input/preprocessedBams/${row.normal}"
 	             def normal_bam_index = "input/preprocessedBams/${row.normal}".replaceFirst(/\.bam$/, ".bai")
 	             return[ file(tumor_bam), file(tumor_bam_index), file(normal_bam),  file(normal_bam_index) ] }
-	.into{ tumor_normal_pair_forConpairPileup;
+	.into{ tumor_normal_pair_forAlleleCount;
+		   tumor_normal_pair_forConpairPileup;
 	       tumor_normal_pair_forVarscanSamtoolsMpileup; 
 	       tumor_normal_pair_forVarscanBamReadcount;
 	       tumor_normal_pair_forMutectCalling;
@@ -283,6 +289,37 @@ Channel
 	.map{ row -> file("input/preprocessedBams/${row.tumor}") }
 	.unique()
 	.set{ tumor_bam_forTelomereLengthEstimation }
+
+// Combine reference FASTA index and sex identification loci files into one channel for use in alleleCount process
+reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
+	.set{ ref_index_and_sex_ident_loci }
+
+// alleleCount ~ determine the sex of each sample to use in downstream analyses
+process identifySampleSex_allelecount {
+	tag "T=${tumor_id} N=${normal_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_index_forAlleleCount), path(sex_identification_loci) from tumor_normal_pair_forAlleleCount.combine(ref_index_and_sex_ident_loci)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	sex_loci_allele_counts = "${tumor_normal_sample_id}.sexloci.txt"
+	sample_sex = "${tumor_normal_sample_id}.sexident.txt"
+	"""
+	alleleCounter \
+	--loci-file "${sex_identification_loci}" \
+	--hts-file "${normal_bam}" \
+	--ref-file "${reference_genome_fasta_index_forAlleleCount}" \
+	--output-file "${sex_loci_allele_counts}"
+
+	sample_sex_determinator.sh "${sex_loci_allele_counts}" > "${sample_sex}"
+	"""
+}
 
 // TelSeq ~ estimate telomere length of sample
 process tumorSampleTelomereLengthEstimation_telseq {
@@ -1123,7 +1160,7 @@ reference_genome_bundle_forControlFreecSamtoolsMpileup.combine( gatk_bundle_wgs_
 
 // SAMtools mpileup ~ generate per chromosome mpileups for the tumor and normal BAMs separately
 process bamMpileupForControlFreec_samtools {
-	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
 	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -1135,7 +1172,7 @@ process bamMpileupForControlFreec_samtools {
 	tuple val(normal_id), path(normal_pileup_per_chromosome) into per_chromosome_normal_pileups_forControlFreecMerge
 
 	when:
-	params.control_freec == "on"
+	params.controlfreec == "on"
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -1163,8 +1200,8 @@ process bamMpileupForControlFreec_samtools {
 }
 
 // Mpileup Merge ~ Combine all tumor and normal per chromosome mpileup files separately
-process mergeMpileupsForControlFreec_controlfreec {
-	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+process mergeMpileupsForControlFreec_samtools {
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -1176,7 +1213,7 @@ process mergeMpileupsForControlFreec_controlfreec {
 	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into tumor_normal_pileups_forControlFreecCalling
 
 	when:
-	params.control_freec == "on"
+	params.controlfreec == "on"
 
 	script:
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
@@ -1197,7 +1234,10 @@ process mergeMpileupsForControlFreec_controlfreec {
 	"""
 }
 
-// Combine all reference files into one channel for use in Control-FREEC
+// Combine mpileup input files with the sample sex identity then all reference files into one channel for use in Control-FREEC
+tumor_normal_pileups_forControlFreecCalling.groupTuple( sex_of_sample_forControlFreecCalling )
+	.set{ tumor_normal_pileups_and_sex_ident }
+
 reference_genome_fasta_forControlFreecCalling.combine( reference_genome_fasta_index_forControlFreecCalling )
 	.combine( reference_genome_fasta_dict_forControlFreecCalling )
 	.set{ reference_genome_bundle_forControlFreecCalling }
@@ -1211,31 +1251,42 @@ reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_
 
 // Control-FREEC ~ detection of copy-number changes and allelic imbalances
 process cnvCalling_controlfreec {
-	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup), path(reference_genome_fasta_forControlFreecCalling), path(reference_genome_fasta_index_forControlFreecCalling), path(reference_genome_fasta_dict_forControlFreecCalling), path(autosome_sex_chromosome_fasta_dir), path(autosome_sex_chromosome_sizes), path(common_dbsnp_ref_vcf), path(common_dbsnp_ref_vcf_index), path(mappability_track_zip) from tumor_normal_pileups_forControlFreecCalling.combine(reference_data_bundle_forControlFreec)
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup), path(sex_of_sample_forControlFreecCalling), path(reference_genome_fasta_forControlFreecCalling), path(reference_genome_fasta_index_forControlFreecCalling), path(reference_genome_fasta_dict_forControlFreecCalling), path(autosome_sex_chromosome_fasta_dir), path(autosome_sex_chromosome_sizes), path(common_dbsnp_ref_vcf), path(common_dbsnp_ref_vcf_index), path(mappability_track_zip) from tumor_normal_pileups_and_sex_ident.combine(reference_data_bundle_forControlFreec)
+
+	//tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup), path(reference_genome_fasta_forControlFreecCalling), path(reference_genome_fasta_index_forControlFreecCalling), path(reference_genome_fasta_dict_forControlFreecCalling), path(autosome_sex_chromosome_fasta_dir), path(autosome_sex_chromosome_sizes), path(common_dbsnp_ref_vcf), path(common_dbsnp_ref_vcf_index), path(mappability_track_zip) from tumor_normal_pileups_forControlFreecCalling.combine(reference_data_bundle_forControlFreec)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) into cnv_calling_files_forControlFreecPostProcessing
+	path config_file
+	path subclones_file
 
 	when:
-	params.control_freec == "on"
+	params.controlfreec == "on"
 
 	script:
-	config_file = "${tumor_normal_sample_id}.config.txt"
+	config_file = "${tumor_normal_sample_id}.controlfreec.config.txt"
+	cnv_profile_raw = "${tumor_normal_sample_id}.controlfreec.raw.cnv"
+	cnv_ratio_file = "${tumor_normal_sample_id}.controlfreec.ratio.txt"
+	subclones_file = "${tumor_normal_sample_id}.controlfreec.subclones.txt"
+	baf_file = "${tumor_normal_sample_id}.controlfreec.baf.txt"
 	"""
 	unzip -q "${mappability_track_zip}"
 	gunzip -q "${autosome_sex_chromosome_fasta_dir}"/*.fa.gz
+	sex=\$(cut -d ' ' -f 2 "${sex_of_sample_forControlFreecCalling}")
 
 	touch "${config_file}"
 	echo "[general]" >> "${config_file}"
-	echo "BedGraphOutput = TRUE" >> "${config_file}"
 	echo "chrFiles = \${PWD}/${autosome_sex_chromosome_fasta_dir}" >> "${config_file}"
 	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${config_file}"
 	echo "gemMappabilityFile = \${PWD}/out100m2_hg38.gem" >> "${config_file}"
 	echo "minimalSubclonePresence = 20" >> "${config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${config_file}"
-	echo "ploidy = 2,3" "${config_file}"
-	echo "sex = XY" >> "${config_file}"
+	echo "ploidy = 2" "${config_file}"
+	echo "sex = \${sex}" >> "${config_file}"
 	echo "window = 50000" >> "${config_file}"
 	echo "" >> "${config_file}"
 
@@ -1252,41 +1303,46 @@ process cnvCalling_controlfreec {
 	echo "" >> "${config_file}"
 
 	echo "[BAF]" >> "${config_file}"
-	echo "SNPfile = \${PWD}/${common_dbsnp_ref_vcf}"
+	echo "SNPfile = \${PWD}/${common_dbsnp_ref_vcf}" >> "${config_file}"
 	echo "" >> "${config_file}"
 
 	freec -conf "${config_file}"
+
+	mv "${tumor_pileup}_CNVs" "${cnv_profile_raw}"
+	mv "${tumor_pileup}_ratio.txt" "${cnv_ratio_file}"
+	mv "${tumor_pileup}_subclones.txt" "${subclones_file}"
+	mv "${tumor_pileup}_BAF.txt" "${baf_file}"
 	"""
 }
-
-/*
 
 // Control-FREEC ~ post-processing of CNV predictions for significance, visualization, and format compatibility
 process cnvPredictionPostProcessing_controlfreec {
-	publishDir "${params.output_dir}/somatic/control_freec", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-
+	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) from cnv_calling_files_forControlFreecPostProcessing
 
 	output:
-
+	path cnv_profile_final
+	path cnv_ratio_bed_file
 
 	when:
-	params.control_freec == "on"
+	params.controlfreec == "on"
 
 	script:
-
+	cnv_profile_final = "${tumor_normal_sample_id}.controlfreec.cnv.txt"
+	cnv_ratio_bed_file = "${tumor_normal_sample_id}.controlfreec.ratio.bed"
 	"""
-	cat /home/toolshed/FREEC-11.6/scripts/assess_significance.R | R --slave --args
+	cat \${CONTROLFREEC_DIR}/scripts/assess_significance.R | R --slave --args "${cnv_profile_raw}" "${cnv_ratio_file}"
+	mv "${cnv_profile_raw}.p.value.txt" "${cnv_profile_final}"
 
-	cat /home/toolshed/FREEC-11.6/scripts/makeGraph.R | R --slave --args 2 
+	cat \${CONTROLFREEC_DIR}/scripts/makeGraph.R | R --slave --args 2 "${cnv_ratio_file}" "${baf_file}"
 
-	perl /home/toolshed/FREEC-11.6/scripts/freec2bed.pl -f 
+
+	perl \${CONTROLFREEC_DIR}/scripts/freec2bed.pl -f "${cnv_ratio_file}" > "${cnv_ratio_bed_file}"
 	"""
 }
-
-*/
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
