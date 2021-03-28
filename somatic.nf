@@ -1275,7 +1275,7 @@ process cnvCalling_controlfreec {
 	baf_file = "${tumor_normal_sample_id}.controlfreec.baf.txt"
 	"""
 	unzip -q "${mappability_track_zip}"
-	gunzip -q "${autosome_sex_chromosome_fasta_dir}"/*.fa.gz
+	#gunzip -q "${autosome_sex_chromosome_fasta_dir}"/*.fa.gz
 	sex=\$(cut -d ' ' -f 2 "${sex_of_sample_forControlFreecCalling}")
 
 	touch "${config_file}"
