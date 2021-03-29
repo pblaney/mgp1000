@@ -1257,8 +1257,6 @@ process cnvCalling_controlfreec {
 	input:
 	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup), path(sex_of_sample_forControlFreecCalling), path(reference_genome_fasta_forControlFreecCalling), path(reference_genome_fasta_index_forControlFreecCalling), path(reference_genome_fasta_dict_forControlFreecCalling), path(autosome_sex_chromosome_fasta_dir), path(autosome_sex_chromosome_sizes), path(common_dbsnp_ref_vcf), path(common_dbsnp_ref_vcf_index), path(mappability_track_zip) from tumor_normal_pileups_and_sex_ident.combine(reference_data_bundle_forControlFreec)
 
-	//tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup), path(reference_genome_fasta_forControlFreecCalling), path(reference_genome_fasta_index_forControlFreecCalling), path(reference_genome_fasta_dict_forControlFreecCalling), path(autosome_sex_chromosome_fasta_dir), path(autosome_sex_chromosome_sizes), path(common_dbsnp_ref_vcf), path(common_dbsnp_ref_vcf_index), path(mappability_track_zip) from tumor_normal_pileups_forControlFreecCalling.combine(reference_data_bundle_forControlFreec)
-
 	output:
 	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) into cnv_calling_files_forControlFreecPostProcessing
 	path config_file
@@ -1275,7 +1273,6 @@ process cnvCalling_controlfreec {
 	baf_file = "${tumor_normal_sample_id}.controlfreec.baf.txt"
 	"""
 	unzip -q "${mappability_track_zip}"
-	#gunzip -q "${autosome_sex_chromosome_fasta_dir}"/*.fa.gz
 	sex=\$(cut -d ' ' -f 2 "${sex_of_sample_forControlFreecCalling}")
 
 	touch "${config_file}"
