@@ -157,6 +157,7 @@ Channel
 	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_dict_forControlFreecCalling;
 	       reference_genome_fasta_dict_forManta;
+	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
@@ -165,7 +166,8 @@ Channel
 	       gatk_bundle_wgs_bed_forMutectCalling;
 	       gatk_bundle_wgs_bed_forMutectPileup;
 	       gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup;
-	       gatk_bundle_wgs_bed_forManta }
+	       gatk_bundle_wgs_bed_forManta;
+	       gatk_bundle_wgs_bed_forSvaba }
 
 Channel
 	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
@@ -254,6 +256,18 @@ Channel
 	.fromPath( 'references/hg38/mappability_track_100m2.hg38.zip' )
 	.set{ mappability_track_zip }
 
+Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta*' )
+	.set{ bwa_ref_genome_files }
+
+Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
+	.set{ dbsnp_known_indel_ref_vcf }
+
+Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
+	.set{ dbsnp_known_indel_ref_vcf_index }
+
 if( params.vep_ref_cached == "yes" ) {
 	Channel
 		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: 'dir', checkIfExists: true )
@@ -280,7 +294,8 @@ Channel
 	       tumor_normal_pair_forMutectCalling;
 	       tumor_normal_pair_forMutectPileup;
 	       tumor_normal_pair_forControlFreecSamtoolsMpileup;
-	       tumor_normal_pair_forManta }
+	       tumor_normal_pair_forManta;
+	       tumor_normal_pair_forSvaba }
 
 // Read user provided sample sheet to find Tumor sample BAM files
 Channel
@@ -1146,7 +1161,6 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
 // ~~~~~~~~~~~~~ Control-FREEC ~~~~~~~~~~~~~ \\
 // START
 
@@ -1323,6 +1337,9 @@ process cnvPredictionPostProcessing_controlfreec {
 	output:
 	path cnv_profile_final
 	path cnv_ratio_bed_file
+	path ratio_graph_png
+	path ratio_log2_graph_png
+	path baf_graph_png
 
 	when:
 	params.controlfreec == "on"
@@ -1330,12 +1347,17 @@ process cnvPredictionPostProcessing_controlfreec {
 	script:
 	cnv_profile_final = "${tumor_normal_sample_id}.controlfreec.cnv.txt"
 	cnv_ratio_bed_file = "${tumor_normal_sample_id}.controlfreec.ratio.bed"
+	ratio_graph_png = "${tumor_normal_sample_id}.controlfreec.ratio.png"
+	ratio_log2_graph_png = "${tumor_normal_sample_id}.controlfreec.ratio.log2.png"
+	baf_graph_png = "${tumor_normal_sample_id}.controlfreec.baf.png"
 	"""
 	cat \${CONTROLFREEC_DIR}/scripts/assess_significance.R | R --slave --args "${cnv_profile_raw}" "${cnv_ratio_file}"
 	mv "${cnv_profile_raw}.p.value.txt" "${cnv_profile_final}"
 
 	cat \${CONTROLFREEC_DIR}/scripts/makeGraph.R | R --slave --args 2 "${cnv_ratio_file}" "${baf_file}"
-
+	mv "${cnv_ratio_file}.png" "${ratio_graph_png}"
+	mv "${cnv_ratio_file}.log2.png" "${ratio_log2_graph_png}"
+	mv "${baf_file}.png" "${baf_graph_png}"
 
 	perl \${CONTROLFREEC_DIR}/scripts/freec2bed.pl -f "${cnv_ratio_file}" > "${cnv_ratio_bed_file}"
 	"""
@@ -1343,7 +1365,6 @@ process cnvPredictionPostProcessing_controlfreec {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
 
 
 // ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
@@ -1434,11 +1455,14 @@ process svAndIndelCalling_manta {
 // ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine
-BWArefgenomefilesALL
-HomosapiansdbSNPvcf
-wgsBed?
+// Combine all needed reference FASTA files, WGS BED, and reference VCF files into one channel for use in SvABA process
+bwa_ref_genome_files.combine( reference_genome_fasta_dict_forSvaba )
+	.combine( gatk_bundle_wgs_bed_forSvaba )
+	.set{ bwa_ref_genome_and_wgs_bed }
 
+bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
+	.combine( dbsnp_known_indel_ref_vcf_index )
+	.set{ bwa_ref_genome_wgs_bed_and_ref_vcf }
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
@@ -1446,7 +1470,7 @@ process svAndIndelCalling_svaba {
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
-
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(bwa_ref_genome_files), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index) tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_vcf)
 
 	output:
 
@@ -1461,7 +1485,7 @@ process svAndIndelCalling_svaba {
 	-t "${TUMBAM}" \
 	-n "${NORMBAM}" \
 	--reference-genome "${BWAREFGENOMEFILES}" \
-	## POTENTIALLY --region "${WGSBED}" \ 
+	--region "${WGSBED}" \ 
 	--id-string "${TUMNORMID}" \
 	--dbsnp-vcf "${HOMOSAPDBSNPVCF}" \
 	--threads "${task.cpus}" \
