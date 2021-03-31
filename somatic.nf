@@ -126,6 +126,7 @@ Channel
 	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_forControlFreecCalling;
 	       reference_genome_fasta_forManta;
+	       reference_genome_fasta_forSvabaBcftools;
 	       reference_genome_fasta_forAnnotation }
 
 Channel
@@ -141,6 +142,7 @@ Channel
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
 	       reference_genome_fasta_index_forManta;
+	       reference_genome_fasta_index_forSvabaBcftools;
 	       reference_genome_fasta_index_forAnnotation }
 
 Channel
@@ -158,6 +160,7 @@ Channel
 	       reference_genome_fasta_dict_forControlFreecCalling;
 	       reference_genome_fasta_dict_forManta;
 	       reference_genome_fasta_dict_forSvaba;
+	       reference_genome_fasta_dict_forSvabaBcftools;
 	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
@@ -1379,7 +1382,7 @@ reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
 // Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
 process svAndIndelCalling_manta {
 	publishDir "${params.output_dir}/somatic/manta", mode: 'symlink'
-	tag "T=${tumor_id} N=${normal_id}"
+	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forManta), path(reference_genome_fasta_index_forManta), path(reference_genome_fasta_dict_forManta), path(gatk_bundle_wgs_bed_forManta) from tumor_normal_pair_forManta.combine(reference_genome_bundle_and_bed_forManta)
@@ -1387,9 +1390,8 @@ process svAndIndelCalling_manta {
 	output:
 	path final_manta_somatic_sv_vcf into final_manta_vcf_forAnnotation
 	path final_manta_somatic_sv_vcf_index into final_manta_vcf_index_forAnnotation
-	tuple path(candidate_sv_vcf), path(candidate_sv_vcf_index)
-	tuple path(candidate_indels_vcf), path(candidate_indels_vcf_index)
-	tuple path(diploid_sv_vcf), path(diploid_sv_vcf_index)
+	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
+	tuple path(germline_sv_vcf), path(germline_sv_vcf_index)
 
 	when:
 	params.manta == "on"
@@ -1399,12 +1401,10 @@ process svAndIndelCalling_manta {
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
 	zipped_wgs_bed = "${gatk_bundle_wgs_bed_forManta}.gz"
-	candidate_sv_vcf = "${tumor_normal_sample_id}.manta.candidateSV.vcf.gz"
-	candidate_sv_vcf_index = "${candidate_sv_vcf}.tbi"
-	candidate_indels_vcf = "${tumor_normal_sample_id}.manta.candidateSmallIndels.vcf.gz"
-	candidate_indels_vcf_index = "${candidate_indels_vcf}.tbi"
-	diploid_sv_vcf = "${tumor_normal_sample_id}.manta.diploid.vcf.gz"
-	diploid_sv_vcf_index = "${diploid_sv_vcf}.tbi"
+	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.unfiltered.vcf.gz"
+	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
+	germline_sv_vcf = "${tumor_normal_sample_id}.manta.germline.vcf.gz"
+	germline_sv_vcf_index = "${germline_sv_vcf}.tbi"
 	final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.vcf.gz"
 	final_manta_somatic_sv_vcf_index = "${final_manta_somatic_sv_vcf}.tbi"
 	"""
@@ -1423,17 +1423,15 @@ process svAndIndelCalling_manta {
 	--jobs ${task.cpus} \
 	--memGb ${task.memory.toGiga()}
 
-	mv manta/results/variants/candidateSV.vcf.gz "${candidate_sv_vcf}"
-	mv manta/results/variants/candidateSV.vcf.gz.tbi "${candidate_sv_vcf_index}"
-	mv manta/results/variants/candidateSmallIndels.vcf.gz "${candidate_indels_vcf}"
-	mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi "${candidate_indels_vcf_index}"
+	mv manta/results/variants/candidateSV.vcf.gz "${unfiltered_sv_vcf}"
+	mv manta/results/variants/candidateSV.vcf.gz.tbi "${unfiltered_sv_vcf_index}"
 
 	zcat manta/results/variants/diploidSV.vcf.gz \
 	| \
 	grep -E "^#|PASS" \
 	| \
-	bgzip > "${diploid_sv_vcf}"
-	tabix "${diploid_sv_vcf}"
+	bgzip > "${germline_sv_vcf}"
+	tabix "${germline_sv_vcf}"
 
 	zcat manta/results/variants/somaticSV.vcf.gz \
 	| \
@@ -1448,15 +1446,12 @@ process svAndIndelCalling_manta {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-/*
-
-
 // ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
 // START
 
 // Combine all needed reference FASTA files, WGS BED, and reference VCF files into one channel for use in SvABA process
-bwa_ref_genome_files.combine( reference_genome_fasta_dict_forSvaba )
+bwa_ref_genome_files.collect()
+	.combine( reference_genome_fasta_dict_forSvaba )
 	.combine( gatk_bundle_wgs_bed_forSvaba )
 	.set{ bwa_ref_genome_and_wgs_bed }
 
@@ -1467,40 +1462,97 @@ bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
 	publishDir "${params.output_dir}/somatic/svaba", mode: 'symlink'
-	tag "T=${tumor_id} N=${normal_id}"
+	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(bwa_ref_genome_files), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index) tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_vcf)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_vcf)
 
 	output:
-
+	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
+	path(filtered_somatic_sv_vcf) into final_svaba_sv_vcf_forAnnotation
+	path(filtered_somatic_sv_vcf_index) into final_svaba_sv_vcf_index_forAnnotation
+	path unfiltered_somatic_indel_vcf
+	path unfiltered_somatic_sv_vcf
+	path germline_indel_vcf
+	path germline_sv_vcf
 
 	when:
 	params.svaba == "on"
 
 	script:
-
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	contig_alignment_plot = "${tumor_normal_sample_id}.svaba.alignments.txt.gz"
+	germline_indel_vcf = "${tumor_normal_sample_id}.svaba.germline.indel.vcf.gz"
+	germline_sv_vcf = "${tumor_normal_sample_id}.svaba.germline.sv.vcf.gz"
+	unfiltered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.indel.vcf.gz"
+	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
+	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz"
+	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
+	filtered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
+	filtered_somatic_sv_vcf_index = "${filtered_somatic_sv_vcf}.tbi"
 	"""
 	svaba run \
-	-t "${TUMBAM}" \
-	-n "${NORMBAM}" \
-	--reference-genome "${BWAREFGENOMEFILES}" \
-	--region "${WGSBED}" \ 
-	--id-string "${TUMNORMID}" \
-	--dbsnp-vcf "${HOMOSAPDBSNPVCF}" \
+	-t "${tumor_bam}" \
+	-n "${normal_bam}" \
+	--reference-genome Homo_sapiens_assembly38.fasta \
+	--region "${gatk_bundle_wgs_bed_forSvaba}" \
+	--id-string "${tumor_normal_sample_id}" \
+	--dbsnp-vcf "${dbsnp_known_indel_ref_vcf}" \
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip
+
+	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
+	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
+	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.sv.vcf.gz" "${unfiltered_somatic_sv_vcf}"
+
+	tabix "${filtered_somatic_indel_vcf}"
+	tabix "${filtered_somatic_sv_vcf}"
+	"""
+}
+
+// Combine all needed reference FASTA files into one channel for use in SvABA / BCFtools Norm process
+reference_genome_fasta_forSvabaBcftools.combine( reference_genome_fasta_index_forSvabaBcftools )
+	.combine( reference_genome_fasta_dict_forSvabaBcftools )
+	.set{ reference_genome_bundle_forSvabaBcftools }
+
+// BCFtools Norm ~ left-align and normalize indels
+process leftNormalizeSvabaVcf_bcftools {
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index), path(reference_genome_fasta_forSvabaBcftools), path(reference_genome_fasta_index_forSvabaBcftools),
+	path(reference_genome_fasta_dict_forSvabaBcftools) from filtered_indel_vcf_forSvabaBcftools.combine(reference_genome_bundle_forSvabaBcftools)
+
+	output:
+	path final_svaba_indel_vcf into final_svaba_indel_vcf_forAnnotation
+	path final_svaba_indel_vcf_index into final_svaba_indel_vcf_index_forAnnotation
+	path svaba_realign_normalize_stats
+
+	when:
+	params.svaba == "on"
+
+	script:
+	final_svaba_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz"
+	final_svaba_indel_vcf_index = "${final_svaba_indel_vcf}.tbi"
+	svaba_realign_normalize_stats = "${tumor_normal_sample_id}.svaba.realignnormalizestats.txt"
+	"""
+	bcftools norm \
+	--threads ${task.cpus} \
+	--fasta-ref "${reference_genome_fasta_forSvabaBcftools}" \
+	--output-type z \
+	--output "${final_svaba_indel_vcf}" \
+	"${filtered_somatic_indel_vcf}" 2>"${svaba_realign_normalize_stats}"
+
+	tabix "${final_svaba_indel_vcf}"
 	"""
 }
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-*/
-
-
 
 
 // VEP ~ download the reference files used for VEP annotation, if needed
@@ -1543,12 +1595,16 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 final_varscan_vcf_forAnnotation.ifEmpty{ 'skipped' }
 	.mix( final_mutect_vcf_forAnnotation.ifEmpty{ 'skipped' } )
 	.mix( final_manta_vcf_forAnnotation.ifEmpty{ 'skipped' } )
+	.mix( final_svaba_sv_vcf_forAnnotation.ifEmpty{ 'skipped' } )
+	.mix( final_svaba_indel_vcf_forAnnotation.ifEmpty{ 'skipped' } )
 	.filter{ it != 'skipped' }
 	.set{ final_somatic_vcfs_forAnnotation }
 
 final_varscan_vcf_index_forAnnotation.ifEmpty{ 'skipped' }
 	.mix( final_mutect_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
 	.mix( final_manta_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
+	.mix( final_svaba_sv_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
+	.mix( final_svaba_indel_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
 	.filter{ it != 'skipped' }
 	.set{ final_somatic_vcfs_indicies_forAnnotation }
 
@@ -1567,8 +1623,8 @@ process annotateSomaticVcf_vep {
 	path annotation_summary
 
 	script:
-	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.somatic\.vcf\.gz/, "")
-	final_annotated_somatic_vcfs = "${vcf_id}.annotated.somatic.vcf.gz"
+	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, "")
+	final_annotated_somatic_vcfs = "${vcf_id}.annotated.vcf.gz"
 	annotation_summary = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
 	"""
 	vep \
