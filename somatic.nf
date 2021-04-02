@@ -271,7 +271,10 @@ Channel
 	.set{ mappability_track_zip }
 
 Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta*' )
+	.fromPath( ['references/hg38/Homo_sapiens_assembly38.fasta', 'references/hg38/Homo_sapiens_assembly38.fasta.fai',
+	            'references/hg38/Homo_sapiens_assembly38.fasta.64.alt', 'references/hg38/Homo_sapiens_assembly38.fasta.64.amb',
+	            'references/hg38/Homo_sapiens_assembly38.fasta.64.ann', 'references/hg38/Homo_sapiens_assembly38.fasta.64.bwt',
+	            'references/hg38/Homo_sapiens_assembly38.fasta.64.pac', 'references/hg38/Homo_sapiens_assembly38.fasta.64.sa'] )
 	.set{ bwa_ref_genome_files }
 
 Channel
@@ -1180,6 +1183,17 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 
 
 
+// ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~ \\
+// START
+
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+
+
 
 // ~~~~~~~~~~~~~~~~ ascatNGS ~~~~~~~~~~~~~~~ \\
 // START
@@ -1257,13 +1271,6 @@ process cnvCalling_ascatngs {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
-
-
-
-
-
 // ~~~~~~~~~~~~~ Control-FREEC ~~~~~~~~~~~~~ \\
 // START
 
@@ -1313,7 +1320,6 @@ process bamMpileupForControlFreec_samtools {
 	| \
 	bgzip > "${normal_pileup_per_chromosome}"
 	"""
-
 }
 
 // Mpileup Merge ~ Combine all tumor and normal per chromosome mpileup files separately
@@ -1565,7 +1571,7 @@ process svAndIndelCalling_svaba {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_vcf)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_vcf)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
