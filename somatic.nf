@@ -72,6 +72,9 @@ def helpMessage() {
 		--mutect                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--ascatngs                     [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 		--controlfreec                 [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -100,6 +103,7 @@ params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
+params.ascatngs = "on"
 params.controlfreec = "on"
 params.manta = "on"
 params.svaba = "on"
@@ -123,6 +127,7 @@ Channel
 	       reference_genome_fasta_forMutectCalling;
 	       reference_genome_fasta_forMutectFilter;
 	       reference_genome_fasta_forMutectBcftools;
+	       reference_genome_fasta_forAscatNgs;
 	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_forControlFreecCalling;
 	       reference_genome_fasta_forManta;
@@ -139,6 +144,7 @@ Channel
 	       reference_genome_fasta_index_forMutectCalling;
 	       reference_genome_fasta_index_forMutectFilter;
 	       reference_genome_fasta_index_forMutectBcftools;
+	       reference_genome_fasta_index_forAscatNgs;
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
 	       reference_genome_fasta_index_forManta;
@@ -156,6 +162,7 @@ Channel
 	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
 	       reference_genome_fasta_dict_forMutectFilter;
 	       reference_genome_fasta_dict_forMutectBcftools;
+	       reference_genome_fasta_dict_forAscatNgs;
 	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_dict_forControlFreecCalling;
 	       reference_genome_fasta_dict_forManta;
@@ -240,6 +247,10 @@ Channel
 	.set{ exac_common_sites_ref_vcf_index }
 
 Channel
+	.fromPath( 'references/hg38/SnpGcCorrections.hg38.tsv' )
+	.set{ snp_gc_corrections }
+
+Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38_autosome_sex_chroms', type: 'dir' )
 	.set{ autosome_sex_chromosome_fasta_dir }
 
@@ -314,6 +325,7 @@ reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
 
 // alleleCount ~ determine the sex of each sample to use in downstream analyses
 process identifySampleSex_allelecount {
+	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'symlink'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -321,6 +333,7 @@ process identifySampleSex_allelecount {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -1162,6 +1175,93 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+
+
+
+// ~~~~~~~~~~~~~~~~ ascatNGS ~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference files into one channel for us in AscatNGS
+reference_genome_fasta_forAscatNgs.combine( reference_genome_fasta_index_forAscatNgs )
+	.combine( reference_genome_fasta_dict_forAscatNgs )
+	.combine( snp_gc_corrections )
+	.set{ reference_genome_and_snpgc_forAscatNgs }
+
+// ascatNGS ~  identifying somatically acquired copy-number alterations
+process cnvCalling_ascatngs {
+	publishDir "${params.output_dir}/somatic/ascatNgs", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(reference_genome_fasta_forAscatNgs), path(reference_genome_fasta_index_forAscatNgs), path(reference_genome_fasta_dict_forAscatNgs), path(snp_gc_corrections) from bams_and_sex_of_sample_forAscatNgs.combine(reference_genome_and_snpgc_forAscatNgs)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(cnv_profile_final), path(run_statistics) into cnv_profile_ploidy_and_contamination_forCaveman
+	tuple path(cnv_profile_vcf), path(cnv_profile_vcf_index)
+	path ascat_profile_png
+	path ascat_raw_profile_png
+	path sunrise_png
+	path aspcf_png
+	path germline_png
+	path tumor_png
+
+	when:
+	params.ascatngs == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	ascat_profile_png = "${tumor_normal_sample_id}.ascat.profile.png"
+	ascat_raw_profile_png = "${tumor_normal_sample_id}.ascat.raw.profile.png"
+	sunrise_png = "${tumor_normal_sample_id}.ascat.sunrise.png"
+	aspcf_png = "${tumor_normal_sample_id}.ascat.aspcf.png"
+	germline_png = "${tumor_normal_sample_id}.ascat.germline.png"
+	tumor_png = "${tumor_normal_sample_id}.ascat.tumor.png"
+	cnv_profile_final = "${tumor_normal_sample_id}.ascat.cnv.csv"
+	cnv_profile_vcf = "${tumor_normal_sample_id}.ascat.vcf.gz"
+	cnv_profile_vcf_index = "${cnv_profile_vcf}.tbi"
+	run_statistics = "${tumor_normal_sample_id}.ascat.runstatistics.txt"
+	"""
+	sex=\$(cut -d ' ' -f 2 "${sample_sex}")
+
+	ascat.pl \
+	-outdir . \
+	-tumour "${tumor_bam}" \
+	-normal "${normal_bam}" \
+	-reference "${reference_genome_fasta_forAscatNgs}" \
+	-snp_gc "${snp_gc_corrections}" \
+	-protocol WGS \
+	-gender "\${sex}" \
+	-genderChr chrY \
+	-species Homo_sapiens \
+	-assembly GRCh38 \
+	-cpus "${task.cpus}" \
+	-nobigwig
+
+	mv "${tumor_id}.ASCATprofile.png" "${ascat_profile_png}"
+	mv "${tumor_id}.rawprofile.png" "${ascat_raw_profile_png}"
+	mv "${tumor_id}.sunrise.png" "${sunrise_png}"
+	mv "${tumor_id}.ASPCF.png" "${aspcf_png}"
+	mv "${tumor_id}.germline.png" "${germline_png}"
+	mv "${tumor_id}.tumour.png" "${tumor_png}"
+	mv "${tumor_id}.copynumber.caveman.csv" "${cnv_profile_final}"
+	mv "${tumor_id}.copynumber.caveman.vcf.gz" "${cnv_profile_vcf}"
+	mv "${tumor_id}.copynumber.caveman.vcf.gz.tbi" "${cnv_profile_vcf_index}"
+	mv "${tumor_id}.samplestatistics.txt" "${run_statistics}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+
+
+
+
 
 
 // ~~~~~~~~~~~~~ Control-FREEC ~~~~~~~~~~~~~ \\
