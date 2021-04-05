@@ -72,6 +72,9 @@ def helpMessage() {
 		--mutect                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--caveman                      [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 		--ascatngs                     [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -103,6 +106,7 @@ params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
+params.caveman = "on"
 params.ascatngs = "on"
 params.controlfreec = "on"
 params.manta = "on"
@@ -127,6 +131,7 @@ Channel
 	       reference_genome_fasta_forMutectCalling;
 	       reference_genome_fasta_forMutectFilter;
 	       reference_genome_fasta_forMutectBcftools;
+	       reference_genome_fasta_forCavemanPrep;
 	       reference_genome_fasta_forAscatNgs;
 	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_forControlFreecCalling;
@@ -144,6 +149,7 @@ Channel
 	       reference_genome_fasta_index_forMutectCalling;
 	       reference_genome_fasta_index_forMutectFilter;
 	       reference_genome_fasta_index_forMutectBcftools;
+	       reference_genome_fasta_index_forCavemanPrep;
 	       reference_genome_fasta_index_forAscatNgs;
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
@@ -162,6 +168,7 @@ Channel
 	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
 	       reference_genome_fasta_dict_forMutectFilter;
 	       reference_genome_fasta_dict_forMutectBcftools;
+	       reference_genome_fasta_dict_forCavemanPrep;
 	       reference_genome_fasta_dict_forAscatNgs;
 	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_dict_forControlFreecCalling;
@@ -178,6 +185,10 @@ Channel
 	       gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup;
 	       gatk_bundle_wgs_bed_forManta;
 	       gatk_bundle_wgs_bed_forSvaba }
+
+Channel
+	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed' )
+	.set{ gatk_bundle_wgs_bed_blacklist_1based }
 
 Channel
 	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
@@ -1181,16 +1192,101 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 
 
 
-
+/*
 
 // ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~ \\
 // START
+
+// Combine all needed reference FASTA files, WGS blacklist BED, and ascatNGS CNV profile into one channel for CaVEMan process
+reference_genome_fasta_forCavemanPrep.combine( reference_genome_fasta_index_forCavemanPrep )
+	.combine( reference_genome_fasta_dict_forCavemanPrep )
+	.combine( wgs_calling_regions_blacklist )
+	.set{ reference_genome_and_blacklist_bed_forCavemanPrep }
+
+reference_genome_and_blacklist_bed_forCavemanPrep.combine(  )
+
+// CaVEMan setup / split / mstep / merge ~ generate a config file, create split segments for analysis, then create merged covariate and probability arrays
+process setupSplitMstepAndMerge_caveman {
+	
+	input:
+	TUMBAM
+	NORMBAM
+	REFGENOME
+	REFGENOMEIDX
+	WGSBEDBLACKLIST
+	ASCATCNVPROFILE
+
+	output:
+	CONFIG
+	ALGBEAN
+	CONCATSPLITFILE
+
+	script:
+	"""
+	awk -F, 'BEGIN {OFS="\t"} {print $2,$3,$4,$7}' "${ASCATCNVPROFILE}" > "${TUMCNVS}"
+
+	caveman setup \
+	--tumour-bam "${TUMBAM}" \
+	--normal-bam "${NORMBAM}" \
+	--reference-index "${REFGENOMEIDX}" \
+	--ignore-regions-file "${WGSBEDBLACKLIST}" \
+	--config-file "${CONFIG}" \
+	--results-folder . \
+	--alg-bean-file "${ALGBEAN}" \
+	--split-file "${SPLITLIST}" \
+	--tumour-copy-no-file "${TUMCNVS}"
+
+	for i in `seq 24`;
+		do
+			caveman split \
+			--config-file "${CONFIG}" \
+			--index \${i}
+		done
+
+	for split_file in `ls -1v "${tumor_normal_sample_id}.${SPLITLIST}.chr"*`;
+		do
+			cat \${split_file} >> "${CONCATSPLITFILE}"
+		done
+
+	steps=\$(cat "${CONCATSPLITFILE}" | wc -l)
+
+	for i in `seq \${steps}`;
+		do
+			caveman mstep \
+			--config-file "${CONFIG}" \
+			--index \${i}
+		done
+
+	caveman merge \
+	--config-file "${CONFIG}" \
+	--covariate-file "${COVARIATEFILE}" \
+	--probabilities-file "${PROBABILIESTESFILES}"
+	"""
+}
+
+
+
+
+normalcontamination=\$(grep "NormalContamination" "${runstats}" | cut -d ' ' -f 2)
+
+for step in `seq \${msteps};
+	do
+		caveman estep \
+		--index \${step} \
+		--config-file 
+		--normal-contamination
+		--cov-file
+		--prob-file
+		--species-assembly GRCh38 \
+		--species Homo_sapiens \
+	done
+
 
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
-
+*/
 
 
 
