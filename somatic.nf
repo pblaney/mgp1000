@@ -2039,6 +2039,8 @@ process preprocess_gridss {
 	"""
 }
 
+/*
+
 // GRIDSS assemble ~ perform breakend assembly split up across multiple jobs
 process assemble_gridss {
 	publishDir "${params.output_dir}/somatic/gridss", mode: 'symlink'
@@ -2089,7 +2091,7 @@ process assemble_gridss {
 
 }
 
-/*
+
 
 process gatherAssembly_gridss {
 	input:
