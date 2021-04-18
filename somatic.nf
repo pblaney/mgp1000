@@ -72,13 +72,16 @@ def helpMessage() {
 		--mutect                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--caveman                      [str]  Indicates whether or not to use this tool
-		                                      Available: off, on
-		                                      Default: on
 		--ascatngs                     [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--caveman                      [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 		--controlfreec                 [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
+		--sclust                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
 		--manta                        [str]  Indicates whether or not to use this tool
@@ -109,9 +112,10 @@ params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
-params.caveman = "on"
 params.ascatngs = "on"
+params.caveman = "on"
 params.controlfreec = "on"
+params.sclust = "on"
 params.manta = "on"
 params.svaba = "on"
 params.gridss = "on"
@@ -143,6 +147,7 @@ Channel
 	       reference_genome_fasta_forManta;
 	       reference_genome_fasta_forSvabaBcftools;
 	       reference_genome_fasta_forGridssSetup;
+	       reference_genome_fasta_forGridssPostprocessing;
 	       reference_genome_fasta_forAnnotation }
 
 Channel
@@ -163,6 +168,7 @@ Channel
 	       reference_genome_fasta_index_forManta;
 	       reference_genome_fasta_index_forSvabaBcftools;
 	       reference_genome_fasta_index_forGridssSetup;
+	       reference_genome_fasta_index_forGridssPostprocessing;
 	       reference_genome_fasta_index_forAnnotation }
 
 Channel
@@ -184,6 +190,7 @@ Channel
 	       reference_genome_fasta_dict_forManta;
 	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forSvabaBcftools;
+	       reference_genome_fasta_dict_forGridssPostprocessing;
 	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
@@ -209,7 +216,8 @@ Channel
 	       chromosome_list_forMutectCalling;
 	       chromosome_list_forMutectPileup;
 	       chromosome_list_forControlFreecSamtoolsMpileup;
-	       chromosome_list_forControlFreecMerge }
+	       chromosome_list_forControlFreecMerge;
+	       chromosome_list_forSclustBamprocess }
 
 Channel
 	.fromPath( 'references/hg38/sex_identification_loci.chrY.hg38.txt' )
@@ -306,6 +314,18 @@ Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
 	.set{ dbsnp_known_indel_ref_vcf_index }
 
+Channel
+	.fromPath( 'references/hg38/pon_single_breakend.hg38.bed' )
+	.set{ pon_single_breakend_bed }
+
+Channel
+	.fromPath( 'references/hg38/pon_breakpoint.hg38.bedpe' )
+	.set{ pon_breakpoint_bedpe }
+
+Channel
+	.fromPath( 'references/hg38/known_fusions_pairs_v3.hg38.bedpe' )
+	.set{ known_fusion_pairs_bedpe }
+
 if( params.vep_ref_cached == "yes" ) {
 	Channel
 		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: 'dir', checkIfExists: true )
@@ -332,6 +352,7 @@ Channel
 	       tumor_normal_pair_forMutectCalling;
 	       tumor_normal_pair_forMutectPileup;
 	       tumor_normal_pair_forControlFreecSamtoolsMpileup;
+	       tumor_normal_pair_forSclustBamprocess;
 	       tumor_normal_pair_forManta;
 	       tumor_normal_pair_forSvaba;
 	       tumor_normal_pair_forGridssPreprocess }
@@ -1444,123 +1465,6 @@ process snvCalling_caveman {
 	"""
 }
 
-
-
-
-
-
-
-
-
-
-/*
-
-// Combine all needed reference FASTA files and WGS blacklist BED into one channel for CaVEMan process
-reference_genome_fasta_forCaveman.combine( reference_genome_fasta_index_forCaveman )
-	.combine( reference_genome_fasta_dict_forCaveman )
-	.combine( gatk_bundle_wgs_bed_blacklist_1based )
-	.set{ reference_genome_and_blacklist_bed_forCaveman }
-
-// CaVEMan setup / split / mstep / merge / estep ~ generate a config file, create split segments for analysis, create merged 
-// covariate and probability arrays, then call SNVs
-process svnCalling_caveman {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink'
-	tag "${tumor_normal_sample_id}"
-	
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cnv_profile_final), path(run_statistics), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based) from bams_cnv_profile_and_contamination_forCaveman.combine(reference_genome_and_blacklist_bed_forCaveman)
-
-	output:
-	path final_caveman_somatic_vcf
-	path final_caveman_somatic_vcf_index
-	tuple path(final_caveman_germline_vcf), path(final_caveman_germline_vcf_index)
-
-	when:
-	params.caveman == "on" && params.ascatngs == "on"
-
-	script:
-	tumor_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.tumor.cvn.bed"
-	config_file = "${tumor_normal_sample_id}.caveman.config.ini"
-	split_file = "${tumor_normal_sample_id}.caveman.splitfile"
-	covariate_file = "${tumor_normal_sample_id}.caveman.covariates"
-	probabilities_file = "${tumor_normal_sample_id}.caveman.probabilities"
-	final_caveman_somatic_vcf = "${tumor_normal_sample_id}.caveman.somatic.vcf.gz"
-	final_caveman_somatic_vcf_index = "${final_caveman_somatic_vcf}.tbi"
-	final_caveman_germline_vcf = "${tumor_normal_sample_id}.caveman.germline.vcf.gz"
-	final_caveman_germline_vcf_index = "${final_caveman_germline_vcf}.tbi"
-	"""
-	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' "${cnv_profile_final}" > "${tumor_cnv_profile_bed}"
-
-	caveman setup \
-	--tumour-bam "${tumor_bam}" \
-	--normal-bam "${normal_bam}" \
-	--reference-index "${reference_genome_fasta_index_forCaveman}" \
-	--ignore-regions-file "${gatk_bundle_wgs_bed_blacklist_1based}" \
-	--config-file "${config_file}" \
-	--results-folder results \
-	--split-file "${split_file}" \
-	--tumour-copy-no-file "${tumor_cnv_profile_bed}"
-
-	for i in `seq 24`;
-		do
-			caveman split \
-			--config-file "${config_file}" \
-			--index \${i}
-		done
-
-	for i in `ls -1v "${split_file}.chr"*`;
-		do
-			cat \${i} >> "${split_file}"
-		done
-
-	steps=\$(cat "${split_file}" | wc -l)
-
-	for i in `seq \${steps}`;
-		do
-			caveman mstep \
-			--config-file "${config_file}" \
-			--index \${i}
-		done
-
-	caveman merge \
-	--config-file "${config_file}" \
-	--covariate-file "${covariate_file}" \
-	--probabilities-file "${probabilities_file}"
-
-	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
-
-	for i in `seq \${steps};
-	do
-		caveman estep \
-		--index \${i} \
-		--config-file "${config_file}" \
-		--normal-contamination \${normal_contamination} \
-		--cov-file "${covariate_file}" \
-		--prob-file "${probabilities_file}" \
-		--species-assembly GRCh38 \
-		--species Homo_sapiens
-	done
-
-	mergeCavemanResults \
-	--output "${tumor_normal_sample_id}.caveman.somatic.vcf" \
-	--splitlist "${split_file}" \
-	--file-match results/%/%.muts.vcf.gz
-
-	bgzip < "${tumor_normal_sample_id}.caveman.somatic.vcf" > "${final_caveman_somatic_vcf}"
-	tabix "${final_caveman_somatic_vcf}"
-
-	mergeCavemanResults \
-	--output "${tumor_normal_sample_id}.caveman.germline.vcf" \
-	--splitlist "${split_file}" \
-	--file-match results/%/%.snps.vcf.gz
-
-	bgzip < "${tumor_normal_sample_id}.caveman.germline.vcf" > "${final_caveman_germline_vcf}"
-	tabix "${final_caveman_germline_vcf}"
-	"""
-}
-
-*/
-
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
@@ -1770,6 +1674,83 @@ process cnvPredictionPostProcessing_controlfreec {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+
+/*
+
+
+// ~~~~~~~~~~~~~~~~~ Sclust ~~~~~~~~~~~~~~~~~ \\
+// START
+
+// Sclust bamprocess ~ extract the read ratio and SNP information per chromosome
+process bamprocessPerChromosome_sclust {
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forSclustBamprocess
+	each each chromosome from chromosome_list_forSclustBamprocess
+
+	output:
+	tuple val(tumor_normal_sample_id), path(bamprocess_data_per_chromosome) into per_chromosome_bamprocess_data
+
+	when:
+	params.sclust == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	bamprocess_data_per_chromosome = "${tumor_normal_sample_id}_${chromosome}_bamprocess_data.txt"
+	"""
+	Sclust bamprocess \
+	-t "${tumor_bam}" \
+	-n "${normal_bam}" \
+	-o "${tumor_normal_sample_id}" \
+	-build hg38 \
+	-part 2 \
+	-r "${chromosome}"
+	"""
+}
+
+// Sclust bamprocess ~ merge per chromosome bamprocess data files and generate a read-count and common SNP-count files
+process mergeBamprocessData_sclust {
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(bamprocess_data_per_chromosome) from per_chromosome_bamprocess_data.groupTuple()
+
+	output:
+	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file) into read_count_and_snp_count_files
+
+	when:
+	params.sclust == "on"
+
+	script:
+	read_count_file = "${tumor_normal_sample_id}_rcount.txt"
+	common_snp_count_file = "${tumor_normal_sample_id}_snps.txt"
+	"""
+	Sclust bamprocess \
+	-i "${tumor_normal_sample_id}" \
+	-o "${tumor_normal_sample_id}"
+	"""
+}
+
+// Sclust cn ~ perform the copy-number analysis
+readcounts
+snpcounts
+snv/indelvcf (mutect?)
+
+
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+*/
+
+
+
 // ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
 // START
 
@@ -1955,12 +1936,6 @@ process leftNormalizeSvabaVcf_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
-
-
-
-
 // ~~~~~~~~~~~~~~~~ GRIDSS ~~~~~~~~~~~~~~~~~ \\
 // START
 
@@ -2097,8 +2072,6 @@ process mergeAssembly_gridss {
 	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
 	"${normal_bam}" "${tumor_bam}"
 	"""
-
-	//	mkdir -p "${assembly_bam_working_dir}"
 }
 
 // GRIDSS call ~ calls structural variants based on alignment-guided positional de Bruijn graph genome
@@ -2110,14 +2083,16 @@ process svAndIndelCalling_gridss {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa"), path(tumor_bam_working_dir), path(normal_bam_working_dir), path(assembly_bam), path(assembly_bam_working_dir) from merge_assembly_output_forGridssCalling
 
 	output:
-	tuple val(tumor_normal_sample_id), path(raw_gridss_vcf), path(raw_gridss_vcf_index) into raw_vcf_forGridssPostprocessing
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(raw_gridss_vcf), path(raw_gridss_vcf_index) into raw_vcf_forGridssPostprocessing
 
 	when:
 	params.gridss == "on"
 
 	script:
-	raw_gridss_vcf = "${tumor_normal_sample_id}.gridss.somatic.raw.vcf"
-	raw_gridss_vcf_index = "${raw_gridss_vcf}.idx"
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	raw_gridss_vcf = "${tumor_normal_sample_id}.gridss.somatic.raw.vcf.gz"
+	raw_gridss_vcf_index = "${raw_gridss_vcf}.tbi"
 	"""
 	gridss.sh --steps call \
 	--jvmheap "${task.memory.toGiga()}"g \
@@ -2129,87 +2104,58 @@ process svAndIndelCalling_gridss {
 	--output "${tumor_normal_sample_id}" \
 	"${normal_bam}" "${tumor_bam}"
 
-	mv output.gridss.working/"${tumor_normal_sample_id}".allocated.vcf "${raw_gridss_vcf}"
-	mv output.gridss.working/"${tumor_normal_sample_id}".allocated.vcf.idx "${raw_gridss_vcf_index}"
+	bgzip < "${tumor_normal_sample_id}.gridss.working/${tumor_normal_sample_id}.allocated.vcf" > "${raw_gridss_vcf}"
+	tabix "${raw_gridss_vcf}"
 	"""
-
-	// gzip -c output.gridss.working/"${tumor_normal_sample_id}".allocated.vcf > "${raw_gridss_vcf}"
 }
 
-// GRIDSS annotate ~ annotates breakpoint and single breakend inserted sequences with the RepeatMasker and Kracken2 classification
-process annotateRawVcf_gridss {
+// Combine Combine all needed reference FASTA and PoN SV BED/BEDPE files into one channel for GRIDSS setupreference process
+reference_genome_fasta_forGridssPostprocessing.combine( reference_genome_fasta_index_forGridssPostprocessing )
+	.combine( reference_genome_fasta_dict_forGridssPostprocessing )
+	.set{ reference_genome_bundle_forGridssPostprocessing }
+
+reference_genome_bundle_forGridssPostprocessing.combine( pon_single_breakend_bed )
+	.combine( pon_breakpoint_bedpe )
+	.combine( known_fusion_pairs_bedpe )
+	.set{ ref_genome_and_pon_beds_forGridssPostprocessing }
+
+// GRIDSS / GRIPSS ~ apply a set of filtering and post processing steps to raw GRIDSS calls
+process filteringAndPostprocessesing_gridss {
 	publishDir "${params.output_dir}/somatic/gridss", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(raw_gridss_vcf), path(raw_gridss_vcf_index) from raw_vcf_forGridssPostprocessing
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(raw_gridss_vcf), path(raw_gridss_vcf_index), path(reference_genome_fasta_forGridssPostprocessing), path(reference_genome_fasta_index_forGridssPostprocessing), path(reference_genome_fasta_dict_forGridssPostprocessing), path(pon_single_breakend_bed), path(pon_breakpoint_bedpe), path(known_fusion_pairs_bedpe) from raw_vcf_forGridssPostprocessing.combine(ref_genome_and_pon_beds_forGridssPostprocessing)
 
-	//output:
+	output:
+	tuple path(filterted_vcf), path(filterted_vcf_index)
 
 	when:
 	params.gridss == "on"
 
 	script:
-	intermediate_annotated_vcf = "${raw_gridss_vcf}"..replaceFirst(/\.raw\.vcf/, "intermediate.vcf")
-	annotated_vcf = "${raw_gridss_vcf}"..replaceFirst(/\.raw\.vcf/, "annotated.vcf")
+	intermediate_filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".intermediate.vcf.gz")
+	filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".vcf.gz")
+	filterted_vcf_index = "${filterted_vcf}.tbi"
 	"""
-	gridss_annotate_vcf_repeatmasker.sh \
-	--threads "${task.cpus}" \
-	--output "${intermediate_annotated_vcf}" \
-	"${raw_gridss_vcf}"
+	java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssApplicationKt \
+	-tumor "${tumor_id}" \
+    -reference "${normal_id}" \
+    -ref_genome "${reference_genome_fasta_forGridssPostprocessing}" \
+    -breakend_pon "${pon_single_breakend_bed}" \
+    -breakpoint_pon "${pon_breakpoint_bedpe}" \
+    -breakpoint_hotspot "${known_fusion_pairs_bedpe}" \
+    -input_vcf "${raw_gridss_vcf}" \
+    -output_vcf "${intermediate_filterted_vcf}"
 
-	gridss_annotate_vcf_kraken2.sh \
-	--threads "${task.cpus}" \
-	--output "${annotated_vcf}" \
-	"${intermediate_annotated_vcf}"
-	"""
-}
-
-
-
-
-
-
-
-
-
-
-/*
-
-
-process filteringAndPostprocessesing_gridss {
-	input:
-	tumnormbams
-	refgenomefiles
-	breakpointreffiles
-	gridssunfilteredvcf
-
-	script:
-	"""
-	java -Xmx${task.memory.toGiga()}G -cp gripss.jar com.hartwig.hmftools.gripss.GripssApplicationKt \
-	-tumor "${TUMBAMSAMPLENAM}" \
-    -reference "${NORMBAMSAMPLENAME}" \
-    -ref_genome "${REFGENOME}" \
-    -breakend_pon "${BREAKENDPONBED}" \
-    -breakpoint_pon "${BREAKENDPONBEDPE}" \
-    -breakpoint_hotspot "${KNOWNFUSIONSBEDPE}" \
-    -input_vcf "${GRIDSSUNFILTEREDVCF}" \
-    -output_vcf "${OUTPUTVCF}"
+    java -Xmx${task.memory.toGiga()}G -cp gripss.jar com.hartwig.hmftools.gripss.GripssHardFilterApplicationKt \
+    -input_vcf  "${intermediate_filterted_vcf}" \
+    -output_vcf "${filterted_vcf}"
 	"""
 }
-
-
-
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-*/
-
-
-
-
 
 
 // VEP ~ download the reference files used for VEP annotation, if needed
