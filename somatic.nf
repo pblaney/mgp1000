@@ -1675,7 +1675,11 @@ process cnvPredictionPostProcessing_controlfreec {
 
 
 
-/*
+
+
+
+
+
 
 
 // ~~~~~~~~~~~~~~~~~ Sclust ~~~~~~~~~~~~~~~~~ \\
@@ -1688,7 +1692,7 @@ process bamprocessPerChromosome_sclust {
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forSclustBamprocess
-	each each chromosome from chromosome_list_forSclustBamprocess
+	each chromosome from chromosome_list_forSclustBamprocess
 
 	output:
 	tuple val(tumor_normal_sample_id), path(bamprocess_data_per_chromosome) into per_chromosome_bamprocess_data
@@ -1736,6 +1740,8 @@ process mergeBamprocessData_sclust {
 	"""
 }
 
+/*
+
 // Sclust cn ~ perform the copy-number analysis
 readcounts
 snpcounts
@@ -1748,6 +1754,10 @@ snv/indelvcf (mutect?)
 
 
 */
+
+
+
+
 
 
 
