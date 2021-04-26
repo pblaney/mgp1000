@@ -1186,6 +1186,7 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 	output:
 	path final_mutect_vcf into final_mutect_vcf_forAnnotation
 	path final_mutect_vcf_index into final_mutect_vcf_index_forAnnotation
+	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) into mutect_vcf_forSclust
 	path mutect_multiallelics_stats
 	path mutect_realign_normalize_stats
 
@@ -1698,7 +1699,7 @@ process bamprocessPerChromosome_sclust {
 	tuple val(tumor_normal_sample_id), path(bamprocess_data_per_chromosome) into per_chromosome_bamprocess_data
 
 	when:
-	params.sclust == "on"
+	params.sclust == "on" && params.mutect == "on"
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -1728,7 +1729,7 @@ process mergeBamprocessData_sclust {
 	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file) into read_count_and_snp_count_files
 
 	when:
-	params.sclust == "on"
+	params.sclust == "on" && params.mutect == "on"
 
 	script:
 	read_count_file = "${tumor_normal_sample_id}_rcount.txt"
@@ -1741,6 +1742,74 @@ process mergeBamprocessData_sclust {
 }
 
 /*
+
+
+// VCFtools / VAtools ~ extract metrics from VCF to prepare for use in Sclust process
+process prepareVcfForSclust_vcftools {
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) into mutect_vcf_forSclust
+
+	output:
+
+
+	when:
+	params.sclust == "on" && params.mutect == "on"
+
+	script:
+	tumor_normal_read_depth = "${tumor_normal_sample_id}.DP.FORMAT"
+	tumor_normal_allelic_frequency = "${tumor_normal_sample_id}.AF.FORMAT"
+
+
+	intermediate_vcf_1 = "${final_mutect_vcf}".replaceFirst(/\.mutect\.somatic\.vcf\.gz/, ".sclust.intermediate.1.vcf.gz")
+	intermediate_vcf_1 = "${final_mutect_vcf}".replaceFirst(/\.mutect\.somatic\.vcf\.gz/, ".sclust.intermediate.2.vcf.gz")
+	"""
+	vcftools \
+	--gzvcf "${final_mutect_vcf}" \
+	--out "${tumor_normal_sample_id}" \
+	--extract-FORMAT-info DP
+
+	grep -v 'CHROM' "${tumor_normal_read_depth}" | cut -f 1-3 > tumor.dp.tsv
+	grep -v 'CHROM' "${tumor_normal_read_depth}" | cut -f 1-2,4 > normal.dp.tsv
+
+	vcf-info-annotator \
+	--overwrite \
+	--description "Read Depth Tumor" \
+	--value_format Integer \
+	--output-vcf "${intermediate_vcf_1}" \
+	"${final_mutect_vcf}" \
+	tumor.dp.tsv \
+	DP
+
+	vcf-info-annotator \
+	--description "Read Depth Normal" \
+	--value_format Integer \
+	--output-vcf "${intermediate_vcf_2}" \
+	"${intermediate_vcf_1}" \
+	normal.dp.tsv \
+	DP_N
+
+	vcftools \
+	--gzvcf "${final_mutect_vcf}" \
+	--out "${tumor_normal_sample_id}" \
+	--extract-FORMAT-info AF
+
+	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-3 > tumor.af.tsv
+
+	vcf-info-annotator \
+	--description "Allelic Frequency Tumor" \
+	--value_format Float \
+	--output-vcf "${intermediate_vcf_3}" \
+	"${intermediate_vcf_2}" \
+	tumor.af.tsv \
+	AF
+	"""
+}
+
+
+
 
 // Sclust cn ~ perform the copy-number analysis
 readcounts
@@ -2040,10 +2109,14 @@ process assemble_gridss {
 	assembly_bam = "${tumor_normal_sample_id}.assembly.bam"
 	assembly_bam_per_index_working_dir = "${assembly_bam}.gridss.working_${index}"
 	"""
+	touch gridss.properties
+	echo "chunkSize=50000000" >> gridss.properties
+
 	gridss.sh --steps assemble \
 	--jvmheap "${task.memory.toGiga()}"g \
 	--otherjvmheap "${task.memory.toGiga()}"g \
 	--threads "${task.cpus}" \
+	--configuration gridss.properties \
 	--jobindex "${index}" \
 	--jobnodes 2 \
 	--assembly "${assembly_bam}" \
