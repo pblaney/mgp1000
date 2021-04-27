@@ -1805,6 +1805,36 @@ process prepareVcfForSclust_vcftools {
 	"${intermediate_vcf_2}" \
 	tumor.af.tsv \
 	AF
+
+	awk 'BEGIN {OFS="\t"} {print $1,$2,"0"}' tumor.af.tsv > norm.af.tsv
+
+	vcf-info-annotator \
+	--description "Allelic Frequency Normal" \
+	--value_format Float \
+	--output-vcf "${intermediate_vcf_4}" \
+	"${intermediate_vcf_3}" \
+	norm.af.tsv \
+	AF_N
+
+	awk 'BEGIN {OFS="\t"} {print $1,$2,"."}' tumor.af.tsv > placeholder.fr.tsv
+
+	vcf-info-annotator \
+	--description "Forward-Reverse Score" \
+	--value_format Float \
+	--output-vcf "${intermediate_vcf_5}" \
+	"${intermediate_vcf_4}" \
+	placeholder.fr.tsv \
+	FR
+
+	cp placeholder.fr.tsv placeholder.tg.tsv
+
+	vcf-info-annotator \
+	--description "Target Name (Genome Partition)" \
+	--value_format String \
+	--output-vcf "${intermediate_vcf_6}" \
+	"${intermediate_vcf_5}" \
+	placeholder.tg.tsv \
+	TG
 	"""
 }
 
@@ -2146,10 +2176,14 @@ process mergeAssembly_gridss {
 	assembly_bam = "${tumor_normal_sample_id}.assembly.bam"
 	assembly_bam_working_dir = "${assembly_bam}.gridss.working"
 	"""
+	touch gridss.properties
+	echo "chunkSize=50000000" >> gridss.properties
+
 	gridss.sh --steps assemble \
 	--jvmheap "${task.memory.toGiga()}"g \
 	--otherjvmheap "${task.memory.toGiga()}"g \
 	--threads "${task.cpus}" \
+	--configuration gridss.properties \
 	--assembly "${assembly_bam}" \
 	--reference "${reference_genome_fasta_forGridssSetup}" \
 	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
@@ -2177,10 +2211,14 @@ process svAndIndelCalling_gridss {
 	raw_gridss_vcf = "${tumor_normal_sample_id}.gridss.somatic.raw.vcf.gz"
 	raw_gridss_vcf_index = "${raw_gridss_vcf}.tbi"
 	"""
+	touch gridss.properties
+	echo "chunkSize=50000000" >> gridss.properties
+
 	gridss.sh --steps call \
 	--jvmheap "${task.memory.toGiga()}"g \
 	--otherjvmheap "${task.memory.toGiga()}"g \
 	--threads "${task.cpus}" \
+	--configuration gridss.properties \
 	--assembly "${assembly_bam}" \
 	--reference "${reference_genome_fasta_forGridssSetup}" \
 	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
