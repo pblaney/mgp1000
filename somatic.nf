@@ -323,7 +323,7 @@ Channel
 	.set{ pon_breakpoint_bedpe }
 
 Channel
-	.fromPath( 'references/hg38/known_fusions_pairs_v3.hg38.bedpe' )
+	.fromPath( 'references/hg38/known_fusion_pairs_v3.hg38.bedpe' )
 	.set{ known_fusion_pairs_bedpe }
 
 if( params.vep_ref_cached == "yes" ) {
