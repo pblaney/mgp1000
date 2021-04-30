@@ -2213,7 +2213,7 @@ process svAndIndelCalling_gridss {
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	raw_gridss_vcf = "${tumor_normal_sample_id}.gridss.somatic.raw.vcf.gz"
+	raw_gridss_vcf = "${tumor_normal_sample_id}.gridss.raw.vcf.gz"
 	raw_gridss_vcf_index = "${raw_gridss_vcf}.tbi"
 	"""
 	touch gridss.properties
@@ -2254,15 +2254,16 @@ process filteringAndPostprocessesing_gridss {
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(raw_gridss_vcf), path(raw_gridss_vcf_index), path(reference_genome_fasta_forGridssPostprocessing), path(reference_genome_fasta_index_forGridssPostprocessing), path(reference_genome_fasta_dict_forGridssPostprocessing), path(pon_single_breakend_bed), path(pon_breakpoint_bedpe), path(known_fusion_pairs_bedpe) from raw_vcf_forGridssPostprocessing.combine(ref_genome_and_pon_beds_forGridssPostprocessing)
 
 	output:
-	tuple path(filterted_vcf), path(filterted_vcf_index)
+	tuple path(final_gridss_vcf), path(final_gridss_vcf_index)
 
 	when:
 	params.gridss == "on"
 
 	script:
 	intermediate_filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".intermediate.vcf.gz")
-	filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".vcf.gz")
-	filterted_vcf_index = "${filterted_vcf}.tbi"
+	filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, "filtered.vcf.gz")
+	final_gridss_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".somatic.vcf.gz")
+	final_gridss_vcf_index = "${final_gridss_vcf}.tbi"
 	"""
 	java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssApplicationKt \
 	-tumor "${tumor_id}" \
@@ -2277,6 +2278,9 @@ process filteringAndPostprocessesing_gridss {
     java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssHardFilterApplicationKt \
     -input_vcf  "${intermediate_filterted_vcf}" \
     -output_vcf "${filterted_vcf}"
+
+    zgrep -E '^#|PASS' "${filterted_vcf}" | bgzip > "${final_gridss_vcf}"
+    tabix "${final_gridss_vcf}"
 	"""
 }
 
