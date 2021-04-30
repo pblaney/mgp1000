@@ -1761,78 +1761,83 @@ process prepareVcfForSclust_vcftools {
 	script:
 	tumor_normal_read_depth = "${tumor_normal_sample_id}.DP.FORMAT"
 	tumor_normal_allelic_frequency = "${tumor_normal_sample_id}.AF.FORMAT"
+	tumor_normal_forward_reverse_reads = "${tumor_normal_sample_id}.SB.FORMAT"
 
 
-	intermediate_vcf_1 = "${final_mutect_vcf}".replaceFirst(/\.mutect\.somatic\.vcf\.gz/, ".sclust.intermediate.1.vcf.gz")
-	intermediate_vcf_1 = "${final_mutect_vcf}".replaceFirst(/\.mutect\.somatic\.vcf\.gz/, ".sclust.intermediate.2.vcf.gz")
+
 	"""
+	DONT NEED TO DO THIS
+	zgrep -v '^##INFO=<ID=DP' "${final_mutect_vcf}" > "${tumor_normal_sample_id}.sclust.base.vcf.gz"
+
 	vcftools \
-	--gzvcf "${final_mutect_vcf}" \
+	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
 	--out "${tumor_normal_sample_id}" \
 	--extract-FORMAT-info DP
 
+	vcftools \
+	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
+	--out "${tumor_normal_sample_id}" \
+	--extract-FORMAT-info AF
+
+	vcftools \
+	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
+	--out "${tumor_normal_sample_id}" \
+	--extract-FORMAT-info SB
+
 	grep -v 'CHROM' "${tumor_normal_read_depth}" | cut -f 1-3 > tumor.dp.tsv
 	grep -v 'CHROM' "${tumor_normal_read_depth}" | cut -f 1-2,4 > normal.dp.tsv
+	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-3 > tumor.af.tsv
+	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-2,4 > normal.af.tsv
+	grep -v 'CHROM' "${tumor_normal_forward_reverse_reads}" | cut -f 1-3 | forward_reverse_score_calculator.py > tumor.fr.tsv
+	awk 'BEGIN {OFS="\t"} {print $1,$2,"."}' tumor.dp.tsv > placeholder.tg.tsv
+
+
 
 	vcf-info-annotator \
-	--overwrite \
 	--description "Read Depth Tumor" \
 	--value_format Integer \
-	--output-vcf "${intermediate_vcf_1}" \
-	"${final_mutect_vcf}" \
+	--output-vcf "${tumor_normal_sample_id}.sclust.int1.vcf.gz" \
+	"${tumor_normal_sample_id}.sclust.base.vcf.gz" \
 	tumor.dp.tsv \
 	DP
 
 	vcf-info-annotator \
 	--description "Read Depth Normal" \
 	--value_format Integer \
-	--output-vcf "${intermediate_vcf_2}" \
-	"${intermediate_vcf_1}" \
+	--output-vcf "${tumor_normal_sample_id}.sclust.int2.vcf.gz" \
+	"${tumor_normal_sample_id}.sclust.int1.vcf.gz" \
 	normal.dp.tsv \
 	DP_N
-
-	vcftools \
-	--gzvcf "${final_mutect_vcf}" \
-	--out "${tumor_normal_sample_id}" \
-	--extract-FORMAT-info AF
-
-	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-3 > tumor.af.tsv
 
 	vcf-info-annotator \
 	--description "Allelic Frequency Tumor" \
 	--value_format Float \
-	--output-vcf "${intermediate_vcf_3}" \
-	"${intermediate_vcf_2}" \
+	--output-vcf "${tumor_normal_sample_id}.sclust.int3.vcf.gz" \
+	"${tumor_normal_sample_id}.sclust.int2.vcf.gz" \
 	tumor.af.tsv \
 	AF
-
-	awk 'BEGIN {OFS="\t"} {print $1,$2,"0"}' tumor.af.tsv > norm.af.tsv
 
 	vcf-info-annotator \
 	--description "Allelic Frequency Normal" \
 	--value_format Float \
-	--output-vcf "${intermediate_vcf_4}" \
-	"${intermediate_vcf_3}" \
+	--output-vcf "${tumor_normal_sample_id}.sclust.int4.vcf.gz" \
+	"${tumor_normal_sample_id}.sclust.int3.vcf.gz" \
 	norm.af.tsv \
 	AF_N
-
-	awk 'BEGIN {OFS="\t"} {print $1,$2,"."}' tumor.af.tsv > placeholder.fr.tsv
 
 	vcf-info-annotator \
 	--description "Forward-Reverse Score" \
 	--value_format Float \
-	--output-vcf "${intermediate_vcf_5}" \
-	"${intermediate_vcf_4}" \
+	--output-vcf "${tumor_normal_sample_id}.sclust.int5.vcf.gz" \
+	"${tumor_normal_sample_id}.sclust.int4.vcf.gz" \
 	placeholder.fr.tsv \
 	FR
-
-	cp placeholder.fr.tsv placeholder.tg.tsv
 
 	vcf-info-annotator \
 	--description "Target Name (Genome Partition)" \
 	--value_format String \
-	--output-vcf "${intermediate_vcf_6}" \
-	"${intermediate_vcf_5}" \
+	--output-vcf "${tumor_normal_sample_id}.sclust.final.vcf.gz" \
+	"${tumor_normal_sample_id}.sclust.int5.vcf.gz" \
 	placeholder.tg.tsv \
 	TG
 	"""
@@ -2269,7 +2274,7 @@ process filteringAndPostprocessesing_gridss {
     -input_vcf "${raw_gridss_vcf}" \
     -output_vcf "${intermediate_filterted_vcf}"
 
-    java -Xmx${task.memory.toGiga()}G -cp gripss.jar com.hartwig.hmftools.gripss.GripssHardFilterApplicationKt \
+    java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssHardFilterApplicationKt \
     -input_vcf  "${intermediate_filterted_vcf}" \
     -output_vcf "${filterted_vcf}"
 	"""
