@@ -1675,14 +1675,6 @@ process cnvPredictionPostProcessing_controlfreec {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
-
-
-
-
-
-
 // ~~~~~~~~~~~~~~~~~ Sclust ~~~~~~~~~~~~~~~~~ \\
 // START
 
@@ -1741,19 +1733,16 @@ process mergeBamprocessData_sclust {
 	"""
 }
 
-/*
-
-
 // VCFtools / VAtools ~ extract metrics from VCF to prepare for use in Sclust process
 process prepareVcfForSclust_vcftools {
 	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) into mutect_vcf_forSclust
+	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) from mutect_vcf_forSclust
 
 	output:
-
+	tuple val(tumor_normal_sample_id), path(mutations_vcf) into vcf_forSclustCn
 
 	when:
 	params.sclust == "on" && params.mutect == "on"
@@ -1762,12 +1751,13 @@ process prepareVcfForSclust_vcftools {
 	tumor_normal_read_depth = "${tumor_normal_sample_id}.DP.FORMAT"
 	tumor_normal_allelic_frequency = "${tumor_normal_sample_id}.AF.FORMAT"
 	tumor_normal_forward_reverse_reads = "${tumor_normal_sample_id}.SB.FORMAT"
-
-
-
+	mutations_vcf = "${tumor_normal_sample_id}.sclust.final.vcf.gz"
 	"""
-	DONT NEED TO DO THIS
-	zgrep -v '^##INFO=<ID=DP' "${final_mutect_vcf}" > "${tumor_normal_sample_id}.sclust.base.vcf.gz"
+	zcat "${final_mutect_vcf}" \
+	| \
+	sed 's|Approximate read depth; some reads may have been filtered|Read Depth Tumor|' \
+	| \
+	gzip > "${tumor_normal_sample_id}.sclust.base.vcf.gz"
 
 	vcftools \
 	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
@@ -1789,11 +1779,10 @@ process prepareVcfForSclust_vcftools {
 	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-3 > tumor.af.tsv
 	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-2,4 > normal.af.tsv
 	grep -v 'CHROM' "${tumor_normal_forward_reverse_reads}" | cut -f 1-3 | forward_reverse_score_calculator.py > tumor.fr.tsv
-	awk 'BEGIN {OFS="\t"} {print $1,$2,"."}' tumor.dp.tsv > placeholder.tg.tsv
-
-
+	awk 'BEGIN {OFS="\t"} {print \$1,\$2,"."}' tumor.dp.tsv > placeholder.tg.tsv
 
 	vcf-info-annotator \
+	--overwrite \
 	--description "Read Depth Tumor" \
 	--value_format Integer \
 	--output-vcf "${tumor_normal_sample_id}.sclust.int1.vcf.gz" \
@@ -1822,7 +1811,7 @@ process prepareVcfForSclust_vcftools {
 	--value_format Float \
 	--output-vcf "${tumor_normal_sample_id}.sclust.int4.vcf.gz" \
 	"${tumor_normal_sample_id}.sclust.int3.vcf.gz" \
-	norm.af.tsv \
+	normal.af.tsv \
 	AF_N
 
 	vcf-info-annotator \
@@ -1830,39 +1819,103 @@ process prepareVcfForSclust_vcftools {
 	--value_format Float \
 	--output-vcf "${tumor_normal_sample_id}.sclust.int5.vcf.gz" \
 	"${tumor_normal_sample_id}.sclust.int4.vcf.gz" \
-	placeholder.fr.tsv \
+	tumor.fr.tsv \
 	FR
 
 	vcf-info-annotator \
 	--description "Target Name (Genome Partition)" \
 	--value_format String \
-	--output-vcf "${tumor_normal_sample_id}.sclust.final.vcf.gz" \
+	--output-vcf "${mutations_vcf}" \
 	"${tumor_normal_sample_id}.sclust.int5.vcf.gz" \
 	placeholder.tg.tsv \
 	TG
 	"""
 }
 
+// Sclust cn ~ perform copy-number analysis and estimation of tumor purity
+process cnvCalling_sclust {
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf) from read_count_and_snp_count_files.join(vcf_forSclustCn)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(mutations_exp_af_file) into mutations_exp_af_forSclustCluster
+	path allelic_states_file
+	path cnv_profile_pdf
+	path cnv_profile_file
+	path cnv_segments_file
+	path sclust_subclones_file
+
+	when:
+	params.sclust == "on" && params.mutect == "on"
+
+	script:
+	allelic_states_file = "${tumor_normal_sample_id}.sclust.allelicstates.txt"
+	cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
+	cnv_profile_file = "${tumor_normal_sample_id}.sclust.cnv.txt"
+	cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
+	mutations_exp_af_file = "${tumor_normal_sample_id}.sclust.mutationsaf.txt"
+	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
+	"""
+	gunzip "${mutations_vcf}"
+
+	Sclust cn \
+	-rc "${read_count_file}" \
+	-snp "${common_snp_count_file}" \
+	-vcf "${tumor_normal_sample_id}.sclust.final.vcf" \
+	-ns 20 \
+	-o "${tumor_normal_sample_id}"
+
+	#### REMOVE NS PARAMTER ^^ AFTER TESTING  #####
 
 
+	mv "${tumor_normal_sample_id}_allelic_states.txt" "${allelic_states_file}"
+	mv "${tumor_normal_sample_id}_cn_profile.pdf" "${cnv_profile_pdf}"
+	mv "${tumor_normal_sample_id}_cn_summary.txt" "${cnv_profile_file}"
+	mv "${tumor_normal_sample_id}_iCN.seg" "${cnv_segments_file}"
+	mv "${tumor_normal_sample_id}_muts_expAF.txt" "${mutations_exp_af_file}"
+	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${subclones_file}"
+	"""
+}
 
-// Sclust cn ~ perform the copy-number analysis
-readcounts
-snpcounts
-snv/indelvcf (mutect?)
+/*
 
+// Sclust cluster ~ perform mutational clustering
+process mutationalClustering_sclust {
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
 
+	input:
+	tuple val(tumor_normal_sample_id), path(mutations_exp_af_file) from mutations_exp_af_forSclustCluster
 
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+	output:
+	path mutation_clusters_file
+	path mutation_clusters_pdf
+	path cluster_assignment_file
 
+	when:
+	params.sclust == "on" && params.mutect == "on"
+
+	script:
+	mutation_clusters_file = "${tumor_normal_sample_id}.sclust.mutclusters.txt"
+	mutation_clusters_pdf = "${tumor_normal_sample_id}.sclust.mutclusters.pdf"
+	cluster_assignment_file = "${tumor_normal_sample_id}.sclust.clusterassignments.txt"
+	"""
+	Sclust cluster \
+	-i "${tumor_normal_sample_id}"
+
+	mv "${tumor_normal_sample_id}_mcluster.txt" "${mutation_clusters_file}"
+	mv "${tumor_normal_sample_id}_mcluster.pdf" "${mutation_clusters_pdf}"
+	mv "${tumor_normal_sample_id}_cluster_assignments.txt" "${cluster_assignment_file}"
+	"""
+}
 
 */
 
-
-
-
-
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
 // ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
