@@ -72,10 +72,10 @@ def helpMessage() {
 		--mutect                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--ascatngs                     [str]  Indicates whether or not to use this tool
+		--caveman                      [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--caveman                      [str]  Indicates whether or not to use this tool
+		--ascatngs                     [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
 		--controlfreec                 [str]  Indicates whether or not to use this tool
@@ -112,8 +112,8 @@ params.telseq = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
-params.ascatngs = "on"
 params.caveman = "on"
+params.ascatngs = "on"
 params.controlfreec = "on"
 params.sclust = "on"
 params.manta = "on"
@@ -371,7 +371,7 @@ reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
 
 // alleleCount ~ determine the sex of each sample to use in downstream analyses
 process identifySampleSex_allelecount {
-	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -400,7 +400,7 @@ process identifySampleSex_allelecount {
 
 // TelSeq ~ estimate telomere length of sample
 process tumorSampleTelomereLengthEstimation_telseq {
-	publishDir "${params.output_dir}/somatic/telomereLengthEstimations", mode: 'move'
+	publishDir "${params.output_dir}/somatic/telomereLengthEstimations", mode: 'copy'
 	tag "${tumor_bam.baseName}"
 
 	input:
@@ -429,7 +429,7 @@ reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_fo
 
 // Conpair ~ generate GATK pileups the tumor and normal BAMs separately
 process bamPileupForConpair_conpair {
-	publishDir "${params.output_dir}/somatic/concordanceAndContaminationEstimations", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/conpair/pileups", mode: 'symlink'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -468,7 +468,7 @@ process bamPileupForConpair_conpair {
 
 // Conpair ~ concordance and contamination estimator for tumor–normal pileups
 process concordanceAndContaminationEstimation_conpair {
-	publishDir "${params.output_dir}/somatic/concordanceAndContaminationEstimations", mode: 'move'
+	publishDir "${params.output_dir}/somatic/conpair", mode: 'copy'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -523,7 +523,7 @@ reference_genome_bundle_forVarscanSamtoolsMpileup.combine( gatk_bundle_wgs_bed_f
 
 // VarScan somatic / SAMtools mpileup ~ heuristic/statistic approach to call SNV and indel variants
 process snvAndIndelCalling_varscan {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/varscan/rawVcfs", mode: 'symlink'
 	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -578,7 +578,7 @@ process snvAndIndelCalling_varscan {
 
 // BCFtools Concat ~ concatenate all VarScan SNV/indel per chromosome VCFs
 process concatenateVarscanPerChromosomeVcfs_bcftools {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/varscan/rawVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 	
 	input:
@@ -656,7 +656,7 @@ process concatenateVarscanPerChromosomeVcfs_bcftools {
 
 // VarScan processSomatic ~ filter the called SNVs and indels for confidence and somatic status assignment
 process filterRawSnvAndIndels_varscan {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/varscan/filteredVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -708,7 +708,7 @@ tumor_normal_pair_forVarscanBamReadcount.combine( reference_genome_bundle_forVar
 
 // bam-readcount ~ generate metrics at single nucleotide positions for filtering out false positive calls
 process bamReadcountForVarscanFpFilter_bamreadcount {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/varscan/filteredVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -747,7 +747,7 @@ process bamReadcountForVarscanFpFilter_bamreadcount {
 
 // VarScan fpfilter ~ filter out additional false positive variants
 process falsePositivefilterSnvAndIndels_varscan {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/varscan/filteredVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -790,7 +790,7 @@ reference_genome_fasta_forVarscanBcftoolsNorm.combine( reference_genome_fasta_in
 
 // BCFtools Concat / Norm ~ join the SNV and indel calls, split multiallelic sites into multiple rows then left-align and normalize indels
 process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/varscan", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -898,7 +898,7 @@ reference_genome_bundle_and_bed_forMutectCalling.combine( mutect_gnomad_ref_vcf 
 
 // GATK MuTect2 ~ call somatic SNVs and indels via local assembly of haplotypes
 process snvAndIndelCalling_gatk {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect/rawVcfs", mode: 'symlink'
 	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -943,7 +943,7 @@ process snvAndIndelCalling_gatk {
 
 // GATK SortVcfs ~ merge all per chromosome MuTect2 VCFs
 process mergeAndSortMutect2Vcfs_gatk {
-	publishDir "${params.output_dir}/somatic", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/rawVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 	
 	input:
@@ -971,7 +971,7 @@ process mergeAndSortMutect2Vcfs_gatk {
 
 // GATK MergeMutectStats ~ merge the per chromosome stats output of MuTect2 variant calling
 process mergeMutect2StatsForFiltering_gatk {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect/rawVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1002,7 +1002,7 @@ gatk_bundle_wgs_bed_forMutectPileup.combine( exac_common_sites_ref_vcf )
 
 // GATK GetPileupSummaries ~ tabulates pileup metrics for inferring contamination
 process pileupSummariesForMutect2Contamination_gatk {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect/pileups", mode: 'symlink'
 	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -1047,7 +1047,7 @@ process pileupSummariesForMutect2Contamination_gatk {
 
 // GATK GatherPileupSummaries ~ combine tumor pileup tables for inferring contamination
 process gatherTumorPileupSummariesForMutect2Contamination_gatk {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect/pileups", mode: 'symlink'
 	tag "${tumor_id}"
 
 	input:
@@ -1074,7 +1074,7 @@ process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 
 // GATK GatherPileupSummaries ~ combine normal pileup tables for inferring contamination
 process gatherNormalPileupSummariesForMutect2Contamination_gatk {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect/pileups", mode: 'symlink'
 	tag "${normal_id}"
 
 	input:
@@ -1101,7 +1101,7 @@ process gatherNormalPileupSummariesForMutect2Contamination_gatk {
 
 // GATK CalculateContamination ~ calculate the fraction of reads coming from cross-sample contamination
 process mutect2ContaminationCalculation_gatk {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1138,7 +1138,7 @@ merged_raw_vcfs_forMutectFilter.combine( merged_mutect_stats_file_forMutectFilte
 
 // GATK FilterMutectCalls ~ filter somatic SNVs and indels called by Mutect2
 process mutect2VariantFiltration_gatk {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect/filteredVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1177,7 +1177,7 @@ reference_genome_fasta_forMutectBcftools.combine( reference_genome_fasta_index_f
 
 // BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1235,7 +1235,7 @@ reference_genome_fasta_forAscatNgs.combine( reference_genome_fasta_index_forAsca
 
 // ascatNGS ~  identifying somatically acquired copy-number alterations
 process cnvCalling_ascatngs {
-	publishDir "${params.output_dir}/somatic/ascatNgs", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/ascatNgs", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1312,7 +1312,7 @@ reference_genome_fasta_forCavemanSetupSplit.combine( reference_genome_fasta_inde
 
 // CaVEMan setup / split ~ generate a config file for downstream processes and create a list of segments to be analysed
 process setupAndSplit_caveman {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${split_file}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1361,7 +1361,8 @@ process setupAndSplit_caveman {
 
 // CaVEMan mstep / merge ~ tune the size of section downloaded from bam at a time then create covariate and probabilities files
 process mstepAndMerge_caveman {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${covariate_file}'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${probabilities_file}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1410,7 +1411,7 @@ mstep_and_merge_output_forCavemanEstep.join( setup_and_split_readpos_forCavemanE
 
 // CaVEMan estep ~ call single base substitutions using an expectation maximisation approach
 process snvCalling_caveman {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/caveman", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1483,7 +1484,7 @@ reference_genome_bundle_forControlFreecSamtoolsMpileup.combine( gatk_bundle_wgs_
 
 // SAMtools mpileup ~ generate per chromosome mpileups for the tumor and normal BAMs separately
 process bamMpileupForControlFreec_samtools {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/controlFreec/pileups", mode: 'symlink'
 	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -1523,7 +1524,7 @@ process bamMpileupForControlFreec_samtools {
 
 // Mpileup Merge ~ Combine all tumor and normal per chromosome mpileup files separately
 process mergeMpileupsForControlFreec_samtools {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/controlFreec/pileups", mode: 'symlink'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -1573,7 +1574,7 @@ reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_
 
 // Control-FREEC ~ detection of copy-number changes and allelic imbalances
 process cnvCalling_controlfreec {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1636,7 +1637,7 @@ process cnvCalling_controlfreec {
 
 // Control-FREEC ~ post-processing of CNV predictions for significance, visualization, and format compatibility
 process cnvPredictionPostProcessing_controlfreec {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1680,7 +1681,7 @@ process cnvPredictionPostProcessing_controlfreec {
 
 // Sclust bamprocess ~ extract the read ratio and SNP information per chromosome
 process bamprocessPerChromosome_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink'
 	tag "C=${chromosome} T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -1711,7 +1712,7 @@ process bamprocessPerChromosome_sclust {
 
 // Sclust bamprocess ~ merge per chromosome bamprocess data files and generate a read-count and common SNP-count files
 process mergeBamprocessData_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1735,7 +1736,7 @@ process mergeBamprocessData_sclust {
 
 // VCFtools / VAtools ~ extract metrics from VCF to prepare for use in Sclust process
 process prepareVcfForSclust_vcftools {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1834,7 +1835,7 @@ process prepareVcfForSclust_vcftools {
 
 // Sclust cn ~ perform copy-number analysis and estimation of tumor purity
 process cnvCalling_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1865,11 +1866,7 @@ process cnvCalling_sclust {
 	-rc "${read_count_file}" \
 	-snp "${common_snp_count_file}" \
 	-vcf "${tumor_normal_sample_id}.sclust.final.vcf" \
-	-ns 20 \
 	-o "${tumor_normal_sample_id}"
-
-	#### REMOVE NS PARAMTER ^^ AFTER TESTING  #####
-
 
 	mv "${tumor_normal_sample_id}_allelic_states.txt" "${allelic_states_file}"
 	mv "${tumor_normal_sample_id}_cn_profile.pdf" "${cnv_profile_pdf}"
@@ -1880,11 +1877,9 @@ process cnvCalling_sclust {
 	"""
 }
 
-/*
-
 // Sclust cluster ~ perform mutational clustering
 process mutationalClustering_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1912,8 +1907,6 @@ process mutationalClustering_sclust {
 	"""
 }
 
-*/
-
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
@@ -1929,7 +1922,7 @@ reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
 
 // Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
 process svAndIndelCalling_manta {
-	publishDir "${params.output_dir}/somatic/manta", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/manta", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2009,7 +2002,12 @@ bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*${filtered_somatic_sv_vcf}'
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*${filtered_somatic_sv_vcf_index}'
+	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${unfiltered_somatic_indel_vcf}'
+	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${unfiltered_somatic_sv_vcf}'
+	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${germline_indel_vcf}'
+	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${germline_sv_vcf}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2068,7 +2066,7 @@ reference_genome_fasta_forSvabaBcftools.combine( reference_genome_fasta_index_fo
 
 // BCFtools Norm ~ left-align and normalize indels
 process leftNormalizeSvabaVcf_bcftools {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2180,7 +2178,7 @@ Channel
 
 // GRIDSS assemble ~ perform breakend assembly split up across multiple jobs
 process assemble_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${assembly_bam_per_index_working_dir}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2212,13 +2210,13 @@ process assemble_gridss {
 	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
 	"${normal_bam}" "${tumor_bam}"
 
-	mv "${assembly_bam}.gridss.working" "${assembly_bam}.gridss.working_${index}"
+	mv "${assembly_bam}.gridss.working" "${assembly_bam_per_index_working_dir}"
 	"""
 }
 
 // GRIDSS assemble ~ merge all assembly results together
 process mergeAssembly_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${assembly_bam}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2251,7 +2249,7 @@ process mergeAssembly_gridss {
 
 // GRIDSS call ~ calls structural variants based on alignment-guided positional de Bruijn graph genome
 process svAndIndelCalling_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/gridss/rawVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2300,7 +2298,7 @@ reference_genome_bundle_forGridssPostprocessing.combine( pon_single_breakend_bed
 
 // GRIDSS / GRIPSS ~ apply a set of filtering and post processing steps to raw GRIDSS calls
 process filteringAndPostprocessesing_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/gridss", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
