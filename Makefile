@@ -46,6 +46,12 @@ germline-completion:
 	mv timeline_report.*.html logs/germline
 	mv trace.*.txt logs/germline
 
+somatic-completion:
+	mkdir -p logs/somatic
+	mv nextflow_report.*.html logs/somatic
+	mv timeline_report.*.html logs/somatic
+	mv trace.*.txt logs/somatic
+
 ###############################################################################
 
 # Test Preprocessing step locally with Docker and BAM or FASTQ input files
