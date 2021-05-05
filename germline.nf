@@ -204,10 +204,6 @@ Channel
 	.set{ reference_vcf_1000G_per_chromosome_index }
 
 Channel
-	.fromPath( 'references/hg38/ref_vcf_samples_to_keep.txt' )
-	.set{ reference_vcf_1000G_samples_to_keep }
-
-Channel
 	.fromPath( 'references/hg38/ref_vcf_chr_name_conversion_map.txt' )
 	.set{ reference_vcf_1000G_chr_name_conversion_map }
 
@@ -242,7 +238,7 @@ Channel
 
 // TelSeq ~ estimate telomere length of sample
 process normalSampleTelomereLengthEstimation_telseq {
-	publishDir "${params.output_dir}/germline/telomereLengthEstimations", mode: 'move'
+	publishDir "${params.output_dir}/germline/telomereLengthEstimations", mode: 'copy'
 	tag "${bam_preprocessed.baseName}"
 
 	input:
@@ -742,7 +738,6 @@ process referenceVcfPrep_bcftools {
 	input:
 	path per_chromosome_ref_vcf from reference_vcf_1000G_per_chromosome
 	path per_chromosome_ref_vcf_index from reference_vcf_1000G_per_chromosome_index.toList()
-	path ref_vcf_samples_to_keep_list from reference_vcf_1000G_samples_to_keep
 	path chr_name_conversion_map from reference_vcf_1000G_chr_name_conversion_map
 
 	output:
@@ -764,12 +759,6 @@ process referenceVcfPrep_bcftools {
 	--threads ${task.cpus} \
 	--output-type z \
 	--rename-chrs "${chr_name_conversion_map}" \
-	- \
-	| \
-	bcftools view \
-	--threads ${task.cpus} \
-	--output-type z \
-	--samples-file "${ref_vcf_samples_to_keep_list}" \
 	- > "${whole_genome_ref_vcf}"
 
 	tabix "${whole_genome_ref_vcf}"
@@ -889,7 +878,7 @@ process filterPlinkFilesForAdmixture_plink {
 
 // ADMIXTURE ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised and haploid aware fashion 
 process ancestryEstimation_admixture {
-	publishDir "${params.output_dir}/germline/admixutreAncestryEstimation", mode: 'move'
+	publishDir "${params.output_dir}/germline/admixutreAncestryEstimation", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -913,10 +902,10 @@ process ancestryEstimation_admixture {
 
 	admixture \
 	-j${task.cpus}\
-	-B50 \
+	-B200 \
 	--supervised \
 	--haploid="male:23" \
 	"${pruned_filtered_plink_file_prefix}.bed" \
-	13
+	26
 	"""
 }
