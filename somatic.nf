@@ -1448,6 +1448,8 @@ process snvCalling_caveman {
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
 	steps=\$(cat "${split_file}" | wc -l)
 	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
+	mv readpos.chr23 readpos.chrX
+	mv readpos.chr24 readpos.chrY
 
 	for i in `seq \${steps}`;
 	do
