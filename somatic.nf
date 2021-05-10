@@ -60,7 +60,7 @@ def helpMessage() {
 		--help                        [flag]  Prints this message
 
 	Toolbox Switches:
-		--telseq                       [str]  Indicates whether or not to use this tool
+		--telomerehunter               [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
 		--conpair                      [str]  Indicates whether or not to use this tool
@@ -108,7 +108,7 @@ params.run_id = null
 params.sample_sheet = null
 params.mutect_ref_vcf_concatenated = "yes"
 params.vep_ref_cached = "yes"
-params.telseq = "on"
+params.telomerehunter = "on"
 params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
@@ -222,6 +222,10 @@ Channel
 Channel
 	.fromPath( 'references/hg38/sex_identification_loci.chrY.hg38.txt' )
 	.set{ sex_identification_loci }
+
+Channel
+	.fromPath( 'references/hg38/cytoband_autosome_sex_chroms.hg38.bed' )
+	.set{ cytoband_bed }
 
 Channel
 	.fromPath( 'references/hg38/1000g_pon.hg38.vcf.gz' )
@@ -346,6 +350,7 @@ Channel
 	             def normal_bam_index = "input/preprocessedBams/${row.normal}".replaceFirst(/\.bam$/, ".bai")
 	             return[ file(tumor_bam), file(tumor_bam_index), file(normal_bam),  file(normal_bam_index) ] }
 	.into{ tumor_normal_pair_forAlleleCount;
+		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
 	       tumor_normal_pair_forVarscanSamtoolsMpileup; 
 	       tumor_normal_pair_forVarscanBamReadcount;
@@ -356,14 +361,6 @@ Channel
 	       tumor_normal_pair_forManta;
 	       tumor_normal_pair_forSvaba;
 	       tumor_normal_pair_forGridssPreprocess }
-
-// Read user provided sample sheet to find Tumor sample BAM files
-Channel
-	.fromPath( params.sample_sheet )
-	.splitCsv( header:true )
-	.map{ row -> file("input/preprocessedBams/${row.tumor}") }
-	.unique()
-	.set{ tumor_bam_forTelomereLengthEstimation }
 
 // Combine reference FASTA index and sex identification loci files into one channel for use in alleleCount process
 reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
@@ -398,24 +395,39 @@ process identifySampleSex_allelecount {
 	"""
 }
 
-// TelSeq ~ estimate telomere length of sample
-process tumorSampleTelomereLengthEstimation_telseq {
-	publishDir "${params.output_dir}/somatic/telomereLengthEstimations", mode: 'copy'
-	tag "${tumor_bam.baseName}"
+// TelomereHunter ~ estimate telomere content and composition
+process telomereEstimation_telomerehunter {
+	publishDir "${params.output_dir}/somatic/telomereHunter", mode: 'copy'
+	tag "${tumor_normal_sample_id}"
 
 	input:
-	path tumor_bam from tumor_bam_forTelomereLengthEstimation
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cytoband_bed) from tumor_normal_pair_forTelomereHunter.combine(cytoband_bed)
 
 	output:
-	path telomere_length_estimation
+	path "${tumor_normal_sample_id}/*.tsv"
+	path "${tumor_normal_sample_id}/*.png"
+	path "${tumor_normal_sample_id}/control_TelomerCnt_${tumor_normal_sample_id}/*.tsv"
+	path "${tumor_normal_sample_id}/control_TelomerCnt_${tumor_normal_sample_id}/TVRs"
+	path "${tumor_normal_sample_id}/tumor_TelomerCnt_${tumor_normal_sample_id}/*.tsv"
+	path "${tumor_normal_sample_id}/tumor_TelomerCnt_${tumor_normal_sample_id}/TVRs"
+	path "${tumor_normal_sample_id}/plots"
 
 	when:
-	params.telseq == "on"
+	params.telomerehunter == "on"
 
 	script:
-	telomere_length_estimation = "${tumor_bam}".replaceFirst(/\..*bam/, ".tumor.telomerelength.txt")
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
 	"""
-	telseq "${tumor_bam}" > "${telomere_length_estimation}"
+	telomerehunter \
+	--inputBamTumor "${tumor_bam}" \
+	--inputBamControl "${normal_bam}" \
+	--outPath . \
+	--pid "${tumor_normal_sample_id}" \
+	--bandingFile "${cytoband_bed}" \
+	--parallel \
+	--plotFileFormat png
 	"""
 }
 
