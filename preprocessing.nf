@@ -238,7 +238,7 @@ else {
 process fastqTrimming_trimmomatic {
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R1_trimmed}"	
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R2_trimmed}"
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'move', pattern: "*${fastq_trim_log}"
+	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'copy', pattern: "*${fastq_trim_log}"
 	tag "${sample_id}"
 
 	input:
@@ -273,7 +273,7 @@ process fastqTrimming_trimmomatic {
 
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqQualityControlMetrics_fastqc {
-	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'move'
+	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 	tag "${sample_id}"
 
 	input:
@@ -300,7 +300,7 @@ process fastqQualityControlMetrics_fastqc {
 // BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
 	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
-	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'move', pattern: "*${bam_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'copy', pattern: "*${bam_flagstat_log}"
 	tag "${sample_id}"
 
 	input:
@@ -382,8 +382,8 @@ process fixMateInformationAndSort_gatk {
 // Sambamba markdup ~ mark duplicate alignments, remove them, and create BAM index
 process markDuplicatesAndIndex_sambamba {
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${bam_markdup_flagstat_log}"
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'move', pattern: "*${markdup_output_log}"
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${bam_markdup_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${markdup_output_log}"
 	tag "${sample_id}"
 
 	input:
@@ -558,7 +558,7 @@ reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_inde
 
 // GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
 process collectWgsMetrics_gatk {
-	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'move'
+	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'copy'
 	tag "${sample_id}"
 
 	input:
@@ -594,7 +594,7 @@ reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_i
 
 // GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
 process collectGcBiasMetrics_gatk {
-	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'move'
+	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'copy'
 	tag "${sample_id}"
 
 	input:

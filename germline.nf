@@ -233,26 +233,7 @@ Channel
 	.splitCsv( header:true )
 	.map{ row -> file("input/preprocessedBams/${row.normal}") }
 	.unique()
-	.into{ input_preprocessed_bams_forTelomereLengthEstimation;
-	       input_preprocessed_bams_forHaplotypeCaller }
-
-// TelSeq ~ estimate telomere length of sample
-process normalSampleTelomereLengthEstimation_telseq {
-	publishDir "${params.output_dir}/germline/telomereLengthEstimations", mode: 'copy'
-	tag "${bam_preprocessed.baseName}"
-
-	input:
-	path bam_preprocessed from input_preprocessed_bams_forTelomereLengthEstimation
-
-	output:
-	path telomere_length_estimation
-
-	script:
-	telomere_length_estimation = "${bam_preprocessed}".replaceFirst(/\..*bam/, ".normal.telomerelength.txt")
-	"""
-	telseq "${bam_preprocessed}" > "${telomere_length_estimation}"
-	"""
-}
+	.set{ input_preprocessed_bams_forHaplotypeCaller }
 
 // Combine all needed reference FASTA files into one channel for use in SplitIntervals process
 reference_genome_fasta_forSplitIntervals.combine( reference_genome_fasta_index_forSplitIntervals )
