@@ -112,6 +112,10 @@ Channel
 	.set{ gatk_bundle_wgs_interval_list }
 
 Channel
+	.fromPath( 'references/hg38/Homo_sapiens_assembly38_autosome.interval_list' )
+	.set{ autosome_chromosome_list }
+
+Channel
 	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
 	.set{ gatk_bundle_mills_1000G }
 
@@ -551,9 +555,10 @@ process applyBqsr_gatk {
 	"""
 }
 
-// Create additional channel for the reference FASTA and interfal list to be used in GATK CollectWgsMetrics process
+// Create additional channel for the reference FASTA and autosome chromosome only interval list to be used in GATK CollectWgsMetrics process
 reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_index_forCollectWgsMetrics )
 	.combine( reference_genome_fasta_dict_forCollectWgsMetrics )
+	.combine( autosome_chromosome_list )
 	.set{ reference_genome_bundle_forCollectWgsMetrics }
 
 // GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
@@ -562,7 +567,7 @@ process collectWgsMetrics_gatk {
 	tag "${sample_id}"
 
 	input:
-	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from final_preprocessed_bams_forCollectWgsMetrics.combine( reference_genome_bundle_forCollectWgsMetrics )
+	tuple path(bam_preprocessed_final), path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics) from final_preprocessed_bams_forCollectWgsMetrics.combine( reference_genome_bundle_forCollectWgsMetrics)
 
 	output:
 	path coverage_metrics
@@ -582,6 +587,7 @@ process collectWgsMetrics_gatk {
 	--MINIMUM_BASE_QUALITY 20 \
 	--MINIMUM_MAPPING_QUALITY 20 \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectWgsMetrics}" \
+	--INTERVALS "${autosome_chromosome_list}" \
 	--INPUT "${bam_preprocessed_final}" \
 	--OUTPUT "${coverage_metrics}"
 	"""
