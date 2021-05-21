@@ -439,7 +439,7 @@ reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_fo
 	.combine( reference_genome_fasta_dict_forConpairPileup )
 	.set{ reference_genome_bundle_forConpairPileup }
 
-// Conpair ~ generate GATK pileups the tumor and normal BAMs separately
+// Conpair run_gatk_pileup_for_sample ~ generate GATK pileups the tumor and normal BAMs separately
 process bamPileupForConpair_conpair {
 	publishDir "${params.output_dir}/somatic/conpair/pileups", mode: 'symlink'
 	tag "T=${tumor_id} N=${normal_id}"
@@ -478,7 +478,7 @@ process bamPileupForConpair_conpair {
 	"""
 }
 
-// Conpair ~ concordance and contamination estimator for tumor–normal pileups
+// Conpair verify_concordance / estimate_tumor_normal_contamination ~ concordance and contamination estimator for tumor–normal pileups
 process concordanceAndContaminationEstimation_conpair {
 	publishDir "${params.output_dir}/somatic/conpair", mode: 'copy'
 	tag "T=${tumor_id} N=${normal_id}"
@@ -588,7 +588,7 @@ process snvAndIndelCalling_varscan {
 	"""
 }
 
-// BCFtools Concat ~ concatenate all VarScan SNV/indel per chromosome VCFs
+// BCFtools concat ~ concatenate all VarScan SNV/indel per chromosome VCFs
 process concatenateVarscanPerChromosomeVcfs_bcftools {
 	publishDir "${params.output_dir}/somatic/varscan/rawVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
@@ -718,7 +718,7 @@ reference_genome_fasta_forVarscanBamReadcount.combine( reference_genome_fasta_in
 tumor_normal_pair_forVarscanBamReadcount.combine( reference_genome_bundle_forVarscanBamReadcount )
 	.set{ bam_and_reference_genome_bundle_forVarscanBamReadcount }
 
-// bam-readcount ~ generate metrics at single nucleotide positions for filtering out false positive calls
+// bam-readcount / BCFtools concat ~ generate metrics at single nucleotide positions for filtering out false positive calls
 process bamReadcountForVarscanFpFilter_bamreadcount {
 	publishDir "${params.output_dir}/somatic/varscan/filteredVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
@@ -800,9 +800,9 @@ reference_genome_fasta_forVarscanBcftoolsNorm.combine( reference_genome_fasta_in
 	.combine( reference_genome_fasta_dict_forVarscanBcftoolsNorm )
 	.set{ reference_genome_bundle_forVarscanBcftoolsNorm }
 
-// BCFtools Concat / Norm ~ join the SNV and indel calls, split multiallelic sites into multiple rows then left-align and normalize indels
+// BCFtools concat / norm ~ join the SNV and indel calls, split multiallelic sites into multiple rows then left-align and normalize indels
 process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/varscan", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -811,6 +811,7 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	output:
 	path final_varscan_vcf into final_varscan_vcf_forAnnotation
 	path final_varscan_vcf_index into final_varscan_vcf_index_forAnnotation
+	tuple val(tumor_normal_sample_id), path(final_varscan_vcf), path(final_varscan_vcf_index) into final_combined_varscan_vcf
 	path varscan_multiallelics_stats
 	path varscan_realign_normalize_stats
 
@@ -845,6 +846,47 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	--output "${final_varscan_vcf}"
 
 	tabix "${final_varscan_vcf}"
+	"""
+}
+
+// BCFtools view ~ separate out normalized SNVs and indel calls for consensus call generation
+process splitVarscanSnvsAndIndelsForConsensus_bcftools {
+	publishDir "${params.output_dir}/somatic/varscan", mode: 'copy'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(final_varscan_vcf), path(final_varscan_vcf_index) from final_combined_varscan_vcf
+
+	output:
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index)
+	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index)
+
+	when:
+	params.varscan == "on"
+
+	script:
+	final_varscan_snv_vcf = "${final_varscan_vcf}".replaceFirst(/\.vcf\.gz/, ".snv.vcf.gz")
+	final_varscan_snv_vcf_index ="${final_varscan_snv_vcf}.tbi"
+	final_varscan_indel_vcf = "${final_varscan_vcf}".replaceFirst(/\.vcf\.gz/, ".indel.vcf.gz")
+	final_varscan_indel_vcf_index = "${final_varscan_indel_vcf}.tbi"
+	"""
+	bcftools view \
+	--threads "${tasks.cpus}" \
+	--output-type z \
+	--types snps \
+	--output "${final_varscan_snv_vcf}" \
+	"${final_varscan_vcf}"
+
+	tabix "${final_varscan_snv_vcf}"
+
+	bcftools view \
+	--threads "${tasks.cpus}" \
+	--output-type z \
+	--types indels \
+	--output "${final_varscan_indel_vcf}" \
+	"${final_varscan_vcf}"
+
+	tabix "${final_varscan_indel_vcf}"
 	"""
 }
 
@@ -1199,6 +1241,7 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 	path final_mutect_vcf into final_mutect_vcf_forAnnotation
 	path final_mutect_vcf_index into final_mutect_vcf_index_forAnnotation
 	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) into mutect_vcf_forSclust
+	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) into final_combined_mutect_vcf
 	path mutect_multiallelics_stats
 	path mutect_realign_normalize_stats
 
@@ -1229,6 +1272,47 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 	--output "${final_mutect_vcf}"
 
 	tabix "${final_mutect_vcf}"
+	"""
+}
+
+// BCFtools view ~ separate out normalized SNVs and indel calls for consensus call generation
+process splitMutectSnvsAndIndelsForConsensus_bcftools {
+	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) from final_combined_mutect_vcf
+
+	output:
+	tuple val(tumor_normal_sample_id), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index)
+	tuple val(tumor_normal_sample_id), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index)
+
+	when:
+	params.mutect == "on"
+
+	script:
+	final_mutect_snv_vcf = "${final_mutect_vcf}".replaceFirst(/\.vcf\.gz/, ".snv.vcf.gz")
+	final_mutect_snv_vcf_index ="${final_mutect_snv_vcf}.tbi"
+	final_mutect_indel_vcf = "${final_mutect_vcf}".replaceFirst(/\.vcf\.gz/, ".indel.vcf.gz")
+	final_mutect_indel_vcf_index = "${final_mutect_indel_vcf}.tbi"
+	"""
+	bcftools view \
+	--threads "${tasks.cpus}" \
+	--output-type z \
+	--types snps \
+	--output "${final_mutect_snv_vcf}" \
+	"${final_mutect_vcf}"
+
+	tabix "${final_mutect_snv_vcf}"
+
+	bcftools view \
+	--threads "${tasks.cpus}" \
+	--output-type z \
+	--types indels \
+	--output "${final_mutect_indel_vcf}" \
+	"${final_mutect_vcf}"
+
+	tabix "${final_mutect_indel_vcf}"
 	"""
 }
 
@@ -1439,7 +1523,7 @@ process snvCalling_caveman {
 	params.caveman == "on" && params.ascatngs == "on"
 
 	script:
-	final_caveman_somatic_vcf = "${tumor_normal_sample_id}.caveman.somatic.vcf.gz"
+	final_caveman_somatic_vcf = "${tumor_normal_sample_id}.caveman.somatic.snv.vcf.gz"
 	final_caveman_somatic_vcf_index = "${final_caveman_somatic_vcf}.tbi"
 	final_caveman_germline_vcf = "${tumor_normal_sample_id}.caveman.germline.vcf.gz"
 	final_caveman_germline_vcf_index = "${final_caveman_germline_vcf}.tbi"
@@ -1466,7 +1550,7 @@ process snvCalling_caveman {
 	mergeCavemanResults \
 	--output "${tumor_normal_sample_id}.caveman.somatic.vcf" \
 	--splitlist "${split_file}" \
-	--file-match results/%/%.muts.vcf.gz
+	-f results/%/%.muts.vcf.gz
 
 	bgzip < "${tumor_normal_sample_id}.caveman.somatic.vcf" > "${final_caveman_somatic_vcf}"
 	tabix "${final_caveman_somatic_vcf}"
@@ -1474,7 +1558,7 @@ process snvCalling_caveman {
 	mergeCavemanResults \
 	--output "${tumor_normal_sample_id}.caveman.germline.vcf" \
 	--splitlist "${split_file}" \
-	--file-match results/%/%.snps.vcf.gz
+	-f results/%/%.snps.vcf.gz
 
 	bgzip < "${tumor_normal_sample_id}.caveman.germline.vcf" > "${final_caveman_germline_vcf}"
 	tabix "${final_caveman_germline_vcf}"
