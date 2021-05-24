@@ -874,7 +874,7 @@ process splitVarscanSnvsAndIndelsForConsensus_bcftools {
 	--threads "${task.cpus}" \
 	--output-type z \
 	--types snps \
-	--output "${final_varscan_snv_vcf}" \
+	--output-file "${final_varscan_snv_vcf}" \
 	"${final_varscan_vcf}"
 
 	tabix "${final_varscan_snv_vcf}"
@@ -883,7 +883,7 @@ process splitVarscanSnvsAndIndelsForConsensus_bcftools {
 	--threads "${task.cpus}" \
 	--output-type z \
 	--types indels \
-	--output "${final_varscan_indel_vcf}" \
+	--output-file "${final_varscan_indel_vcf}" \
 	"${final_varscan_vcf}"
 
 	tabix "${final_varscan_indel_vcf}"
@@ -1300,7 +1300,7 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 	--threads "${task.cpus}" \
 	--output-type z \
 	--types snps \
-	--output "${final_mutect_snv_vcf}" \
+	--output-file "${final_mutect_snv_vcf}" \
 	"${final_mutect_vcf}"
 
 	tabix "${final_mutect_snv_vcf}"
@@ -1309,7 +1309,7 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 	--threads "${task.cpus}" \
 	--output-type z \
 	--types indels \
-	--output "${final_mutect_indel_vcf}" \
+	--output-file "${final_mutect_indel_vcf}" \
 	"${final_mutect_vcf}"
 
 	tabix "${final_mutect_indel_vcf}"
