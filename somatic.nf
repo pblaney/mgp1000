@@ -1827,6 +1827,7 @@ process mergeBamprocessData_sclust {
 	common_snp_count_file = "${tumor_normal_sample_id}_snps.txt"
 	"""
 	Sclust bamprocess \
+	-build hg38 \
 	-i "${tumor_normal_sample_id}" \
 	-o "${tumor_normal_sample_id}"
 	"""
