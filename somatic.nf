@@ -858,7 +858,7 @@ process splitVarscanSnvsAndIndelsForConsensus_bcftools {
 	tuple val(tumor_normal_sample_id), path(final_varscan_vcf), path(final_varscan_vcf_index) from final_combined_varscan_vcf
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index)
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index) into final_varscan_snv_vcf_forSnvConsensus
 	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index)
 
 	when:
@@ -1284,7 +1284,7 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) from final_combined_mutect_vcf
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index)
+	tuple val(tumor_normal_sample_id), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index) into final_mutect_snv_vcf_forSnvConsensus
 	tuple val(tumor_normal_sample_id), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index)
 
 	when:
@@ -1848,6 +1848,8 @@ process prepareVcfForSclust_vcftools {
 	params.sclust == "on" && params.mutect == "on"
 
 	script:
+	tumor_id = "${tumor_normal_sample_id}".replaceFirst(/\_vs\_.*/, "")
+	normal_id = "${tumor_normal_sample_id}".replaceFirst(/.*\_vs\_/, "")
 	tumor_normal_read_depth = "${tumor_normal_sample_id}.DP.FORMAT"
 	tumor_normal_allelic_frequency = "${tumor_normal_sample_id}.AF.FORMAT"
 	tumor_normal_forward_reverse_reads = "${tumor_normal_sample_id}.SB.FORMAT"
@@ -1861,24 +1863,46 @@ process prepareVcfForSclust_vcftools {
 
 	vcftools \
 	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
-	--out "${tumor_normal_sample_id}" \
-	--extract-FORMAT-info DP
+	--stdout \
+	--extract-FORMAT-info DP \
+	--indv "${tumor_id}" \
+	| \
+	grep -v 'CHROM' > tumor.dp.tsv
 
 	vcftools \
 	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
-	--out "${tumor_normal_sample_id}" \
-	--extract-FORMAT-info AF
+	--stdout \
+	--extract-FORMAT-info DP \
+	--indv "${normal_id}" \
+	| \
+	grep -v 'CHROM' > normal.dp.tsv
 
 	vcftools \
 	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
-	--out "${tumor_normal_sample_id}" \
-	--extract-FORMAT-info SB
+	--stdout \
+	--extract-FORMAT-info AF \
+	--indv "${tumor_id}" \
+	| \
+	grep -v 'CHROM' > tumor.af.tsv
 
-	grep -v 'CHROM' "${tumor_normal_read_depth}" | cut -f 1-3 > tumor.dp.tsv
-	grep -v 'CHROM' "${tumor_normal_read_depth}" | cut -f 1-2,4 > normal.dp.tsv
-	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-3 > tumor.af.tsv
-	grep -v 'CHROM' "${tumor_normal_allelic_frequency}" | cut -f 1-2,4 > normal.af.tsv
-	grep -v 'CHROM' "${tumor_normal_forward_reverse_reads}" | cut -f 1-3 | forward_reverse_score_calculator.py > tumor.fr.tsv
+	vcftools \
+	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
+	--stdout \
+	--extract-FORMAT-info AF \
+	--indv "${normal_id}" \
+	| \
+	grep -v 'CHROM' > normal.af.tsv
+
+	vcftools \
+	--gzvcf "${tumor_normal_sample_id}.sclust.base.vcf.gz" \
+	--stdout \
+	--extract-FORMAT-info SB \
+	--indv "${tumor_id}" \
+	| \
+	grep -v 'CHROM' \
+	| \
+	forward_reverse_score_calculator.py > tumor.fr.tsv
+	
 	awk 'BEGIN {OFS="\t"} {print \$1,\$2,"."}' tumor.dp.tsv > placeholder.tg.tsv
 
 	vcf-info-annotator \
@@ -2436,6 +2460,58 @@ process filteringAndPostprocessesing_gridss {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+/*
+
+NEED TO FINISH CAVEMAN FILTERING
+
+// MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
+process mergeAndGenerateConsensusSnvCalls_mergevcf {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'symlink'
+	tag "${}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) from final_varscan_vcf_forSnvConsensus.join(final_mutect_snv_vcf_forSnvConsensus).join(final_caveman_snv_vcf_forSnvConsensus)
+
+	output:
+
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
+
+	script:
+
+	"""
+	mergevcf \
+	--labels varscan,mutect,caveman \
+	--ncallers \
+	--mincallers 2 \
+	"${final_varscan_snv_vcf}" \
+	"${final_mutect_snv_vcf}" \
+	"${final_caveman_snv_vcf}" \
+	| \
+	bgzip > "${}"
+	"""
+}
+
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // VEP ~ download the reference files used for VEP annotation, if needed
