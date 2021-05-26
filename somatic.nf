@@ -1980,7 +1980,7 @@ process cnvCalling_sclust {
 	cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
 	cnv_profile_file = "${tumor_normal_sample_id}.sclust.cnv.txt"
 	cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
-	mutations_exp_af_file = "${tumor_normal_sample_id}.sclust.mutationsaf.txt"
+	mutations_exp_af_file = "${tumor_normal_sample_id}_muts_expAF.txt"
 	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
 	"""
 	gunzip -f "${mutations_vcf}"
@@ -1995,7 +1995,6 @@ process cnvCalling_sclust {
 	mv "${tumor_normal_sample_id}_cn_profile.pdf" "${cnv_profile_pdf}"
 	mv "${tumor_normal_sample_id}_cn_summary.txt" "${cnv_profile_file}"
 	mv "${tumor_normal_sample_id}_iCN.seg" "${cnv_segments_file}"
-	mv "${tumor_normal_sample_id}_muts_expAF.txt" "${mutations_exp_af_file}"
 	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${sclust_subclones_file}"
 	"""
 }
