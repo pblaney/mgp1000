@@ -2023,8 +2023,8 @@ process mutationalClustering_sclust {
 	Sclust cluster \
 	-i "${tumor_normal_sample_id}"
 
-	mv "${tumor_normal_sample_id}_mcluster.txt" "${mutation_clusters_file}"
-	mv "${tumor_normal_sample_id}_mclusters.pdf" "${mutation_clusters_pdf}"
+	mv "${tumor_normal_sample_id}_mclusters.txt" "${mutation_clusters_file}"
+	mv "${tumor_normal_sample_id}_mcluster.pdf" "${mutation_clusters_pdf}"
 	mv "${tumor_normal_sample_id}_cluster_assignments.txt" "${cluster_assignment_file}"
 	"""
 }
