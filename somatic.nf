@@ -858,8 +858,8 @@ process splitVarscanSnvsAndIndelsForConsensus_bcftools {
 	tuple val(tumor_normal_sample_id), path(final_varscan_vcf), path(final_varscan_vcf_index) from final_combined_varscan_vcf
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index) into final_varscan_snv_vcf_forSnvConsensus
-	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index)
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index) into final_varscan_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index) into final_varscan_indel_vcf_forConsensus
 
 	when:
 	params.varscan == "on"
@@ -1284,8 +1284,8 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) from final_combined_mutect_vcf
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index) into final_mutect_snv_vcf_forSnvConsensus
-	tuple val(tumor_normal_sample_id), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index)
+	tuple val(tumor_normal_sample_id), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index) into final_mutect_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index) into final_mutect_indel_vcf_forConsensus
 
 	when:
 	params.mutect == "on"
@@ -1983,7 +1983,7 @@ process cnvCalling_sclust {
 	mutations_exp_af_file = "${tumor_normal_sample_id}.sclust.mutationsaf.txt"
 	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
 	"""
-	gunzip "${mutations_vcf}"
+	gunzip -f "${mutations_vcf}"
 
 	Sclust cn \
 	-rc "${read_count_file}" \
@@ -2199,6 +2199,7 @@ process leftNormalizeSvabaVcf_bcftools {
 	output:
 	path final_svaba_indel_vcf into final_svaba_indel_vcf_forAnnotation
 	path final_svaba_indel_vcf_index into final_svaba_indel_vcf_index_forAnnotation
+	tuple val(tumor_normal_sample_id), path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index) into final_svaba_indel_vcf_forConsensus
 	path svaba_realign_normalize_stats
 
 	when:
@@ -2465,15 +2466,15 @@ process filteringAndPostprocessesing_gridss {
 
 /*
 
-NEED TO FINISH CAVEMAN FILTERING
+NEED TO FINISH CAVEMAN FlAGGING
 
 // MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
 process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	publishDir "${params.output_dir}/somatic/consensus", mode: 'symlink'
-	tag "${}"
+	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) from final_varscan_vcf_forSnvConsensus.join(final_mutect_snv_vcf_forSnvConsensus).join(final_caveman_snv_vcf_forSnvConsensus)
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) from final_varscan_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_caveman_snv_vcf_forConsensus)
 
 	output:
 
@@ -2491,6 +2492,36 @@ process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	"${final_varscan_snv_vcf}" \
 	"${final_mutect_snv_vcf}" \
 	"${final_caveman_snv_vcf}" \
+	| \
+	bgzip > "${}"
+	"""
+}
+
+// MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
+process mergeAndGenerateConsensusIndelCalls_mergevcf {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index),       path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index),  from final_varscan_indel_vcf_forConsensus.join(final_mutect_indel_vcf_forConsensus).join().join(final_svaba_indel_vcf_forConsensus)
+
+	output:
+
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.manta == "on" && params.svaba == "on"
+
+	script:
+
+	"""
+	mergevcf \
+	--labels varscan,mutect,manta,svaba \
+	--ncallers \
+	--mincallers 2 \
+	"${final_varscan_indel_vcf}" \
+	"${final_mutect_indel_vcf}" \
+	"${}"
+	"${final_svaba_indel_vcf}" \
 	| \
 	bgzip > "${}"
 	"""
