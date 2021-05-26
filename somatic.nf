@@ -1996,7 +1996,7 @@ process cnvCalling_sclust {
 	mv "${tumor_normal_sample_id}_cn_summary.txt" "${cnv_profile_file}"
 	mv "${tumor_normal_sample_id}_iCN.seg" "${cnv_segments_file}"
 	mv "${tumor_normal_sample_id}_muts_expAF.txt" "${mutations_exp_af_file}"
-	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${subclones_file}"
+	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${sclust_subclones_file}"
 	"""
 }
 
