@@ -809,32 +809,40 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf), path(reference_genome_fasta_forVarscanBcftoolsNorm), path(reference_genome_fasta_index_forVarscanBcftoolsNorm), path(reference_genome_fasta_dict_forVarscanBcftoolsNorm) from filtered_vcfs_forVarscanBcftools.combine(reference_genome_bundle_forVarscanBcftoolsNorm)
 
 	output:
-	path final_varscan_vcf into final_varscan_vcf_forAnnotation
-	path final_varscan_vcf_index into final_varscan_vcf_index_forAnnotation
-	tuple val(tumor_normal_sample_id), path(final_varscan_vcf), path(final_varscan_vcf_index) into final_combined_varscan_vcf
-	path varscan_multiallelics_stats
-	path varscan_realign_normalize_stats
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index) into final_varscan_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index) into final_varscan_indel_vcf_forConsensus
+	path varscan_snv_multiallelics_stats
+	path varscan_indel_multiallelics_stats
+	path varscan_indel_realign_normalize_stats
 
 	when:
 	params.varscan == "on"
 
 	script:
-	final_varscan_vcf = "${tumor_normal_sample_id}.varscan.somatic.vcf.gz"
-	final_varscan_vcf_index = "${final_varscan_vcf}.tbi"
-	varscan_multiallelics_stats = "${tumor_normal_sample_id}.varscan.multiallelicsstats.txt"
-	varscan_realign_normalize_stats = "${tumor_normal_sample_id}.varscan.realignnormalizestats.txt"
+	final_varscan_snv_vcf = "${tumor_normal_sample_id}.varscan.somatic.snv.vcf.gz"
+	final_varscan_snv_vcf_index ="${final_varscan_snv_vcf}.tbi"
+	final_varscan_indel_vcf = "${tumor_normal_sample_id}.varscan.somatic.indel.vcf.gz"
+	final_varscan_indel_vcf_index = "${final_varscan_indel_vcf}.tbi"
+	varscan_snv_multiallelics_stats = "${tumor_normal_sample_id}.varscan.snv.multiallelicsstats.txt"
+	varscan_indel_multiallelics_stats = "${tumor_normal_sample_id}.varscan.indel.multiallelicsstats.txt"
+	varscan_indel_realign_normalize_stats = "${tumor_normal_sample_id}.varscan.indel.realignnormalizestats.txt"
 	"""
-	bcftools concat \
-	--threads ${task.cpus} \
-	--allow-overlaps \
-	--output-type v \
-	"${fp_filtered_snv_vcf}" "${fp_filtered_indel_vcf}" \
-	| \
-	bgzip --stdout \
+	bgzip --stdout < "${fp_filtered_snv_vcf}" \
 	| \
 	bcftools norm \
 	--threads ${task.cpus} \
-	--multiallelics -both \
+	--multiallelics -snps \
+	--output-type z \
+	--output "${final_varscan_snv_vcf}" \
+	- 2>"${varscan_multiallelics_stats}"
+
+	tabix "${final_varscan_snv_vcf}"
+	
+	bgzip --stdout < "${fp_filtered_indel_vcf}" \
+	| \
+	bcftools norm \
+	--threads ${task.cpus} \
+	--multiallelics -indels \
 	--output-type z \
 	- 2>"${varscan_multiallelics_stats}" \
 	| \
@@ -842,49 +850,8 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	--threads ${task.cpus} \
 	--fasta-ref "${reference_genome_fasta_forVarscanBcftoolsNorm}" \
 	--output-type z \
-	- 2>"${varscan_realign_normalize_stats}" \
-	--output "${final_varscan_vcf}"
-
-	tabix "${final_varscan_vcf}"
-	"""
-}
-
-// BCFtools view ~ separate out normalized SNVs and indel calls for consensus call generation
-process splitVarscanSnvsAndIndelsForConsensus_bcftools {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'copy'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(final_varscan_vcf), path(final_varscan_vcf_index) from final_combined_varscan_vcf
-
-	output:
-	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index) into final_varscan_snv_vcf_forConsensus
-	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index) into final_varscan_indel_vcf_forConsensus
-
-	when:
-	params.varscan == "on"
-
-	script:
-	final_varscan_snv_vcf = "${final_varscan_vcf}".replaceFirst(/\.vcf\.gz/, ".snv.vcf.gz")
-	final_varscan_snv_vcf_index ="${final_varscan_snv_vcf}.tbi"
-	final_varscan_indel_vcf = "${final_varscan_vcf}".replaceFirst(/\.vcf\.gz/, ".indel.vcf.gz")
-	final_varscan_indel_vcf_index = "${final_varscan_indel_vcf}.tbi"
-	"""
-	bcftools view \
-	--threads "${task.cpus}" \
-	--output-type z \
-	--types snps \
-	--output-file "${final_varscan_snv_vcf}" \
-	"${final_varscan_vcf}"
-
-	tabix "${final_varscan_snv_vcf}"
-
-	bcftools view \
-	--threads "${task.cpus}" \
-	--output-type z \
-	--types indels \
-	--output-file "${final_varscan_indel_vcf}" \
-	"${final_varscan_vcf}"
+	--output "${final_varscan_vcf}" \
+	- 2>"${varscan_realign_normalize_stats}"
 
 	tabix "${final_varscan_indel_vcf}"
 	"""
