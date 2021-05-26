@@ -2566,6 +2566,12 @@ process downloadVepAnnotationReferences_vep {
 	"""
 }
 
+
+
+/*
+
+
+
 // Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
 // channel for the VEP annotation process
 if( params.vep_ref_cached == "yes" ) {
@@ -2639,3 +2645,7 @@ process annotateSomaticVcf_vep {
 	--vcf
 	"""
 }
+
+
+*/
+
