@@ -368,7 +368,7 @@ reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
 
 // alleleCount ~ determine the sex of each sample to use in downstream analyses
 process identifySampleSex_allelecount {
-	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy', pattern: '*${sample_sex}'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -997,7 +997,7 @@ process snvAndIndelCalling_gatk {
 
 // GATK SortVcfs ~ merge all per chromosome MuTect2 VCFs
 process mergeAndSortMutect2Vcfs_gatk {
-	publishDir "${params.output_dir}/somatic/rawVcfs", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/mutect/rawVcfs", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 	
 	input:
@@ -2319,13 +2319,15 @@ process assemble_gridss {
 	assembly_bam_per_index_working_dir = "${assembly_bam}.gridss.working_${index}"
 	"""
 	touch gridss.properties
-	echo "chunkSize=50000000" >> gridss.properties
+	echo "chunkSize=5000000" >> gridss.properties
 
 	gridss.sh --steps assemble \
 	--jvmheap "${task.memory.toGiga()}"g \
 	--otherjvmheap "${task.memory.toGiga()}"g \
 	--threads "${task.cpus}" \
 	--configuration gridss.properties \
+	--picardoptions TMP_DIR=. \
+	--picardoptions MAX_RECORDS_IN_RAM=4000000 \
 	--jobindex "${index}" \
 	--jobnodes 2 \
 	--assembly "${assembly_bam}" \
@@ -2356,13 +2358,15 @@ process mergeAssembly_gridss {
 	assembly_bam_working_dir = "${assembly_bam}.gridss.working"
 	"""
 	touch gridss.properties
-	echo "chunkSize=50000000" >> gridss.properties
+	echo "chunkSize=5000000" >> gridss.properties
 
 	gridss.sh --steps assemble \
 	--jvmheap "${task.memory.toGiga()}"g \
 	--otherjvmheap "${task.memory.toGiga()}"g \
 	--threads "${task.cpus}" \
 	--configuration gridss.properties \
+	--picardoptions TMP_DIR=. \
+	--picardoptions MAX_RECORDS_IN_RAM=4000000 \
 	--assembly "${assembly_bam}" \
 	--reference "${reference_genome_fasta_forGridssSetup}" \
 	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
@@ -2391,13 +2395,15 @@ process svAndIndelCalling_gridss {
 	raw_gridss_vcf_index = "${raw_gridss_vcf}.tbi"
 	"""
 	touch gridss.properties
-	echo "chunkSize=50000000" >> gridss.properties
+	echo "chunkSize=5000000" >> gridss.properties
 
 	gridss.sh --steps call \
 	--jvmheap "${task.memory.toGiga()}"g \
 	--otherjvmheap "${task.memory.toGiga()}"g \
 	--threads "${task.cpus}" \
 	--configuration gridss.properties \
+	--picardoptions TMP_DIR=. \
+	--picardoptions MAX_RECORDS_IN_RAM=4000000 \
 	--assembly "${assembly_bam}" \
 	--reference "${reference_genome_fasta_forGridssSetup}" \
 	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
