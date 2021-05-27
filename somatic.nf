@@ -850,7 +850,7 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	--threads ${task.cpus} \
 	--fasta-ref "${reference_genome_fasta_forVarscanBcftoolsNorm}" \
 	--output-type z \
-	--output "${final_varscan_vcf}" \
+	--output "${final_varscan_indel_vcf}" \
 	- 2>"${varscan_indel_realign_normalize_stats}"
 
 	tabix "${final_varscan_indel_vcf}"
