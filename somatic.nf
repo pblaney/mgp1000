@@ -2105,7 +2105,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	path filtered_somatic_sv_vcf) into final_svaba_sv_vcf_forAnnotation
+	path filtered_somatic_sv_vcf into final_svaba_sv_vcf_forAnnotation
 	path filtered_somatic_sv_vcf_index into final_svaba_sv_vcf_index_forAnnotation
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
