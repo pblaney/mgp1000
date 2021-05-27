@@ -999,7 +999,7 @@ process mergeMutect2StatsForFiltering_gatk {
 	tuple val(tumor_normal_sample_id), path(raw_per_chromosome_mutect_stats_file) from raw_per_chromosome_mutect_stats_forMutectStatsMerge.groupTuple()
 
 	output:
-	path merged_mutect_stats_file into merged_mutect_stats_file_forMutectFilter
+	tuple val(tumor_normal_sample_id), path(merged_mutect_stats_file) into merged_mutect_stats_file_forMutectFilter
 
 	when:
 	params.mutect == "on"
@@ -1031,8 +1031,8 @@ process pileupSummariesForMutect2Contamination_gatk {
 	each chromosome from chromosome_list_forMutectPileup
 
 	output:
-	tuple val(tumor_id), path(per_chromosome_tumor_pileup) into per_chromosome_tumor_pileups_forMutectPileupGather
-	tuple val(normal_id), path(per_chromosome_normal_pileup) into per_chromosome_normal_pileups_forMutectPileupGather
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(per_chromosome_tumor_pileup) into per_chromosome_tumor_pileups_forMutectPileupGather
+	tuple val(tumor_normal_sample_id), val(normal_id), path(per_chromosome_normal_pileup) into per_chromosome_normal_pileups_forMutectPileupGather
 
 	when:
 	params.mutect == "on"
@@ -1040,6 +1040,7 @@ process pileupSummariesForMutect2Contamination_gatk {
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
 	per_chromosome_bed_file = "${gatk_bundle_wgs_bed_forMutectPileup}".replaceFirst(/\.bed/, ".${chromosome}.bed")
 	per_chromosome_tumor_pileup = "${tumor_id}.${chromosome}.pileup"
 	per_chromosome_normal_pileup = "${normal_id}.${chromosome}.pileup"
@@ -1072,10 +1073,10 @@ process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 	tag "${tumor_id}"
 
 	input:
-	tuple val(tumor_id), path(per_chromosome_tumor_pileup), path(reference_genome_fasta_dict) from per_chromosome_tumor_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherTumor)
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(per_chromosome_tumor_pileup), path(reference_genome_fasta_dict) from per_chromosome_tumor_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherTumor)
 
 	output:
-	tuple val(tumor_id), path(tumor_pileup) into tumor_pileups_forMutectContamination
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(tumor_pileup) into tumor_pileups_forMutectContamination
 
 	when:
 	params.mutect == "on"
@@ -1099,10 +1100,10 @@ process gatherNormalPileupSummariesForMutect2Contamination_gatk {
 	tag "${normal_id}"
 
 	input:
-	tuple val(normal_id), path(per_chromosome_normal_pileup), path(reference_genome_fasta_dict) from per_chromosome_normal_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherNormal)
+	tuple val(tumor_normal_sample_id), val(normal_id), path(per_chromosome_normal_pileup), path(reference_genome_fasta_dict) from per_chromosome_normal_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherNormal)
 
 	output:
-	tuple val(normal_id), path(normal_pileup) into normal_pileups_forMutectContamination
+	tuple val(tumor_normal_sample_id), val(normal_id), path(normal_pileup) into normal_pileups_forMutectContamination
 
 	when:
 	params.mutect == "on"
@@ -1126,10 +1127,10 @@ process mutect2ContaminationCalculation_gatk {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_id), path(tumor_pileup), val(normal_id), path(normal_pileup) from tumor_pileups_forMutectContamination.combine(normal_pileups_forMutectContamination)
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(tumor_pileup), val(normal_id), path(normal_pileup) from tumor_pileups_forMutectContamination.join(normal_pileups_forMutectContamination)
 
 	output:
-	path contamination_file into contamination_file_forMutectFilter
+	tuple val(tumor_normal_sample_id), path(contamination_file) into contamination_file_forMutectFilter
 
 	when:
 	params.mutect == "on"
@@ -1153,8 +1154,8 @@ reference_genome_fasta_forMutectFilter.combine( reference_genome_fasta_index_for
 	.combine( reference_genome_fasta_dict_forMutectFilter )
 	.set{ reference_genome_bundle_forMutectFilter }
 
-merged_raw_vcfs_forMutectFilter.combine( merged_mutect_stats_file_forMutectFilter )
-	.combine( contamination_file_forMutectFilter )
+merged_raw_vcfs_forMutectFilter.join( merged_mutect_stats_file_forMutectFilter )
+	.join( contamination_file_forMutectFilter )
 	.set{ input_vcf_stats_and_contamination_forMutectFilter }
 
 // GATK FilterMutectCalls ~ filter somatic SNVs and indels called by Mutect2
@@ -1298,7 +1299,7 @@ reference_genome_fasta_forAscatNgs.combine( reference_genome_fasta_index_forAsca
 
 // ascatNGS ~  identifying somatically acquired copy-number alterations
 process cnvCalling_ascatngs {
-	publishDir "${params.output_dir}/somatic/ascatNgs", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/ascatNgs", mode: 'copy', pattern: '*.{png,csv,vcf.gz,txt,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2104,8 +2105,8 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	path(filtered_somatic_sv_vcf) into final_svaba_sv_vcf_forAnnotation
-	path(filtered_somatic_sv_vcf_index) into final_svaba_sv_vcf_index_forAnnotation
+	path filtered_somatic_sv_vcf) into final_svaba_sv_vcf_forAnnotation
+	path filtered_somatic_sv_vcf_index into final_svaba_sv_vcf_index_forAnnotation
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -2224,7 +2225,8 @@ process setupreference_gridss {
 
 // GRIDSS preprocess ~ preprocess input tumor and normal BAMs separately
 process preprocess_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${tumor_bam_working_dir}'
+	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${normal_bam_working_dir}'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -2328,8 +2330,8 @@ process mergeAssembly_gridss {
 	echo "chunkSize=5000000" >> gridss.properties
 
 	gridss.sh --steps assemble \
-	--jvmheap "${task.memory.toGiga()}"g \
-	--otherjvmheap "${task.memory.toGiga()}"g \
+	--jvmheap "${task.memory.toGiga() - 4}"g \
+	--otherjvmheap "${task.memory.toGiga() - 4}"g \
 	--threads "${task.cpus}" \
 	--configuration gridss.properties \
 	--picardoptions TMP_DIR=. \
@@ -2365,8 +2367,8 @@ process svAndIndelCalling_gridss {
 	echo "chunkSize=5000000" >> gridss.properties
 
 	gridss.sh --steps call \
-	--jvmheap "${task.memory.toGiga()}"g \
-	--otherjvmheap "${task.memory.toGiga()}"g \
+	--jvmheap "${task.memory.toGiga() - 4}"g \
+	--otherjvmheap "${task.memory.toGiga() - 4}"g \
 	--threads "${task.cpus}" \
 	--configuration gridss.properties \
 	--picardoptions TMP_DIR=. \
