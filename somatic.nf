@@ -1031,8 +1031,8 @@ process pileupSummariesForMutect2Contamination_gatk {
 	each chromosome from chromosome_list_forMutectPileup
 
 	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(per_chromosome_tumor_pileup) into per_chromosome_tumor_pileups_forMutectPileupGather
-	tuple val(tumor_normal_sample_id), val(normal_id), path(per_chromosome_normal_pileup) into per_chromosome_normal_pileups_forMutectPileupGather
+	tuple val(tumor_normal_sample_id), path(per_chromosome_tumor_pileup) into per_chromosome_tumor_pileups_forMutectPileupGather
+	tuple val(tumor_normal_sample_id), path(per_chromosome_normal_pileup) into per_chromosome_normal_pileups_forMutectPileupGather
 
 	when:
 	params.mutect == "on"
@@ -1070,18 +1070,19 @@ process pileupSummariesForMutect2Contamination_gatk {
 // GATK GatherPileupSummaries ~ combine tumor pileup tables for inferring contamination
 process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 	publishDir "${params.output_dir}/somatic/mutect/pileups", mode: 'symlink'
-	tag "${tumor_id}"
+	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(per_chromosome_tumor_pileup), path(reference_genome_fasta_dict) from per_chromosome_tumor_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherTumor)
+	tuple val(tumor_normal_sample_id), path(per_chromosome_tumor_pileup), path(reference_genome_fasta_dict) from per_chromosome_tumor_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherTumor)
 
 	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(tumor_pileup) into tumor_pileups_forMutectContamination
+	tuple val(tumor_normal_sample_id), path(tumor_pileup) into tumor_pileups_forMutectContamination
 
 	when:
 	params.mutect == "on"
 
 	script:
+	tumor_id = "${tumor_normal_sample_id}".replaceFirst(/\_vs\_.*/, "")
 	tumor_pileup = "${tumor_id}.pileup"
 	"""
 	gatk GatherPileupSummaries \
@@ -1097,18 +1098,19 @@ process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 // GATK GatherPileupSummaries ~ combine normal pileup tables for inferring contamination
 process gatherNormalPileupSummariesForMutect2Contamination_gatk {
 	publishDir "${params.output_dir}/somatic/mutect/pileups", mode: 'symlink'
-	tag "${normal_id}"
+	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(normal_id), path(per_chromosome_normal_pileup), path(reference_genome_fasta_dict) from per_chromosome_normal_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherNormal)
+	tuple val(tumor_normal_sample_id), path(per_chromosome_normal_pileup), path(reference_genome_fasta_dict) from per_chromosome_normal_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherNormal)
 
 	output:
-	tuple val(tumor_normal_sample_id), val(normal_id), path(normal_pileup) into normal_pileups_forMutectContamination
+	tuple val(tumor_normal_sample_id), path(normal_pileup) into normal_pileups_forMutectContamination
 
 	when:
 	params.mutect == "on"
 
 	script:
+	normal_id = "${tumor_normal_sample_id}".replaceFirst(/.*\_vs\_/, "")
 	normal_pileup = "${normal_id}.pileup"
 	"""
 	gatk GatherPileupSummaries \
@@ -1127,7 +1129,7 @@ process mutect2ContaminationCalculation_gatk {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(tumor_pileup), val(normal_id), path(normal_pileup) from tumor_pileups_forMutectContamination.join(normal_pileups_forMutectContamination)
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from tumor_pileups_forMutectContamination.join(normal_pileups_forMutectContamination)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(contamination_file) into contamination_file_forMutectFilter
@@ -1136,7 +1138,6 @@ process mutect2ContaminationCalculation_gatk {
 	params.mutect == "on"
 
 	script:
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
 	contamination_file = "${tumor_normal_sample_id}.mutect.contamination.txt" 
 	"""
 	gatk CalculateContamination \
