@@ -834,7 +834,7 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	--multiallelics -snps \
 	--output-type z \
 	--output "${final_varscan_snv_vcf}" \
-	- 2>"${varscan_multiallelics_stats}"
+	- 2>"${varscan_snv_multiallelics_stats}"
 
 	tabix "${final_varscan_snv_vcf}"
 	
@@ -844,14 +844,14 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	--threads ${task.cpus} \
 	--multiallelics -indels \
 	--output-type z \
-	- 2>"${varscan_multiallelics_stats}" \
+	- 2>"${varscan_indel_multiallelics_stats}" \
 	| \
 	bcftools norm \
 	--threads ${task.cpus} \
 	--fasta-ref "${reference_genome_fasta_forVarscanBcftoolsNorm}" \
 	--output-type z \
 	--output "${final_varscan_vcf}" \
-	- 2>"${varscan_realign_normalize_stats}"
+	- 2>"${varscan_indel_realign_normalize_stats}"
 
 	tabix "${final_varscan_indel_vcf}"
 	"""
