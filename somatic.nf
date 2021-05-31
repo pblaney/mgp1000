@@ -1515,7 +1515,7 @@ process snvCallingPerChromosome_caveman {
 
 	input:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path(covariate_file), path(probabilities_file), path("readpos.chr*"), path(run_statistics), path(reference_genome_fasta_forCavemanEstep), path(reference_genome_fasta_index_forCavemanEstep), path(reference_genome_fasta_dict_forCavemanEstep) from collected_output_forCavemanEstep.combine(reference_genome_bundle_forCavemanEstep)
-	each chromosome for chromosome_list_forCavemanEstep
+	each chromosome from chromosome_list_forCavemanEstep
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path(covariate_file), path(probabilities_file) into estep_output_forCavemanMergeResults
