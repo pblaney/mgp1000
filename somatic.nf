@@ -1473,7 +1473,7 @@ process merge_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(split_file), path(alg_bean_file), path("readpos.chr*") into setup_and_split_output_forCavemanMerge.groupTuple(mstep_per_chromosome_output_forCavemanMerge)
+	tuple val(tumor_normal_sample_id), path("${results_directory}/chr*"), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(split_file), path(alg_bean_file), path("readpos.chr*") from mstep_per_chromosome_output_forCavemanMerge.groupTuple().join(setup_and_split_output_forCavemanMerge)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path(covariate_file), path(probabilities_file) into merge_output_forCavemanEstep
