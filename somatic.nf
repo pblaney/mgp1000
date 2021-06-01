@@ -1388,6 +1388,7 @@ process setupAndSplit_caveman {
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path("readpos.chr*") into setup_and_split_output_forCavemanMstep
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(split_file), path(alg_bean_file), path("readpos.chr*") into setup_and_split_output_forCavemanMerge
+	tuple val(tumor_normal_sample_id), path("readpos.chr*") into setup_and_split_readpos_forCavemanEstep
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on"
