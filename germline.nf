@@ -872,9 +872,10 @@ process ancestryEstimation_admixture {
 	path admixture_standard_error
 
 	script:
-	admixture_ancestry_fractions = "${pruned_filtered_plink_file_prefix}.13.Q"
-	admixture_allele_frequencies = "${pruned_filtered_plink_file_prefix}.13.P"
-	admixture_standard_error = "${pruned_filtered_plink_file_prefix}.13.Q_se"
+	ancestry_groups = 26
+	admixture_ancestry_fractions = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.Q"
+	admixture_allele_frequencies = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.P"
+	admixture_standard_error = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.Q_se"
 	"""
 	cohort_pop_file_creator.sh \
 	"${pruned_filtered_plink_file_prefix}.fam" \
@@ -887,6 +888,6 @@ process ancestryEstimation_admixture {
 	--supervised \
 	--haploid="male:23" \
 	"${pruned_filtered_plink_file_prefix}.bed" \
-	26
+	"${ancestry_groups}"
 	"""
 }
