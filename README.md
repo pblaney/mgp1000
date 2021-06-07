@@ -258,7 +258,7 @@ Main Options:
 	--help                        [flag]  Prints this message
 
 Toolbox Switches:
-	--telseq                       [str]  Indicates whether or not to use this tool
+	--telomerehunter               [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
 	--conpair                      [str]  Indicates whether or not to use this tool
