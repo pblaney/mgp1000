@@ -2518,6 +2518,11 @@ process downloadVepAnnotationReferences_vep {
 	"""
 }
 
+
+
+
+/*
+
 // Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
 // channel for the VEP annotation process
 if( params.vep_ref_cached == "yes" ) {
@@ -2531,6 +2536,9 @@ else {
 reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAnnotation )
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
+
+
+// NAMES OF OUTPUT CHANNELS FOR VCFS GOING TO ANNOTATION HAVE CHANGED
 
 // Create a channel of each unannotated somatic VCF and index produced in the pipeline to put through the VEP annotation process
 final_varscan_vcf_forAnnotation.ifEmpty{ 'skipped' }
@@ -2591,3 +2599,6 @@ process annotateSomaticVcf_vep {
 	--vcf
 	"""
 }
+
+*/
+
