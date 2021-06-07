@@ -223,6 +223,7 @@ nextflow run somatic.nf --help
 ...
 ...
 ################################################
+
 Usage Example:
 
 	nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --singularity_module singularity/3.1 --email someperson@gmail.com --mutect_ref_vcf_concatenated no --vep_ref_cached no -profile somatic 
@@ -257,7 +258,7 @@ Main Options:
 	--help                        [flag]  Prints this message
 
 Toolbox Switches:
-	--telseq                       [str]  Indicates whether or not to use this tool
+	--telomerehunter               [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
 	--conpair                      [str]  Indicates whether or not to use this tool
