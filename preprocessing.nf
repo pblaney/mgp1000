@@ -188,7 +188,7 @@ process revertMappedBam_gatk {
 	bam_unmapped = "${bam_mapped}".replaceFirst(/\.bam/, ".unmapped.bam")
 	"""
 	gatk RevertSam \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
@@ -363,7 +363,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
@@ -374,7 +374,7 @@ process fixMateInformationAndSort_gatk {
 	--OUTPUT "${bam_fixed_mate_unsorted}"
 
 	gatk SortSam \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--SORT_ORDER coordinate \
@@ -445,7 +445,7 @@ process downsampleBam_gatk {
 	bam_marked_dup_downsampled = "${sample_id}.markdup.downsampled.bam"
 	"""
 	gatk DownsampleSam \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
@@ -496,7 +496,7 @@ process baseRecalibrator_gatk {
 	bqsr_table = "${sample_id}.recaldata.table"
 	"""
 	gatk BaseRecalibrator \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
@@ -544,7 +544,7 @@ process applyBqsr_gatk {
 	bam_preprocessed_final_index = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bai")
 	"""
 	gatk ApplyBQSR \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
@@ -580,7 +580,7 @@ process collectWgsMetrics_gatk {
 	coverage_metrics = "${sample_id}.coverage.metrics.txt"
 	"""
 	gatk CollectWgsMetrics \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--INCLUDE_BQ_HISTOGRAM \
@@ -621,7 +621,7 @@ process collectGcBiasMetrics_gatk {
 	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
 	"""
 	gatk CollectGcBiasMetrics \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
