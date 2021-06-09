@@ -261,7 +261,7 @@ Channel
 	.fromPath( 'references/hg38/af-only-gnomad.chrXYM-alts.hg38.vcf.gz.tbi' )
 	.set{ gnomad_ref_vcf_chromosomesXYM_alts_index }
 
-if( params.mutect_ref_vcf_concatenated == "yes" ) {
+if( params.mutect == "on" && params.mutect_ref_vcf_concatenated == "yes" ) {
 	Channel
 		.fromPath( 'references/hg38/af-only-gnomad.hg38.vcf.gz', checkIfExists: true )
 		.ifEmpty{ error "The run command issued has the '--mutect_ref_vcf_concatenated' parameter set to 'yes', however the file does not exist. Please set the '--mutect_ref_vcf_concatenated' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
@@ -802,9 +802,9 @@ reference_genome_fasta_forVarscanBcftoolsNorm.combine( reference_genome_fasta_in
 	.combine( reference_genome_fasta_dict_forVarscanBcftoolsNorm )
 	.set{ reference_genome_bundle_forVarscanBcftoolsNorm }
 
-// BCFtools concat / norm ~ join the SNV and indel calls, split multiallelic sites into multiple rows then left-align and normalize indels
-process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
-	publishDir "${params.output_dir}/somatic/varscan", mode: 'copy'
+// BCFtools norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
+process splitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
+	publishDir "${params.output_dir}/somatic/varscan", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -835,7 +835,7 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	--threads ${task.cpus} \
 	--multiallelics -snps \
 	--output-type z \
-	--output-file "${final_varscan_snv_vcf}" \
+	--output "${final_varscan_snv_vcf}" \
 	- 2>"${varscan_snv_multiallelics_stats}"
 
 	tabix "${final_varscan_snv_vcf}"
@@ -852,7 +852,7 @@ process concatSplitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	--threads ${task.cpus} \
 	--fasta-ref "${reference_genome_fasta_forVarscanBcftoolsNorm}" \
 	--output-type z \
-	--output-file "${final_varscan_indel_vcf}" \
+	--output "${final_varscan_indel_vcf}" \
 	- 2>"${varscan_indel_realign_normalize_stats}"
 
 	tabix "${final_varscan_indel_vcf}"
@@ -1428,7 +1428,6 @@ process setupAndSplit_caveman {
 
 // CaVEMan mstep ~ tune the size of section downloaded from bam at a time
 process mstepPerChromosome_caveman {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink'
 	tag "C=${chromosome} ${tumor_normal_sample_id}"
 
 	input:
@@ -1509,7 +1508,6 @@ merge_output_forCavemanEstep.join( setup_and_split_readpos_forCavemanEstep )
 
 // CaVEMan estep ~ call single base substitutions using an expectation maximisation approach
 process snvCallingPerChromosome_caveman {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'copy'
 	tag "C=${chromosome} ${tumor_normal_sample_id}"
 
 	input:
@@ -1553,7 +1551,7 @@ process snvCallingPerChromosome_caveman {
 
 // CaVEMan mergeCavemanResults ~ combine all per chunk calling results
 process mergeCavemanResults_caveman {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/caveman", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
