@@ -2181,7 +2181,7 @@ process svAndIndelCalling_svaba {
 	germline_sv_vcf = "${tumor_normal_sample_id}.svaba.germline.sv.vcf.gz"
 	unfiltered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.indel.vcf.gz"
 	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
-	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz"
+	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
 	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
 	filtered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
 	filtered_somatic_sv_vcf_index = "${filtered_somatic_sv_vcf}.tbi"
@@ -2213,7 +2213,7 @@ reference_genome_fasta_forSvabaBcftools.combine( reference_genome_fasta_index_fo
 
 // BCFtools Norm ~ left-align and normalize indels
 process leftNormalizeSvabaVcf_bcftools {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
