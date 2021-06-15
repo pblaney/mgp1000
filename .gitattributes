@@ -67,3 +67,4 @@ references/hg38/mappability_track_100m2.hg38.zip filter=lfs diff=lfs merge=lfs -
 references/hg38/Homo_sapiens_assembly38_autosome_sex_chroms/*.fa.gz filter=lfs diff=lfs merge=lfs -text
 references/hg38/SnpGcCorrections.hg38.tsv filter=lfs diff=lfs merge=lfs -text
 references/hg38/pon_breakpoint.hg38.bedpe filter=lfs diff=lfs merge=lfs -text
+references/hg38/dbsnp138.hg38.bed.gz filter=lfs diff=lfs merge=lfs -text
