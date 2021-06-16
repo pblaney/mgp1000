@@ -2681,7 +2681,7 @@ process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) from final_varscan_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_caveman_snv_vcf_forConsensus)
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) from final_varscan_snv_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_caveman_snv_vcf_forConsensus)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_snv_vcf), path(merged_consensus_somatic_snv_vcf_index) into consensus_snv_vcf_forFings
