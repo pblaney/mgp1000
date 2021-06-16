@@ -149,6 +149,7 @@ Channel
 	       reference_genome_fasta_forSvabaBcftools;
 	       reference_genome_fasta_forGridssSetup;
 	       reference_genome_fasta_forGridssPostprocessing;
+	       reference_genome_fasta_forFings;
 	       reference_genome_fasta_forAnnotation }
 
 Channel
@@ -171,6 +172,7 @@ Channel
 	       reference_genome_fasta_index_forSvabaBcftools;
 	       reference_genome_fasta_index_forGridssSetup;
 	       reference_genome_fasta_index_forGridssPostprocessing;
+	       reference_genome_fasta_index_forFings;
 	       reference_genome_fasta_index_forAnnotation }
 
 Channel
@@ -194,6 +196,7 @@ Channel
 	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forSvabaBcftools;
 	       reference_genome_fasta_dict_forGridssPostprocessing;
+	       reference_genome_fasta_dict_forFings;
 	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
@@ -406,6 +409,7 @@ process identifySampleSex_allelecount {
 	output:
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFings
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -2668,6 +2672,100 @@ process filteringAndPostprocessesing_gridss {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+// ~~~~~~~~~ MERGE AND CONSENSUS ~~~~~~~~~~~ \\
+// START
+
+// MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
+process mergeAndGenerateConsensusSnvCalls_mergevcf {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'symlink'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) from final_varscan_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_caveman_snv_vcf_forConsensus)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_snv_vcf), path(merged_consensus_somatic_snv_vcf_index) into consensus_snv_vcf_forFings
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
+
+	script:
+	merged_consensus_somatic_snv_vcf = "${tumor_normal_sample_id}.consensus.somatic.snv.vcf.gz"
+	merged_consensus_somatic_snv_vcf_index = "${merged_consensus_somatic_snv_vcf}.tbi"
+	"""
+	mergevcf \
+	--labels varscan,mutect,caveman \
+	--ncallers \
+	--mincallers 2 \
+	"${final_varscan_snv_vcf}" \
+	"${final_mutect_snv_vcf}" \
+	"${final_caveman_snv_vcf}" \
+	| \
+	grep -v "^##" \
+	| \
+	sort -k1,1 -k2,2n \
+	| \
+	bgzip > "${merged_consensus_somatic_snv_vcf}"
+
+	tabix "${merged_consensus_somatic_snv_vcf}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~~ FiNGS ~~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all needed reference FASTA files into one channel for use in FiNGS process
+reference_genome_fasta_forFings.combine( reference_genome_fasta_index_forFings )
+	.combine( reference_genome_fasta_dict_forFings )
+	.set{ reference_genome_bundle_forFings }
+
+// FiNGS ~ implement the ICGC filtering standards to provide highest quality variants
+process icgcHighQualityFilter_fings {
+	publishDir "${params.output_dir}/somatic/fings", mode: 'symlink', pattern: '*.{vcf,pdf,txt.gz}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_snv_vcf), path(merged_consensus_somatic_snv_vcf_index), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forFings), path(reference_genome_fasta_index_forFings), path(reference_genome_fasta_dict_forFings) from consensus_snv_vcf_forFings.join(bams_forFings).combine(reference_genome_bundle_forFings)
+
+	output:
+	tuple path(high_quality_consensus_somatic_snv_vcf), path(high_quality_consensus_somatic_snv_vcf_index) into high_quality_consensus_snv_vcf_forAnnotation
+	path plots_pdf
+	path summary_stats
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
+
+	script:
+	high_quality_consensus_somatic_snv_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.snv.vcf.gz"
+	high_quality_consensus_somatic_snv_vcf_index = "${high_quality_consensus_somatic_snv_vcf}.tbi"
+	plots_pdf = "${tumor_normal_sample_id}.fings.plots.pdf"
+	summary_stats = "${tumor_normal_sample_id}.fings.summarystats.txt.gz"
+	"""
+	fings \
+	-v "${merged_consensus_somatic_snv_vcf}" \
+	-t "${tumor_bam}" \
+	-n "${normal_bam}" \
+	-r "${reference_genome_fasta_index_forFings}" \
+	-d results \
+	-j "${task.cpus}" \
+	--ICGC
+
+	bgzip < results/inputvcf.filtered.vcf > "${high_quality_consensus_somatic_snv_vcf}"
+	tabix "${high_quality_consensus_somatic_snv_vcf}"
+
+	mv results/plots.pdf "${plots_pdf}"
+	mv results/summarystats.txt.gz "${summary_stats}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
 // ~~~~~~~~~~~~ VEP ANNOTATION ~~~~~~~~~~~~~ \\
 // START
 
@@ -2693,8 +2791,6 @@ process downloadVepAnnotationReferences_vep {
 	"""
 }
 
-/*
-
 // Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
 // channel for the VEP annotation process
 if( params.vep_ref_cached == "yes" ) {
@@ -2709,39 +2805,20 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
 
-
-// NAMES OF OUTPUT CHANNELS FOR VCFS GOING TO ANNOTATION HAVE CHANGED
-
-// Create a channel of each unannotated somatic VCF and index produced in the pipeline to put through the VEP annotation process
-final_varscan_vcf_forAnnotation.ifEmpty{ 'skipped' }
-	.mix( final_mutect_vcf_forAnnotation.ifEmpty{ 'skipped' } )
-	.mix( final_manta_vcf_forAnnotation.ifEmpty{ 'skipped' } )
-	.mix( final_svaba_sv_vcf_forAnnotation.ifEmpty{ 'skipped' } )
-	.mix( final_svaba_indel_vcf_forAnnotation.ifEmpty{ 'skipped' } )
-	.filter{ it != 'skipped' }
-	.set{ final_somatic_vcfs_forAnnotation }
-
-final_varscan_vcf_index_forAnnotation.ifEmpty{ 'skipped' }
-	.mix( final_mutect_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
-	.mix( final_manta_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
-	.mix( final_svaba_sv_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
-	.mix( final_svaba_indel_vcf_index_forAnnotation.ifEmpty{ 'skipped' } )
-	.filter{ it != 'skipped' }
-	.set{ final_somatic_vcfs_indicies_forAnnotation }
-
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
 	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy'
 	tag "${vcf_id}"
 
 	input:
-	tuple path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from vep_ref_dir.combine(reference_genome_bundle_forAnnotation)
-	path final_somatic_vcfs_indicies_forAnnotation
-	each path(final_somatic_vcf) from final_somatic_vcfs_forAnnotation
+	tuple path(high_quality_consensus_somatic_snv_vcf), path(high_quality_consensus_somatic_snv_vcf_index), path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from high_quality_consensus_snv_vcf_forAnnotation.combine(vep_ref_dir).combine(reference_genome_bundle_forAnnotation)
 
 	output:
 	path final_annotated_somatic_vcfs
 	path annotation_summary
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
 
 	script:
 	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, "")
@@ -2774,6 +2851,3 @@ process annotateSomaticVcf_vep {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-*/
-
