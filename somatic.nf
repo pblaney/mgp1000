@@ -2288,11 +2288,11 @@ process vcfFlagging_cgpcavemanpostprocessing {
 	echo "snpBed=${dbsnp_bed}" >> "${postprocessing_config_file}"
 	echo "" >> "${postprocessing_config_file}"
 
-	if [[ ! "${tumor_bam_index}" =~ .bam.bai$ ]]; then
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${tumor_bam_index}" "${tumor_bam}.bai"
 	fi
 
-	if [[ ! "${normal_bam_index}" =~ .bam.bai$ ]]; then
+	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${normal_bam_index}" "${normal_bam}.bai"
 	fi
 
