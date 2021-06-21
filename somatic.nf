@@ -1388,10 +1388,13 @@ process cnvCalling_ascatngs {
 	mv "${tumor_id}.ASPCF.png" "${aspcf_png}"
 	mv "${tumor_id}.germline.png" "${germline_png}"
 	mv "${tumor_id}.tumour.png" "${tumor_png}"
-	mv "${tumor_id}.copynumber.caveman.csv" "${cnv_profile_final}"
 	mv "${tumor_id}.copynumber.caveman.vcf.gz" "${cnv_profile_vcf}"
 	mv "${tumor_id}.copynumber.caveman.vcf.gz.tbi" "${cnv_profile_vcf_index}"
 	mv "${tumor_id}.samplestatistics.txt" "${run_statistics}"
+
+	touch "${cnv_profile_final}"
+	echo "segment_number,chromosome,start_position,end_position,normal_total_copy_number,normal_minor_copy_number,tumor_total_copy_number,tumor_minor_copy_number" >> "${cnv_profile_final}"
+	cat "${tumor_id}.copynumber.caveman.csv" >> "${cnv_profile_final}"
 	"""
 }
 
@@ -1808,7 +1811,7 @@ process cnvCalling_sclust {
 	script:
 	allelic_states_file = "${tumor_normal_sample_id}.sclust.allelicstates.txt"
 	cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
-	cnv_profile_file = "${tumor_normal_sample_id}.sclust.cnv.txt"
+	cnv_profile_file = "${tumor_normal_sample_id}.sclust.cnvsummary.txt"
 	cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
 	mutations_exp_af_file = "${tumor_normal_sample_id}_muts_expAF.txt"
 	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
@@ -2285,6 +2288,14 @@ process vcfFlagging_cgpcavemanpostprocessing {
 	echo "snpBed=${dbsnp_bed}" >> "${postprocessing_config_file}"
 	echo "" >> "${postprocessing_config_file}"
 
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai$ ]]; then
+		cp "${tumor_bam_index}" "${tumor_bam}.bai"
+	fi
+
+	if [[ ! "${normal_bam_index}" =~ .bam.bai$ ]]; then
+		cp "${normal_bam_index}" "${normal_bam}.bai"
+	fi
+
 	cgpFlagCaVEMan.pl \
 	--input "${raw_caveman_somatic_vcf}" \
 	--outFile "${tumor_normal_sample_id}.caveman.somatic.flagged.snv.vcf" \
@@ -2400,8 +2411,6 @@ process leftNormalizeSvabaVcf_bcftools {
 	path(reference_genome_fasta_dict_forSvabaBcftools) from filtered_indel_vcf_forSvabaBcftools.combine(reference_genome_bundle_forSvabaBcftools)
 
 	output:
-	path final_svaba_indel_vcf into final_svaba_indel_vcf_forAnnotation
-	path final_svaba_indel_vcf_index into final_svaba_indel_vcf_index_forAnnotation
 	tuple val(tumor_normal_sample_id), path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index) into final_svaba_indel_vcf_forConsensus
 	path svaba_realign_normalize_stats
 
