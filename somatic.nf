@@ -119,6 +119,7 @@ params.sclust = "on"
 params.manta = "on"
 params.svaba = "on"
 params.gridss = "on"
+params.ascatngs_ploidy = null
 params.help = null
 
 // Print help message if requested
@@ -1354,6 +1355,7 @@ process cnvCalling_ascatngs {
 	params.ascatngs == "on"
 
 	script:
+	ploidy = (params.ascatngs_ploidy) ? "-ploidy ${params.ascatngs_ploidy}" : ""
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	ascat_profile_png = "${tumor_normal_sample_id}.ascat.profile.png"
 	ascat_raw_profile_png = "${tumor_normal_sample_id}.ascat.raw.profile.png"
@@ -1380,7 +1382,8 @@ process cnvCalling_ascatngs {
 	-species Homo_sapiens \
 	-assembly GRCh38 \
 	-cpus "${task.cpus}" \
-	-nobigwig
+	-nobigwig \
+	${ploidy}
 
 	mv "${tumor_id}.ASCATprofile.png" "${ascat_profile_png}"
 	mv "${tumor_id}.rawprofile.png" "${ascat_raw_profile_png}"
