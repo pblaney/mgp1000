@@ -120,6 +120,7 @@ params.manta = "on"
 params.svaba = "on"
 params.gridss = "on"
 params.ascatngs_ploidy = null
+params.ascatngs_purity = null
 params.help = null
 
 // Print help message if requested
@@ -1355,7 +1356,7 @@ process cnvCalling_ascatngs {
 	params.ascatngs == "on"
 
 	script:
-	ploidy = (params.ascatngs_ploidy) ? "-ploidy ${params.ascatngs_ploidy}" : ""
+	ploidy_and_purity = (params.ascatngs_ploidy && params.ascatngs_purity) ? "-ploidy ${params.ascatngs_ploidy} -purity ${params.ascatngs_purity}" : ""
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	ascat_profile_png = "${tumor_normal_sample_id}.ascat.profile.png"
 	ascat_raw_profile_png = "${tumor_normal_sample_id}.ascat.raw.profile.png"
@@ -1383,7 +1384,7 @@ process cnvCalling_ascatngs {
 	-assembly GRCh38 \
 	-cpus "${task.cpus}" \
 	-nobigwig \
-	${ploidy}
+	${ploidy_and_purity}
 
 	mv "${tumor_id}.ASCATprofile.png" "${ascat_profile_png}"
 	mv "${tumor_id}.rawprofile.png" "${ascat_raw_profile_png}"
@@ -1976,7 +1977,9 @@ process setupAndSplit_caveman {
 	split_file = "${tumor_normal_sample_id}.caveman.splitfile"
 	alg_bean_file = "alg_bean"
 	"""
-	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' "${cnv_profile_final}" > "${tumor_cnv_profile_bed}"
+	grep -v 'segment_number' "${cnv_profile_final}" \
+	| \
+	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${tumor_cnv_profile_bed}"
 
 	caveman setup \
 	--tumour-bam "${tumor_bam}" \
