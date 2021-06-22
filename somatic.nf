@@ -934,7 +934,7 @@ process mutect2GnomadReferenceVcfPrep_bcftools {
 
 // Depending on whether the gnomAD allele frequency reference VCF was pre-built, set the input
 // channel for the for MuTect2 process
-if( params.mutect_ref_vcf_concatenated == "yes" ) {
+if( params.mutect_ref_vcf_concatenated == "yes" && params.mutect == "on") {
 	mutect_gnomad_ref_vcf = mutect_gnomad_ref_vcf_preBuilt.combine( mutect_gnomad_ref_vcf_index_preBuilt )
 }
 else {
