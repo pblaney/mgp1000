@@ -103,6 +103,7 @@ def helpMessage() {
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
 // Declare the defaults for all pipeline parameters
+params.input_dir = "input/preprocessedBams"
 params.output_dir = "output"
 params.run_id = null
 params.sample_sheet = null
@@ -130,6 +131,9 @@ if( params.help ) exit 0, helpMessage()
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
 if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
+
+// Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
+if( params.ascatngs_ploidy && params.ascatngs_purity == null ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
 
 // Set channels for reference files
 Channel
@@ -378,11 +382,11 @@ if( params.vep_ref_cached == "yes" ) {
 Channel
 	.fromPath( params.sample_sheet )
 	.splitCsv( header:true )
-	.map{ row -> def tumor_bam = "input/preprocessedBams/${row.tumor}"
-				 def tumor_bam_index = "input/preprocessedBams/${row.tumor}".replaceFirst(/\.bam$/, ".bai")
-	             def normal_bam = "input/preprocessedBams/${row.normal}"
-	             def normal_bam_index = "input/preprocessedBams/${row.normal}".replaceFirst(/\.bam$/, ".bai")
-	             return[ file(tumor_bam), file(tumor_bam_index), file(normal_bam),  file(normal_bam_index) ] }
+	.map{ row -> def tumor_bam = "${params.input_dir}/${row.tumor}"
+				 def tumor_bam_index = "${params.input_dir}/${row.tumor}".minus(".bam")
+	             def normal_bam = "${params.input_dir}/${row.normal}"
+	             def normal_bam_index = "${params.input_dir}/${row.normal}".minus(".bam")
+	             return[ file(tumor_bam), file("${tumor_bam_index}.*.bai"), file(normal_bam),  file("${normal_bam_index}.*.bai") ] }
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
