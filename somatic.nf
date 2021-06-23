@@ -92,8 +92,8 @@ def helpMessage() {
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
 // Declare the defaults for all pipeline parameters
-params.input_dir = './input/preprocessedBams'
-params.output_dir = './output'
+params.input_dir = '${workflow.projectDir}/input/preprocessedBams'
+params.output_dir = '${workflow.projectDir}/output'
 params.run_id = null
 params.sample_sheet = null
 params.mutect_ref_vcf_concatenated = "yes"
