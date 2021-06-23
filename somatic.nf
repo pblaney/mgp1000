@@ -385,13 +385,13 @@ Channel
 	.fromPath( params.sample_sheet )
 	.splitCsv( header:true )
 	.map{ row -> tumor_bam = "${row.tumor}"
-				 tumor_bam_index = "${row.tumor}".replaceFirst(/\.bam$/, ".bai")
+				 tumor_bam_index = "${row.tumor}".replaceFirst(/\.bam$/, "")
 	             normal_bam = "${row.normal}"
-	             normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, ".bai")
+	             normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, "")
 	             return[ file("${params.input_dir}/${tumor_bam}"),
-	             		 file("${params.input_dir}/${tumor_bam_index}"),
+	             		 file("${params.input_dir}/${tumor_bam_index}.bai"),
 	             		 file("${params.input_dir}/${normal_bam}"), 
-	             		 file("${params.input_dir}/${normal_bam_index}") ] }
+	             		 file("${params.input_dir}/${normal_bam_index}.bai") ] }
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
