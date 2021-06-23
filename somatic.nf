@@ -382,10 +382,10 @@ if( params.vep_ref_cached == "yes" ) {
 Channel
 	.fromPath( params.sample_sheet )
 	.splitCsv( header:true )
-	.map{ row -> def tumor_bam = "${params.input_dir}/${row.tumor}"
-				 def tumor_bam_index = "${params.input_dir}/${row.tumor}".replaceFirst(/\.bam$/, ".bai")
-	             def normal_bam = "${params.input_dir}/${row.normal}"
-	             def normal_bam_index = "${params.input_dir}/${row.normal}".replaceFirst(/\.bam$/, ".bai")
+	.map{ row -> tumor_bam = "${params.input_dir}/${row.tumor}"
+				 tumor_bam_index = "${params.input_dir}/${row.tumor}".replaceFirst(/\.bam$/, ".bai")
+	             normal_bam = "${params.input_dir}/${row.normal}"
+	             normal_bam_index = "${params.input_dir}/${row.normal}".replaceFirst(/\.bam$/, ".bai")
 	             return[ file(tumor_bam), file(tumor_bam_index), file(normal_bam),  file(normal_bam_index) ] }
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
