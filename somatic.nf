@@ -416,6 +416,7 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFings
+	tuple path(sex_loci_allele_counts), path(sample_sex)
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
