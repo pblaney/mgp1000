@@ -118,7 +118,13 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
 // Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
-if( params.ascatngs_ploidy && params.ascatngs_purity == null ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
+if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
+
+// Remove tail backslash in input and output directories if present
+if( params.input_dir ==~ /\/$/ ) {
+	clean_input_dir = "${params.input_dir}".replaceFirst(/\/$/, "")
+	params.input_dir = clean_input_dir
+}
 
 // Set channels for reference files
 Channel
@@ -373,7 +379,7 @@ log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
 log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
 log.info ''
-log.info "~~~ Output Directory ~~~ 	${params.output_dir}/output/somatic"
+log.info "~~~ Output Directory ~~~ 	${params.output_dir}/somatic"
 log.info ''
 log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
 log.info ''
