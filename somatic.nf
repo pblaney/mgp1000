@@ -112,6 +112,9 @@ params.help = null
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
 
+// Print erro message if user-defined input/output directories does not exist
+if( !params.input_dir.exists() ) exit 1, "The user-specified input directory does not exist in filesystem"
+
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
@@ -119,11 +122,6 @@ if( params.sample_sheet == null ) exit 1, "The run command issued does not have 
 
 // Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
 if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
-
-// Remove tail forwardslash in input and output directories if present
-if( params.input_dir.endsWith("/") ) {
-	clean_input_dir = "${params.input_dir}".replaceFirst(/\/$/, "")
-}
 
 // Set channels for reference files
 Channel
@@ -376,9 +374,9 @@ log.info '################################################'
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
-log.info "~~~ Input Directory ~~~ 	${clean_input_dir}"
+log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
 log.info ''
-log.info "~~~ Output Directory ~~~ 	${params.output_dir}/somatic"
+log.info "~~~ Output Directory ~~~ 	${params.output_dir}"
 log.info ''
 log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
 log.info ''
