@@ -123,7 +123,6 @@ if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_plo
 // Remove tail forwardslash in input and output directories if present
 if( params.input_dir.endsWith("/") ) {
 	clean_input_dir = "${params.input_dir}".replaceFirst(/\/$/, "")
-	params.input_dir = clean_input_dir
 }
 
 // Set channels for reference files
@@ -377,7 +376,7 @@ log.info '################################################'
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
-log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info "~~~ Input Directory ~~~ 	${clean_input_dir}"
 log.info ''
 log.info "~~~ Output Directory ~~~ 	${params.output_dir}/somatic"
 log.info ''
