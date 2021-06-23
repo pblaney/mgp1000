@@ -29,6 +29,10 @@ def helpMessage() {
 		                                      environment
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
+		--input_dir                    [str]  Directory that holds BAMs and associated index files
+		                                      Default: ./input/preprocessedBams
+		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+		                                      Default: ./output
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
