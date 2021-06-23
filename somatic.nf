@@ -111,6 +111,7 @@ params.svaba = "on"
 params.gridss = "on"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
+params.cpus = null
 params.help = null
 
 // Print help message if requested
