@@ -8,23 +8,6 @@
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
 
-log.info ''
-log.info '##### Myeloma Genome Project 1000 Pipeline #####'
-log.info '################################################'
-log.info '~~~~~~~~~~~ SOMATIC VARIANT ANALYSIS ~~~~~~~~~~~'
-log.info '################################################'
-log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
-log.info ''
-//log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
-//log.info ''
-//log.info "~~~ Output Directory ~~~ 	${params.output_dir}/output/somatic"
-//log.info ''
-log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
-log.info ''
-log.info '################################################'
-log.info ''
-
 def helpMessage() {
 	log.info"""
 
@@ -380,6 +363,23 @@ if( params.vep_ref_cached == "yes" ) {
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
+log.info ''
+log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '################################################'
+log.info '~~~~~~~~~~~ SOMATIC VARIANT ANALYSIS ~~~~~~~~~~~'
+log.info '################################################'
+log.info ''
+log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info ''
+log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info ''
+log.info "~~~ Output Directory ~~~ 	${params.output_dir}/output/somatic"
+log.info ''
+log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
+log.info ''
+log.info '################################################'
+log.info ''
+
 // Read user provided sample sheet to set the Tumor/Normal sample pairs
 Channel
 	.fromPath( params.sample_sheet )
@@ -421,7 +421,6 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFings
-	tuple path(sex_loci_allele_counts), path(sample_sex)
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
