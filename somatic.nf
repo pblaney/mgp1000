@@ -46,6 +46,8 @@ def helpMessage() {
 		                                      done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
+		--cpus                         [int]  Globally set the number of cpus to be allocated for each process
+		--memory                       [str]  Globally set the amount of memory to be allocated for each process, written as ##.GB or ##.MB
 		--help                        [flag]  Prints this message
 
 	Toolbox Switches:
