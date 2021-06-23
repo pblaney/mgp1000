@@ -16,10 +16,10 @@ log.info '################################################'
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
-log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
-log.info ''
-log.info "~~~ Output Directory ~~~ 	${params.output_dir}/output/somatic"
-log.info ''
+//log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+//log.info ''
+//log.info "~~~ Output Directory ~~~ 	${params.output_dir}/output/somatic"
+//log.info ''
 log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
 log.info ''
 log.info '################################################'
@@ -384,11 +384,14 @@ if( params.vep_ref_cached == "yes" ) {
 Channel
 	.fromPath( params.sample_sheet )
 	.splitCsv( header:true )
-	.map{ row -> tumor_bam = "${params.input_dir}/${row.tumor}"
-				 tumor_bam_index = "${params.input_dir}/${row.tumor}".replaceFirst(/\.bam$/, ".bai")
-	             normal_bam = "${params.input_dir}/${row.normal}"
-	             normal_bam_index = "${params.input_dir}/${row.normal}".replaceFirst(/\.bam$/, ".bai")
-	             return[ file(tumor_bam), file(tumor_bam_index), file(normal_bam),  file(normal_bam_index) ] }
+	.map{ row -> tumor_bam = "${row.tumor}"
+				 tumor_bam_index = "${row.tumor}".replaceFirst(/\.bam$/, ".bai")
+	             normal_bam = "${row.normal}"
+	             normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, ".bai")
+	             return[ file("${params.input_dir}/${tumor_bam}"),
+	             		 file("${params.input_dir}/${tumor_bam_index}"),
+	             		 file("${params.input_dir}/${normal_bam}"), 
+	             		 file("${params.input_dir}/${normal_bam_index}") ] }
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
