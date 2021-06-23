@@ -47,7 +47,9 @@ def helpMessage() {
 		                                      Available: yes, no
 		                                      Default: yes
 		--cpus                         [int]  Globally set the number of cpus to be allocated for each process
+		                                      Default: uniquly set for each process in ./nextflow.config
 		--memory                       [str]  Globally set the amount of memory to be allocated for each process, written as ##.GB or ##.MB
+		                                      Default: uniquly set for each process in ./nextflow.config
 		--help                        [flag]  Prints this message
 
 	Toolbox Switches:
