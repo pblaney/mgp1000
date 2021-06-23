@@ -3030,7 +3030,7 @@ process annotateSomaticVcf_vep {
 	path annotation_summary
 
 	when:
-	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
+	params.varscan == "on" && params.mutect == "on" && params.caveman == "on" && params.strelka == "on"
 
 	script:
 	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, "")
