@@ -117,7 +117,7 @@ params.help = null
 if( params.help ) exit 0, helpMessage()
 
 // Print erro message if user-defined input/output directories does not exist
-if( !params.input_dir.exists() ) exit 1, "The user-specified input directory does not exist in filesystem"
+if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directory does not exist in filesystem"
 
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
