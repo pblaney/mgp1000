@@ -120,8 +120,8 @@ if( params.sample_sheet == null ) exit 1, "The run command issued does not have 
 // Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
 if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
 
-// Remove tail backslash in input and output directories if present
-if( params.input_dir ==~ /\/$/ ) {
+// Remove tail forwardslash in input and output directories if present
+if( params.input_dir.endsWith("/") ) {
 	clean_input_dir = "${params.input_dir}".replaceFirst(/\/$/, "")
 	params.input_dir = clean_input_dir
 }
