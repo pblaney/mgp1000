@@ -389,9 +389,9 @@ Channel
 	             normal_bam = "${row.normal}"
 	             normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, "")
 	             return[ file("${params.input_dir}/${tumor_bam}"),
-	             		 file("${params.input_dir}/${tumor_bam_index}.bai"),
+	             		 file("${params.input_dir}/${tumor_bam_index}*.bai"),
 	             		 file("${params.input_dir}/${normal_bam}"), 
-	             		 file("${params.input_dir}/${normal_bam_index}.bai") ] }
+	             		 file("${params.input_dir}/${normal_bam_index}*.bai") ] }
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
