@@ -16,7 +16,9 @@ log.info '################################################'
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
-log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/somatic"
+log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info ''
+log.info "~~~ Output Directory ~~~ 	${params.output_dir}/output/somatic"
 log.info ''
 log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
 log.info ''
@@ -406,7 +408,7 @@ reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
 
 // alleleCount ~ determine the sex of each sample to use in downstream analyses
 process identifySampleSex_allelecount {
-	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy', pattern: '*${sample_sex}'
+	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy', pattern: '*.{txt}'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
