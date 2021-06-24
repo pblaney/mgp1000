@@ -1936,7 +1936,7 @@ process svAndIndelCalling_manta {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	zipped_wgs_bed = "${gatk_bundle_wgs_bed_forManta}.gz"
+	zipped_wgs_bed_forManta = "${gatk_bundle_wgs_bed_forManta}.gz"
 	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unfiltered.vcf.gz"
 	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
 	germline_sv_vcf = "${tumor_normal_sample_id}.manta.germline.sv.vcf.gz"
@@ -1946,14 +1946,14 @@ process svAndIndelCalling_manta {
 	final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf.gz"
 	final_manta_somatic_sv_vcf_index = "${final_manta_somatic_sv_vcf}.tbi"
 	"""
-	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed}"
-	tabix "${zipped_wgs_bed}"
+	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed_forManta}"
+	tabix "${zipped_wgs_bed_forManta}"
 
 	python \${MANTA_DIR}/bin/configManta.py \
 	--tumorBam "${tumor_bam}" \
 	--normalBam "${normal_bam}" \
 	--referenceFasta "${reference_genome_fasta_forManta}" \
-	--callRegions "${zipped_wgs_bed}" \
+	--callRegions "${zipped_wgs_bed_forManta}" \
 	--runDir manta
 
 	python manta/runWorkflow.py \
@@ -2010,20 +2010,21 @@ process snvAndIndelCalling_strelka {
 	params.strelka == "on" && params.manta == "on"
 
 	script:
+	zipped_wgs_bed_forStrelka = "${gatk_bundle_wgs_bed_forStrelka}.gz"
 	unfiltered_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.unfiltered.vcf.gz"
 	unfiltered_strelka_snv_vcf_index = "${unfiltered_strelka_snv_vcf}.tbi"
 	unfiltered_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.unfiltered.vcf.gz"
 	unfiltered_strelka_indel_vcf_index = "${unfiltered_strelka_indel_vcf}.tbi"
 	"""
-	bgzip < "${gatk_bundle_wgs_bed_forStrelka}" > "${zipped_wgs_bed}"
-	tabix "${zipped_wgs_bed}"
+	bgzip < "${gatk_bundle_wgs_bed_forStrelka}" > "${zipped_wgs_bed_forStrelka}"
+	tabix "${zipped_wgs_bed_forStrelka}"
 
 	python \${STRELKA_DIR}/bin/configureStrelkaSomaticWorkflow.py \
 	--normalBam "${normal_bam}" \
 	--tumorBam "${tumor_bam}" \
 	--referenceFasta "${reference_genome_fasta_forStrelka}" \
 	--indelCandidates "${candidate_indel_vcf}" \
-	--callRegions "${gatk_bundle_wgs_bed_forStrelka}" \
+	--callRegions "${zipped_wgs_bed_forStrelka}" \
 	--runDir strelka
 
 	python strelka/runWorkflow.py \
@@ -2837,7 +2838,9 @@ process filteringAndPostprocessesing_gridss {
     -input_vcf  "${intermediate_filterted_vcf}" \
     -output_vcf "${filterted_vcf}"
 
-    zgrep -E '^#|PASS' "${filterted_vcf}" | bgzip > "${final_gridss_vcf}"
+    zgrep -E '^#|PASS' "${filterted_vcf}" \
+    | \
+    bgzip > "${final_gridss_vcf}"
     tabix "${final_gridss_vcf}"
 	"""
 }
@@ -2846,7 +2849,7 @@ process filteringAndPostprocessesing_gridss {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~ MERGE AND CONSENSUS ~~~~~~~~~~~ \\
+// ~~~~~~~~~~~~~~ CONSENSUS ~~~~~~~~~~~~~~~~ \\
 // START
 
 // MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
