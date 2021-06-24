@@ -8,21 +8,6 @@
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
 
-log.info ''
-log.info '##### Myeloma Genome Project 1000 Pipeline #####'
-log.info '################################################'
-log.info '~~~~~~~~~~~ GERMLINE VARIANT ANALYSIS ~~~~~~~~~~'
-log.info '################################################'
-log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
-log.info ''
-log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/germline"
-log.info ''
-log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
-log.info ''
-log.info '################################################'
-log.info ''
-
 def helpMessage() {
 	log.info"""
 
@@ -47,6 +32,10 @@ def helpMessage() {
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
 		--email                        [str]  Email address to send workflow completion/stoppage notification
+		--input_dir                    [str]  Directory that holds BAMs and associated index files
+		                                      Default: ./input/preprocessedBams
+		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+		                                      Default: ./output
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
@@ -59,6 +48,12 @@ def helpMessage() {
 		                                      need to be done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
+		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
+		                                      Available: 2, 4, 8, 16, etc.
+		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
+		--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
+		                                      Available: 32.GB, 2400.MB, etc.
+		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
 		--help                        [flag]  Prints this message
 
 	################################################
@@ -70,16 +65,22 @@ def helpMessage() {
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
 // Declare the defaults for all pipeline parameters
-params.output_dir = "output"
+params.input_dir = "${workflow.projectDir}/input/preprocessedBams"
+params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.sample_sheet = null
 params.cohort_name = null
 params.vep_ref_cached = "yes"
 params.ref_vcf_concatenated = "yes"
+params.cpus = null
+params.memory = null
 params.help = null
 
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
+
+// Print erro message if user-defined input/output directories does not exist
+if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directory does not exist in filesystem."
 
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
@@ -227,11 +228,28 @@ if( params.ref_vcf_concatenated == "yes" ) {
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
+log.info ''
+log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '################################################'
+log.info '~~~~~~~~~~~ GERMLINE VARIANT ANALYSIS ~~~~~~~~~~'
+log.info '################################################'
+log.info ''
+log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info ''
+log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info ''
+log.info "~~~ Output Directory ~~~ 	${params.output_dir}"
+log.info ''
+log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
+log.info ''
+log.info '################################################'
+log.info ''
+
 // Read user provided sample sheet to find Normal sample BAM files
 Channel
 	.fromPath( params.sample_sheet )
 	.splitCsv( header:true )
-	.map{ row -> file("input/preprocessedBams/${row.normal}") }
+	.map{ row -> file("${params.input_dir}/${row.normal}") }
 	.unique()
 	.set{ input_preprocessed_bams_forHaplotypeCaller }
 
