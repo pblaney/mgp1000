@@ -8,21 +8,6 @@
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
 
-log.info ''
-log.info '##### Myeloma Genome Project 1000 Pipeline #####'
-log.info '################################################'
-log.info '~~~~~~~~~~~ SOMATIC VARIANT ANALYSIS ~~~~~~~~~~~'
-log.info '################################################'
-log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
-log.info ''
-log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/somatic"
-log.info ''
-log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
-log.info ''
-log.info '################################################'
-log.info ''
-
 def helpMessage() {
 	log.info"""
 
@@ -44,6 +29,10 @@ def helpMessage() {
 		                                      environment
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
+		--input_dir                    [str]  Directory that holds BAMs and associated index files
+		                                      Default: ./input/preprocessedBams
+		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+		                                      Default: ./output
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -57,6 +46,12 @@ def helpMessage() {
 		                                      done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
+		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
+		                                      Available: 2, 4, 8, 16, etc.
+		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
+		--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
+		                                      Available: 32.GB, 2400.MB, etc.
+		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
 		--help                        [flag]  Prints this message
 
 	Toolbox Switches:
@@ -73,6 +68,9 @@ def helpMessage() {
 		                                      Available: off, on
 		                                      Default: on
 		--caveman                      [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
+		--strelka                      [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
 		--ascatngs                     [str]  Indicates whether or not to use this tool
@@ -103,7 +101,8 @@ def helpMessage() {
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
 // Declare the defaults for all pipeline parameters
-params.output_dir = "output"
+params.input_dir = "${workflow.projectDir}/input/preprocessedBams"
+params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.sample_sheet = null
 params.mutect_ref_vcf_concatenated = "yes"
@@ -113,6 +112,7 @@ params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
 params.caveman = "on"
+params.strelka = "on"
 params.ascatngs = "on"
 params.controlfreec = "on"
 params.sclust = "on"
@@ -121,15 +121,23 @@ params.svaba = "on"
 params.gridss = "on"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
+params.cpus = null
+params.memory = null
 params.help = null
 
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
 
+// Print erro message if user-defined input/output directories does not exist
+if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directory does not exist in filesystem."
+
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
 if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
+
+// Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
+if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
 
 // Set channels for reference files
 Channel
@@ -148,6 +156,8 @@ Channel
 	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_forControlFreecCalling;
 	       reference_genome_fasta_forManta;
+	       reference_genome_fasta_forStrelka;
+	       reference_genome_fasta_forStrelkaBcftools;
 	       reference_genome_fasta_forSvabaBcftools;
 	       reference_genome_fasta_forGridssSetup;
 	       reference_genome_fasta_forGridssPostprocessing;
@@ -171,6 +181,8 @@ Channel
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
 	       reference_genome_fasta_index_forManta;
+	       reference_genome_fasta_index_forStrelka;
+	       reference_genome_fasta_index_forStrelkaBcftools;
 	       reference_genome_fasta_index_forSvabaBcftools;
 	       reference_genome_fasta_index_forGridssSetup;
 	       reference_genome_fasta_index_forGridssPostprocessing;
@@ -195,6 +207,8 @@ Channel
 	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_dict_forControlFreecCalling;
 	       reference_genome_fasta_dict_forManta;
+	       reference_genome_fasta_dict_forStrelka;
+	       reference_genome_fasta_dict_forStrelkaBcftools;
 	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forSvabaBcftools;
 	       reference_genome_fasta_dict_forGridssPostprocessing;
@@ -208,6 +222,7 @@ Channel
 	       gatk_bundle_wgs_bed_forMutectPileup;
 	       gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup;
 	       gatk_bundle_wgs_bed_forManta;
+	       gatk_bundle_wgs_bed_forStrelka;
 	       gatk_bundle_wgs_bed_forSvaba }
 
 Channel
@@ -374,15 +389,35 @@ if( params.vep_ref_cached == "yes" ) {
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
+log.info ''
+log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '################################################'
+log.info '~~~~~~~~~~~ SOMATIC VARIANT ANALYSIS ~~~~~~~~~~~'
+log.info '################################################'
+log.info ''
+log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info ''
+log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info ''
+log.info "~~~ Output Directory ~~~ 	${params.output_dir}"
+log.info ''
+log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
+log.info ''
+log.info '################################################'
+log.info ''
+
 // Read user provided sample sheet to set the Tumor/Normal sample pairs
 Channel
 	.fromPath( params.sample_sheet )
 	.splitCsv( header:true )
-	.map{ row -> def tumor_bam = "input/preprocessedBams/${row.tumor}"
-				 def tumor_bam_index = "input/preprocessedBams/${row.tumor}".replaceFirst(/\.bam$/, ".bai")
-	             def normal_bam = "input/preprocessedBams/${row.normal}"
-	             def normal_bam_index = "input/preprocessedBams/${row.normal}".replaceFirst(/\.bam$/, ".bai")
-	             return[ file(tumor_bam), file(tumor_bam_index), file(normal_bam),  file(normal_bam_index) ] }
+	.map{ row -> tumor_bam = "${row.tumor}"
+				 tumor_bam_index = "${row.tumor}".replaceFirst(/\.bam$/, "")
+	             normal_bam = "${row.normal}"
+	             normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, "")
+	             return[ file("${params.input_dir}/${tumor_bam}"),
+	             		 file("${params.input_dir}/${tumor_bam_index}*.bai"),
+	             		 file("${params.input_dir}/${normal_bam}"), 
+	             		 file("${params.input_dir}/${normal_bam_index}*.bai") ] }
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
@@ -402,7 +437,7 @@ reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
 
 // alleleCount ~ determine the sex of each sample to use in downstream analyses
 process identifySampleSex_allelecount {
-	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy', pattern: '*${sample_sex}'
+	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy', pattern: '*.{txt}'
 	tag "T=${tumor_id} N=${normal_id}"
 
 	input:
@@ -1281,7 +1316,7 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 
 // BCFtools view ~ separate out normalized SNVs and indel calls for consensus call generation
 process splitMutectSnvsAndIndelsForConsensus_bcftools {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1509,7 +1544,7 @@ reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_
 
 // Control-FREEC ~ detection of copy-number changes and allelic imbalances
 process cnvCalling_controlfreec {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy', pattern: '*.{txt,cnv}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1572,7 +1607,7 @@ process cnvCalling_controlfreec {
 
 // Control-FREEC ~ post-processing of CNV predictions for significance, visualization, and format compatibility
 process cnvPredictionPostProcessing_controlfreec {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy', pattern: '*.{txt,bed,png}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1647,7 +1682,7 @@ process bamprocessPerChromosome_sclust {
 
 // Sclust bamprocess ~ merge per chromosome bamprocess data files and generate a read-count and common SNP-count files
 process mergeBamprocessData_sclust {
-	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink', pattern: '*.{txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1672,7 +1707,7 @@ process mergeBamprocessData_sclust {
 
 // VCFtools / VAtools ~ extract metrics from VCF to prepare for use in Sclust process
 process prepareVcfForSclust_vcftools {
-	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink', pattern: '*.{vcf.gz}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1795,7 +1830,7 @@ process prepareVcfForSclust_vcftools {
 
 // Sclust cn ~ perform copy-number analysis and estimation of tumor purity
 process cnvCalling_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1838,7 +1873,7 @@ process cnvCalling_sclust {
 
 // Sclust cluster ~ perform mutational clustering
 process mutationalClustering_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1881,15 +1916,15 @@ reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
 
 // Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
 process svAndIndelCalling_manta {
-	publishDir "${params.output_dir}/somatic/manta", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/manta", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forManta), path(reference_genome_fasta_index_forManta), path(reference_genome_fasta_dict_forManta), path(gatk_bundle_wgs_bed_forManta) from tumor_normal_pair_forManta.combine(reference_genome_bundle_and_bed_forManta)
 
 	output:
-	path final_manta_somatic_sv_vcf into final_manta_vcf_forAnnotation
-	path final_manta_somatic_sv_vcf_index into final_manta_vcf_index_forAnnotation
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
+	tuple path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index)
 	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
 	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) into germline_indel_vcf_forCaveman
 
@@ -1900,22 +1935,24 @@ process svAndIndelCalling_manta {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	zipped_wgs_bed = "${gatk_bundle_wgs_bed_forManta}.gz"
-	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.unfiltered.vcf.gz"
+	zipped_wgs_bed_forManta = "${gatk_bundle_wgs_bed_forManta}.gz"
+	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unfiltered.vcf.gz"
 	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
-	germline_sv_vcf = "${tumor_normal_sample_id}.manta.germline.vcf.gz"
+	germline_sv_vcf = "${tumor_normal_sample_id}.manta.germline.sv.vcf.gz"
 	germline_sv_vcf_index = "${germline_sv_vcf}.tbi"
-	final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.vcf.gz"
+	candidate_indel_vcf = "${tumor_normal_sample_id}.manta.somatic.indels.unfiltered.vcf.gz"
+	candidate_indel_vcf_index = "${candidate_indel_vcf}.tbi"
+	final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf.gz"
 	final_manta_somatic_sv_vcf_index = "${final_manta_somatic_sv_vcf}.tbi"
 	"""
-	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed}"
-	tabix "${zipped_wgs_bed}"
+	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed_forManta}"
+	tabix "${zipped_wgs_bed_forManta}"
 
 	python \${MANTA_DIR}/bin/configManta.py \
 	--tumorBam "${tumor_bam}" \
 	--normalBam "${normal_bam}" \
 	--referenceFasta "${reference_genome_fasta_forManta}" \
-	--callRegions "${zipped_wgs_bed}" \
+	--callRegions "${zipped_wgs_bed_forManta}" \
 	--runDir manta
 
 	python manta/runWorkflow.py \
@@ -1925,6 +1962,8 @@ process svAndIndelCalling_manta {
 
 	mv manta/results/variants/candidateSV.vcf.gz "${unfiltered_sv_vcf}"
 	mv manta/results/variants/candidateSV.vcf.gz.tbi "${unfiltered_sv_vcf_index}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz "${candidate_indel_vcf}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi "${candidate_indel_vcf_index}"
 
 	zcat manta/results/variants/diploidSV.vcf.gz \
 	| \
@@ -1946,6 +1985,125 @@ process svAndIndelCalling_manta {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+// ~~~~~~~~~~~~~~~~ Strelka2 ~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all needed reference FASTA files and WGS BED into one channel for use in Strelka process
+reference_genome_fasta_forStrelka.combine( reference_genome_fasta_index_forStrelka )
+	.combine( reference_genome_fasta_dict_forStrelka )
+	.combine( gatk_bundle_wgs_bed_forStrelka )
+	.set{ reference_genome_bundle_and_bed_forStrelka }
+
+// Strelka2 ~ call germline and somatic small variants from mapped sequencing reads
+process snvAndIndelCalling_strelka {
+	publishDir "${params.output_dir}/somatic/strelka/rawVcfs", mode: 'symlink', pattern: '*.{vcf.gz,tbi}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index), path(reference_genome_fasta_forStrelka), path(reference_genome_fasta_index_forStrelka), path(reference_genome_fasta_dict_forStrelka), path(gatk_bundle_wgs_bed_forStrelka) from bams_and_candidate_indel_vcf_forStrelka.combine(reference_genome_bundle_and_bed_forStrelka)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index) into unfiltered_snv_and_indel_vcfs_forStrelkaBcftools
+
+	when:
+	params.strelka == "on" && params.manta == "on"
+
+	script:
+	zipped_wgs_bed_forStrelka = "${gatk_bundle_wgs_bed_forStrelka}.gz"
+	unfiltered_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.unfiltered.vcf.gz"
+	unfiltered_strelka_snv_vcf_index = "${unfiltered_strelka_snv_vcf}.tbi"
+	unfiltered_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.unfiltered.vcf.gz"
+	unfiltered_strelka_indel_vcf_index = "${unfiltered_strelka_indel_vcf}.tbi"
+	"""
+	bgzip < "${gatk_bundle_wgs_bed_forStrelka}" > "${zipped_wgs_bed_forStrelka}"
+	tabix "${zipped_wgs_bed_forStrelka}"
+
+	python \${STRELKA_DIR}/bin/configureStrelkaSomaticWorkflow.py \
+	--normalBam "${normal_bam}" \
+	--tumorBam "${tumor_bam}" \
+	--referenceFasta "${reference_genome_fasta_forStrelka}" \
+	--indelCandidates "${candidate_indel_vcf}" \
+	--callRegions "${zipped_wgs_bed_forStrelka}" \
+	--runDir strelka
+
+	python strelka/runWorkflow.py \
+	--mode local \
+	--jobs ${task.cpus} \
+	--memGb ${task.memory.toGiga()}
+
+	mv strelka/results/variants/somatic.snvs.vcf.gz "${unfiltered_strelka_snv_vcf}"
+	mv strelka/results/variants/somatic.snvs.vcf.gz.tbi "${unfiltered_strelka_snv_vcf_index}"
+	mv strelka/results/variants/somatic.indels.vcf.gz "${unfiltered_strelka_indel_vcf}"
+	mv strelka/results/variants/somatic.indels.vcf.gz.tbi "${unfiltered_strelka_indel_vcf_index}"
+	"""
+}
+
+// Combine all needed reference FASTA files into one channel for use in Strelka / BCFtools Norm process
+reference_genome_fasta_forStrelkaBcftools.combine( reference_genome_fasta_index_forStrelkaBcftools )
+	.combine( reference_genome_fasta_dict_forStrelkaBcftools )
+	.set{ reference_genome_bundle_forStrelkaBcftools }
+
+// BCFtools norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
+process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
+	publishDir "${params.output_dir}/somatic/strelka", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index), path(reference_genome_fasta_forStrelkaBcftools), path(reference_genome_fasta_index_forStrelkaBcftools), path(reference_genome_fasta_dict_forStrelkaBcftools) from unfiltered_snv_and_indel_vcfs_forStrelkaBcftools.combine(reference_genome_bundle_forStrelkaBcftools)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(final_strelka_snv_vcf), path(final_strelka_snv_vcf_index) into final_strelka_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_strelka_indel_vcf), path(final_strelka_indel_vcf_index) into final_strelka_indel_vcf_forConsensus
+	path strelka_snv_multiallelics_stats
+	path strelka_indel_multiallelics_stats
+	path strelka_indel_realign_normalize_stats
+
+	when:
+	params.strelka == "on" && params.manta == "on"
+
+	script:
+	final_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.vcf.gz"
+	final_strelka_snv_vcf_index ="${final_strelka_snv_vcf}.tbi"
+	final_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.vcf.gz"
+	final_strelka_indel_vcf_index = "${final_strelka_indel_vcf}.tbi"
+	strelka_snv_multiallelics_stats = "${tumor_normal_sample_id}.strelka.snv.multiallelicsstats.txt"
+	strelka_indel_multiallelics_stats = "${tumor_normal_sample_id}.strelka.indel.multiallelicsstats.txt"
+	strelka_indel_realign_normalize_stats = "${tumor_normal_sample_id}.strelka.indel.realignnormalizestats.txt"
+	"""
+	zgrep -E "^#|PASS" "${unfiltered_strelka_snv_vcf}" \
+	| \
+	bcftools norm \
+	--threads ${task.cpus} \
+	--multiallelics -snps \
+	--output-type z \
+	--output "${final_strelka_snv_vcf}" \
+	- 2>"${strelka_snv_multiallelics_stats}"
+
+	tabix "${final_strelka_snv_vcf}"
+	
+	zgrep -E "^#|PASS" "${unfiltered_strelka_indel_vcf}" \
+	| \
+	bcftools norm \
+	--threads ${task.cpus} \
+	--multiallelics -indels \
+	--output-type z \
+	- 2>"${strelka_indel_multiallelics_stats}" \
+	| \
+	bcftools norm \
+	--threads ${task.cpus} \
+	--fasta-ref "${reference_genome_fasta_forStrelkaBcftools}" \
+	--output-type z \
+	--output "${final_strelka_indel_vcf}" \
+	- 2>"${strelka_indel_realign_normalize_stats}"
+
+	tabix "${final_strelka_indel_vcf}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
 // ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~ \\
 // START
 
@@ -1957,7 +2115,7 @@ reference_genome_fasta_forCavemanSetupSplit.combine( reference_genome_fasta_inde
 
 // CaVEMan setup / split ~ generate a config file for downstream processes and create a list of segments to be analysed
 process setupAndSplit_caveman {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${split_file}'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{bed,config.ini,splitfile}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2045,8 +2203,7 @@ process mstepPerChromosome_caveman {
 
 // CaVEMan merge ~ create covariate and probabilities files
 process merge_caveman {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${covariate_file}'
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${probabilities_file}'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{covariates,probabilities}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2139,8 +2296,7 @@ process mergeCavemanResults_caveman {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(raw_caveman_somatic_vcf), path(raw_caveman_somatic_vcf_index) into raw_caveman_snv_vcf_and_bams_forCavemanPostprocessing
-	path final_caveman_germline_vcf
-	path final_caveman_germline_vcf_index
+	tuple path(final_caveman_germline_vcf), path(final_caveman_germline_vcf_index)
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
@@ -2171,7 +2327,7 @@ process mergeCavemanResults_caveman {
 
 // BEDOPS vcf2bed / sort-bed ~ convert germline indel VCF to sorted BED file
 process prepGermlineBedForCavemanPostprocessing_bedops {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${germline_indel_bed}'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{bed,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2224,7 +2380,7 @@ reference_genome_bundle_forCavemanPostprocessing.combine( centromeric_repeats_be
 
 // cgpCaVEManPostProcessing cgpFlagCaVEMan ~ apply filtering on raw VCF calls generated using CaVEMan
 process vcfFlagging_cgpcavemanpostprocessing {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink', pattern: '*.{vcf.gz,tbi,ini}'
+	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink', pattern: '*.{vcf.gz,tbi,config.ini}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2344,12 +2500,8 @@ bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*${filtered_somatic_sv_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*${filtered_somatic_sv_vcf_index}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${unfiltered_somatic_indel_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${unfiltered_somatic_sv_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${germline_indel_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${germline_sv_vcf}'
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{somatic.sv.vcf.gz,somatic.sv.vcf.gz.tbi}'
+	publishDir "${params.output_dir}/somatic/svaba/intermediates", mode: 'symlink', pattern: '*.{germline,unfiltered}*'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2357,8 +2509,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	path filtered_somatic_sv_vcf into final_svaba_sv_vcf_forAnnotation
-	path filtered_somatic_sv_vcf_index into final_svaba_sv_vcf_index_forAnnotation
+	tuple path(filtered_somatic_sv_vcf), path(filtered_somatic_sv_vcf_index)
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -2596,7 +2747,7 @@ process mergeAssembly_gridss {
 
 // GRIDSS call ~ calls structural variants based on alignment-guided positional de Bruijn graph genome
 process svAndIndelCalling_gridss {
-	publishDir "${params.output_dir}/somatic/gridss/rawVcfs", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/gridss/rawVcfs", mode: 'symlink', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2647,7 +2798,7 @@ reference_genome_bundle_forGridssPostprocessing.combine( pon_single_breakend_bed
 
 // GRIPSS ~ apply a set of filtering and post processing steps to raw GRIDSS calls
 process filteringAndPostprocessesing_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/gridss", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2662,7 +2813,7 @@ process filteringAndPostprocessesing_gridss {
 	script:
 	intermediate_filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".intermediate.vcf.gz")
 	filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, "filtered.vcf.gz")
-	final_gridss_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".somatic.vcf.gz")
+	final_gridss_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".somatic.sv.vcf.gz")
 	final_gridss_vcf_index = "${final_gridss_vcf}.tbi"
 	"""
 	java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssApplicationKt \
@@ -2679,7 +2830,9 @@ process filteringAndPostprocessesing_gridss {
     -input_vcf  "${intermediate_filterted_vcf}" \
     -output_vcf "${filterted_vcf}"
 
-    zgrep -E '^#|PASS' "${filterted_vcf}" | bgzip > "${final_gridss_vcf}"
+    zgrep -E '^#|PASS' "${filterted_vcf}" \
+    | \
+    bgzip > "${final_gridss_vcf}"
     tabix "${final_gridss_vcf}"
 	"""
 }
@@ -2688,34 +2841,35 @@ process filteringAndPostprocessesing_gridss {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~ MERGE AND CONSENSUS ~~~~~~~~~~~ \\
+// ~~~~~~~~~~~~~~ CONSENSUS ~~~~~~~~~~~~~~~~ \\
 // START
 
 // MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
 process mergeAndGenerateConsensusSnvCalls_mergevcf {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) from final_varscan_snv_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_caveman_snv_vcf_forConsensus)
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index), path(final_strelka_snv_vcf), path(final_strelka_snv_vcf_index) from final_varscan_snv_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_caveman_snv_vcf_forConsensus).join(final_strelka_snv_vcf_forConsensus)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_snv_vcf), path(merged_consensus_somatic_snv_vcf_index) into consensus_snv_vcf_forFings
 
 	when:
-	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
+	params.varscan == "on" && params.mutect == "on" && params.caveman == "on" && params.strelka == "on"
 
 	script:
 	merged_consensus_somatic_snv_vcf = "${tumor_normal_sample_id}.consensus.somatic.snv.vcf.gz"
 	merged_consensus_somatic_snv_vcf_index = "${merged_consensus_somatic_snv_vcf}.tbi"
 	"""
 	mergevcf \
-	--labels varscan,mutect,caveman \
+	--labels varscan,mutect,caveman,strelka \
 	--ncallers \
 	--mincallers 2 \
 	"${final_varscan_snv_vcf}" \
 	"${final_mutect_snv_vcf}" \
 	"${final_caveman_snv_vcf}" \
+	"${final_strelka_snv_vcf}"
 	| \
 	grep -v "^##" \
 	| \
@@ -2724,6 +2878,43 @@ process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	bgzip > "${merged_consensus_somatic_snv_vcf}"
 
 	tabix "${merged_consensus_somatic_snv_vcf}"
+	"""
+}
+
+// MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
+process mergeAndGenerateConsensusIndelCalls_mergevcf {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index), path(final_strelka_indel_vcf), path(final_strelka_indel_vcf_index), path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index) from final_varscan_indel_vcf_forConsensus.join(final_mutect_indel_vcf_forConsensus).join(final_strelka_indel_vcf_forConsensus).join(final_svaba_indel_vcf_forConsensus)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_indel_vcf), path(merged_consensus_somatic_indel_vcf_index) into consensus_indel_vcf_forFings
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
+
+	script:
+	merged_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf.gz"
+	merged_consensus_somatic_indel_vcf_index = "${merged_consensus_somatic_indel_vcf}.tbi"
+	"""
+	mergevcf \
+	--labels varscan,mutect,strelka,svaba \
+	--ncallers \
+	--mincallers 2 \
+	"${final_varscan_indel_vcf}" \
+	"${final_mutect_indel_vcf}" \
+	"${final_strelka_indel_vcf}"
+	"${final_svaba_indel_vcf}" \
+	| \
+	grep -v "^##" \
+	| \
+	sort -k1,1 -k2,2n \
+	| \
+	bgzip > "${merged_consensus_somatic_indel_vcf}"
+
+	tabix "${merged_consensus_somatic_indel_vcf}"
 	"""
 }
 
@@ -2749,8 +2940,8 @@ process icgcHighQualityFilter_fings {
 
 	output:
 	tuple path(high_quality_consensus_somatic_snv_vcf), path(high_quality_consensus_somatic_snv_vcf_index) into high_quality_consensus_snv_vcf_forAnnotation
-	path plots_pdf
-	path summary_stats
+	path snv_plots_pdf
+	path snv_summary_stats
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
@@ -2758,8 +2949,8 @@ process icgcHighQualityFilter_fings {
 	script:
 	high_quality_consensus_somatic_snv_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.snv.vcf.gz"
 	high_quality_consensus_somatic_snv_vcf_index = "${high_quality_consensus_somatic_snv_vcf}.tbi"
-	plots_pdf = "${tumor_normal_sample_id}.fings.plots.pdf"
-	summary_stats = "${tumor_normal_sample_id}.fings.summarystats.txt.gz"
+	snv_plots_pdf = "${tumor_normal_sample_id}.fings.snv.plots.pdf"
+	snv_summary_stats = "${tumor_normal_sample_id}.fings.snv.summarystats.txt.gz"
 	"""
 	fings \
 	-v "${merged_consensus_somatic_snv_vcf}" \
@@ -2773,8 +2964,8 @@ process icgcHighQualityFilter_fings {
 	bgzip < results/inputvcf.filtered.vcf > "${high_quality_consensus_somatic_snv_vcf}"
 	tabix "${high_quality_consensus_somatic_snv_vcf}"
 
-	mv results/plots.pdf "${plots_pdf}"
-	mv results/summarystats.txt.gz "${summary_stats}"
+	mv results/plots.pdf "${snv_plots_pdf}"
+	mv results/summarystats.txt.gz "${snv_summary_stats}"
 	"""
 }
 
@@ -2834,7 +3025,7 @@ process annotateSomaticVcf_vep {
 	path annotation_summary
 
 	when:
-	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
+	params.varscan == "on" && params.mutect == "on" && params.caveman == "on" && params.strelka == "on"
 
 	script:
 	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, "")

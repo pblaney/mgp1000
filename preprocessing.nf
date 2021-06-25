@@ -9,27 +9,12 @@
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
 
-log.info ''
-log.info '##### Myeloma Genome Project 1000 Pipeline #####'
-log.info '################################################'
-log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
-log.info '################################################'
-log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
-log.info ''
-log.info "~~~ Output Directory ~~~ 	${workflow.projectDir}/output/preprocessing"
-log.info ''
-log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
-log.info ''
-log.info '################################################'
-log.info ''
-
 def helpMessage() {
 	log.info"""
 
 	Usage Example:
 
-		nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
+		nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
 
 	Mandatory Arguments:
 		--run_id                       [str]  Unique identifier for pipeline run
@@ -44,6 +29,10 @@ def helpMessage() {
 		                                      environment
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
+		--input_dir                    [str]  Directory that holds BAMs and associated index files
+		                                      Default: ./input
+		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+		                                      Default: ./output
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -52,6 +41,12 @@ def helpMessage() {
 		                                      reference genome and have adequate provenance to reflect this
 		                                      Available: yes, no
 		                                      Default: no
+		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
+		                                      Available: 2, 4, 8, 16, etc.
+		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
+		--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
+		                                      Available: 32.GB, 2400.MB, etc.
+		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
 		--help                        [flag]  Prints this message
 
 	################################################
@@ -63,19 +58,25 @@ def helpMessage() {
 // ~~~~~~~~~~~~~ PARAMETER CONFIGURATION ~~~~~~~~~~~~~~ \\
 
 // Declare the defaults for all pipeline parameters
-params.output_dir = "output"
+params.input_dir = "${workflow.projectDir}/input"
+params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.input_format = null
 params.skip_to_qc = "no"
+params.cpus = null
+params.memory = null
 params.help = null
 
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
 
+// Print erro message if user-defined input/output directories does not exist
+if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directory does not exist in filesystem."
+
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
-if( params.input_format == null ) exit 1, "The run command issued does not have the '--input_format' parameter set. Please set the '--run_id' parameter to either bam or fastq depending on input data."
+if( params.input_format == null ) exit 1, "The run command issued does not have the '--input_format' parameter set. Please set the '--input_format' parameter to either bam or fastq depending on input data."
 
 // Set channels for reference files
 Channel
@@ -143,10 +144,27 @@ Channel
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
+log.info ''
+log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '################################################'
+log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
+log.info '################################################'
+log.info ''
+log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info ''
+log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info ''
+log.info "~~~ Output Directory ~~~ 	${params.output_dir}"
+log.info ''
+log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
+log.info ''
+log.info '################################################'
+log.info ''
+
 // if input files are BAMs, set the up channels for them to go through the pipeline or straight to BAM QC process
 if( params.input_format == "bam" ) {
 	Channel
-		.fromPath( 'input/*.bam' )
+		.fromPath( '${params.input_dir}/*.bam' )
 		.ifEmpty{ error "BAM format specified but cannot find files with .bam extension in input directory" }
 		.into{ input_mapped_bams; 
 		       input_mapped_bams_forQaulimap }
@@ -160,7 +178,7 @@ if( params.input_format == "bam" ) {
 // If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
 if( params.input_format == "fastq" ) {
 	Channel
-		.fromFilePairs( 'input/*R{1,2}*.f*q*', flat:true )
+		.fromFilePairs( '${params.input_dir}/*R{1,2}*.f*q*', flat:true )
 		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention, check test samples for example" }
 		.set{ input_fastqs }
 } else {
@@ -541,7 +559,7 @@ process applyBqsr_gatk {
 
 	script:
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bam")
-	bam_preprocessed_final_index = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bai")
+	bam_preprocessed_final_index = "${bam_preprocessed_final}.bai"
 	"""
 	gatk ApplyBQSR \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
