@@ -1316,7 +1316,7 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 
 // BCFtools view ~ separate out normalized SNVs and indel calls for consensus call generation
 process splitMutectSnvsAndIndelsForConsensus_bcftools {
-	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1544,7 +1544,7 @@ reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_
 
 // Control-FREEC ~ detection of copy-number changes and allelic imbalances
 process cnvCalling_controlfreec {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy', pattern: '*.{txt,cnv}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1607,7 +1607,7 @@ process cnvCalling_controlfreec {
 
 // Control-FREEC ~ post-processing of CNV predictions for significance, visualization, and format compatibility
 process cnvPredictionPostProcessing_controlfreec {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy', pattern: '*.{txt,bed,png}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1682,7 +1682,7 @@ process bamprocessPerChromosome_sclust {
 
 // Sclust bamprocess ~ merge per chromosome bamprocess data files and generate a read-count and common SNP-count files
 process mergeBamprocessData_sclust {
-	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink', pattern: '*.{txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1707,7 +1707,7 @@ process mergeBamprocessData_sclust {
 
 // VCFtools / VAtools ~ extract metrics from VCF to prepare for use in Sclust process
 process prepareVcfForSclust_vcftools {
-	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/sclust/intermediates", mode: 'symlink', pattern: '*.{vcf.gz}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1830,7 +1830,7 @@ process prepareVcfForSclust_vcftools {
 
 // Sclust cn ~ perform copy-number analysis and estimation of tumor purity
 process cnvCalling_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1873,7 +1873,7 @@ process cnvCalling_sclust {
 
 // Sclust cluster ~ perform mutational clustering
 process mutationalClustering_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1916,7 +1916,7 @@ reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
 
 // Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
 process svAndIndelCalling_manta {
-	publishDir "${params.output_dir}/somatic/manta", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/manta", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1924,8 +1924,7 @@ process svAndIndelCalling_manta {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
-	path final_manta_somatic_sv_vcf into final_manta_vcf_forAnnotation
-	path final_manta_somatic_sv_vcf_index into final_manta_vcf_index_forAnnotation
+	tuple path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index)
 	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
 	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) into germline_indel_vcf_forCaveman
 
@@ -1997,7 +1996,7 @@ reference_genome_fasta_forStrelka.combine( reference_genome_fasta_index_forStrel
 
 // Strelka2 ~ call germline and somatic small variants from mapped sequencing reads
 process snvAndIndelCalling_strelka {
-	publishDir "${params.output_dir}/somatic/strelka", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/strelka/rawVcfs", mode: 'symlink', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2116,7 +2115,7 @@ reference_genome_fasta_forCavemanSetupSplit.combine( reference_genome_fasta_inde
 
 // CaVEMan setup / split ~ generate a config file for downstream processes and create a list of segments to be analysed
 process setupAndSplit_caveman {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${split_file}'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{bed,config.ini,splitfile}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2204,8 +2203,7 @@ process mstepPerChromosome_caveman {
 
 // CaVEMan merge ~ create covariate and probabilities files
 process merge_caveman {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${covariate_file}'
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${probabilities_file}'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{covariates,probabilities}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2298,8 +2296,7 @@ process mergeCavemanResults_caveman {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(raw_caveman_somatic_vcf), path(raw_caveman_somatic_vcf_index) into raw_caveman_snv_vcf_and_bams_forCavemanPostprocessing
-	path final_caveman_germline_vcf
-	path final_caveman_germline_vcf_index
+	tuple path(final_caveman_germline_vcf), path(final_caveman_germline_vcf_index)
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
@@ -2330,7 +2327,7 @@ process mergeCavemanResults_caveman {
 
 // BEDOPS vcf2bed / sort-bed ~ convert germline indel VCF to sorted BED file
 process prepGermlineBedForCavemanPostprocessing_bedops {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*${germline_indel_bed}'
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{bed,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2383,7 +2380,7 @@ reference_genome_bundle_forCavemanPostprocessing.combine( centromeric_repeats_be
 
 // cgpCaVEManPostProcessing cgpFlagCaVEMan ~ apply filtering on raw VCF calls generated using CaVEMan
 process vcfFlagging_cgpcavemanpostprocessing {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink', pattern: '*.{vcf.gz,tbi,ini}'
+	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink', pattern: '*.{vcf.gz,tbi,config.ini}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2503,12 +2500,8 @@ bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*${filtered_somatic_sv_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*${filtered_somatic_sv_vcf_index}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${unfiltered_somatic_indel_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${unfiltered_somatic_sv_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${germline_indel_vcf}'
-	publishDir "${params.output_dir}/somatic/svaba/rawVcfs", mode: 'symlink', pattern: '*${germline_sv_vcf}'
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{somatic.sv.vcf.gz,somatic.sv.vcf.gz.tbi}'
+	publishDir "${params.output_dir}/somatic/svaba/intermediates", mode: 'symlink', pattern: '*.{germline,unfiltered}*'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2516,8 +2509,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	path filtered_somatic_sv_vcf into final_svaba_sv_vcf_forAnnotation
-	path filtered_somatic_sv_vcf_index into final_svaba_sv_vcf_index_forAnnotation
+	tuple path(filtered_somatic_sv_vcf), path(filtered_somatic_sv_vcf_index)
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -2755,7 +2747,7 @@ process mergeAssembly_gridss {
 
 // GRIDSS call ~ calls structural variants based on alignment-guided positional de Bruijn graph genome
 process svAndIndelCalling_gridss {
-	publishDir "${params.output_dir}/somatic/gridss/rawVcfs", mode: 'symlink'
+	publishDir "${params.output_dir}/somatic/gridss/rawVcfs", mode: 'symlink', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2806,7 +2798,7 @@ reference_genome_bundle_forGridssPostprocessing.combine( pon_single_breakend_bed
 
 // GRIPSS ~ apply a set of filtering and post processing steps to raw GRIDSS calls
 process filteringAndPostprocessesing_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/gridss", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2821,7 +2813,7 @@ process filteringAndPostprocessesing_gridss {
 	script:
 	intermediate_filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".intermediate.vcf.gz")
 	filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, "filtered.vcf.gz")
-	final_gridss_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".somatic.vcf.gz")
+	final_gridss_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".somatic.sv.vcf.gz")
 	final_gridss_vcf_index = "${final_gridss_vcf}.tbi"
 	"""
 	java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssApplicationKt \
