@@ -2869,7 +2869,7 @@ process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	"${final_varscan_snv_vcf}" \
 	"${final_mutect_snv_vcf}" \
 	"${final_caveman_snv_vcf}" \
-	"${final_strelka_snv_vcf}"
+	"${final_strelka_snv_vcf}" \
 	| \
 	grep -v "^##" \
 	| \
