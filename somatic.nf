@@ -421,8 +421,7 @@ Channel
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
-	       tumor_normal_pair_forVarscanSamtoolsMpileup; 
-	       tumor_normal_pair_forVarscanBamReadcount;
+	       tumor_normal_pair_forVarscanSamtoolsMpileup;
 	       tumor_normal_pair_forMutectCalling;
 	       tumor_normal_pair_forMutectPileup;
 	       tumor_normal_pair_forControlFreecSamtoolsMpileup;
@@ -444,6 +443,7 @@ process identifySampleSex_allelecount {
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_index_forAlleleCount), path(sex_identification_loci) from tumor_normal_pair_forAlleleCount.combine(ref_index_and_sex_ident_loci)
 
 	output:
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forVarscanBamReadcount
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFings
@@ -780,13 +780,10 @@ process filterRawSnvAndIndels_varscan {
 	"""
 }
 
-// Combine all needed reference FASTA and input Tumor BAM files into one channel for use in bam-readcount process
+// Combine all needed reference FASTA files into one channel for use in bam-readcount process
 reference_genome_fasta_forVarscanBamReadcount.combine( reference_genome_fasta_index_forVarscanBamReadcount )
 	.combine( reference_genome_fasta_dict_forVarscanBamReadcount )
 	.set{ reference_genome_bundle_forVarscanBamReadcount }
-
-tumor_normal_pair_forVarscanBamReadcount.combine( reference_genome_bundle_forVarscanBamReadcount )
-	.set{ bam_and_reference_genome_bundle_forVarscanBamReadcount }
 
 // bam-readcount / BCFtools concat ~ generate metrics at single nucleotide positions for filtering out false positive calls
 process bamReadcountForVarscanFpFilter_bamreadcount {
@@ -794,10 +791,10 @@ process bamReadcountForVarscanFpFilter_bamreadcount {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forVarscanBamReadcount), path(reference_genome_fasta_index_forVarscanBamReadcount), path(reference_genome_fasta_dict_forVarscanBamReadcount), val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index) from bam_and_reference_genome_bundle_forVarscanBamReadcount.combine(high_confidence_vcfs_forVarscanBamReadcount)
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(reference_genome_fasta_forVarscanBamReadcount), path(reference_genome_fasta_index_forVarscanBamReadcount), path(reference_genome_fasta_dict_forVarscanBamReadcount) from bams_forVarscanBamReadcount.join(high_confidence_vcfs_forVarscanBamReadcount).combine(reference_genome_bundle_forVarscanBamReadcount)
 
 	output:
-	tuple path(snv_readcount_file), path(indel_readcount_file) into readcount_forVarscanFpFilter
+	tuple val(tumor_normal_sample_id), path(snv_readcount_file), path(indel_readcount_file) into readcount_forVarscanFpFilter
 
 	when:
 	params.varscan == "on"
@@ -833,7 +830,7 @@ process falsePositivefilterSnvAndIndels_varscan {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(snv_readcount_file), path(indel_readcount_file) from high_confidence_vcfs_forVarscanFpFilter.combine(readcount_forVarscanFpFilter)
+	tuple val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(snv_readcount_file), path(indel_readcount_file) from high_confidence_vcfs_forVarscanFpFilter.join(readcount_forVarscanFpFilter)
 	
 	output:
 	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf) into filtered_vcfs_forVarscanBcftools
@@ -2871,9 +2868,7 @@ process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	"${final_caveman_snv_vcf}" \
 	"${final_strelka_snv_vcf}" \
 	| \
-	grep -v "^##" \
-	| \
-	sort -k1,1 -k2,2n \
+	awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1V -k2,2n"}' \
 	| \
 	bgzip > "${merged_consensus_somatic_snv_vcf}"
 
@@ -2905,12 +2900,10 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	--mincallers 2 \
 	"${final_varscan_indel_vcf}" \
 	"${final_mutect_indel_vcf}" \
-	"${final_strelka_indel_vcf}"
+	"${final_strelka_indel_vcf}" \
 	"${final_svaba_indel_vcf}" \
 	| \
-	grep -v "^##" \
-	| \
-	sort -k1,1 -k2,2n \
+	awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1V -k2,2n"}' \
 	| \
 	bgzip > "${merged_consensus_somatic_indel_vcf}"
 
