@@ -2342,16 +2342,16 @@ process prepGermlineBedForCavemanPostprocessing_bedops {
 	script:
 	germline_insertions_bed = "${tumor_normal_sample_id}.caveman.germline.ins.bed"
 	germline_deletions_bed = "${tumor_normal_sample_id}.caveman.germline.dels.bed"
-	germline_indel_bed = "${tumor_normal_sample_id}.caveman.germline.indels.bed"
+	germline_indel_bed = "${tumor_normal_sample_id}.caveman.germline.indels.bed.gz"
 	germline_indel_bed_index = "${germline_indel_bed}.tbi"
 	"""
-	zgrep -E '^#|PASS\t|MantaINS' "${germline_sv_vcf}" \
+	zgrep -E '^#|MantaINS.*PASS' "${germline_sv_vcf}" \
 	| \
 	vcf2bed --insertions \
 	| \
 	cut -f 1-4 > "${germline_insertions_bed}"
 
-	zgrep -E '^#|PASS\t|MantaDEL' "${germline_sv_vcf}" \
+	zgrep -E '^#|MantaDEL.*PASS' "${germline_sv_vcf}" \
 	| \
 	vcf2bed --deletions \
 	| \
