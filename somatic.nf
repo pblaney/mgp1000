@@ -2868,7 +2868,7 @@ process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	"${final_caveman_snv_vcf}" \
 	"${final_strelka_snv_vcf}" \
 	| \
-	awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1V -k2,2n"}' \
+	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' \
 	| \
 	bgzip > "${merged_consensus_somatic_snv_vcf}"
 
@@ -2903,7 +2903,7 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	"${final_strelka_indel_vcf}" \
 	"${final_svaba_indel_vcf}" \
 	| \
-	awk '$1 ~ /^#/ {print $0;next} {print $0 | "sort -k1,1V -k2,2n"}' \
+	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' \
 	| \
 	bgzip > "${merged_consensus_somatic_indel_vcf}"
 
