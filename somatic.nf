@@ -2394,7 +2394,7 @@ process vcfFlagging_cgpcavemanpostprocessing {
 
 	script:
 	postprocessing_config_file = "${tumor_normal_sample_id}.cavemanpostprocessing.config.ini"
-	config_species = "Homo_sapiens"
+	config_species = "HOMO_SAPIENS"
 	config_study_type = "WGS"
 	final_caveman_snv_vcf = "${tumor_normal_sample_id}.caveman.somatic.snv.vcf.gz"
 	final_caveman_snv_vcf_index = "${final_caveman_snv_vcf}.tbi"
