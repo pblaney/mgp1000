@@ -2958,7 +2958,7 @@ process icgcHighQualityFilter_fings {
 	-m 5000 \
 	--ICGC
 
-	bgzip < results/inputvcf.filtered.vcf > "${high_quality_consensus_somatic_snv_vcf}"
+	bgzip < "results/${tumor_normal_sample_id}.consensus.somatic.snv.filtered.vcf" > "${high_quality_consensus_somatic_snv_vcf}"
 	tabix "${high_quality_consensus_somatic_snv_vcf}"
 
 	mv results/plots.pdf "${snv_plots_pdf}"
