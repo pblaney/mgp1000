@@ -421,8 +421,7 @@ Channel
 	.into{ tumor_normal_pair_forAlleleCount;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
-	       tumor_normal_pair_forVarscanSamtoolsMpileup; 
-	       tumor_normal_pair_forVarscanBamReadcount;
+	       tumor_normal_pair_forVarscanSamtoolsMpileup;
 	       tumor_normal_pair_forMutectCalling;
 	       tumor_normal_pair_forMutectPileup;
 	       tumor_normal_pair_forControlFreecSamtoolsMpileup;
@@ -444,6 +443,7 @@ process identifySampleSex_allelecount {
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_index_forAlleleCount), path(sex_identification_loci) from tumor_normal_pair_forAlleleCount.combine(ref_index_and_sex_ident_loci)
 
 	output:
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forVarscanBamReadcount
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFings
@@ -780,13 +780,10 @@ process filterRawSnvAndIndels_varscan {
 	"""
 }
 
-// Combine all needed reference FASTA and input Tumor BAM files into one channel for use in bam-readcount process
+// Combine all needed reference FASTA files into one channel for use in bam-readcount process
 reference_genome_fasta_forVarscanBamReadcount.combine( reference_genome_fasta_index_forVarscanBamReadcount )
 	.combine( reference_genome_fasta_dict_forVarscanBamReadcount )
 	.set{ reference_genome_bundle_forVarscanBamReadcount }
-
-tumor_normal_pair_forVarscanBamReadcount.combine( reference_genome_bundle_forVarscanBamReadcount )
-	.set{ bam_and_reference_genome_bundle_forVarscanBamReadcount }
 
 // bam-readcount / BCFtools concat ~ generate metrics at single nucleotide positions for filtering out false positive calls
 process bamReadcountForVarscanFpFilter_bamreadcount {
@@ -794,10 +791,10 @@ process bamReadcountForVarscanFpFilter_bamreadcount {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forVarscanBamReadcount), path(reference_genome_fasta_index_forVarscanBamReadcount), path(reference_genome_fasta_dict_forVarscanBamReadcount), val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index) from bam_and_reference_genome_bundle_forVarscanBamReadcount.combine(high_confidence_vcfs_forVarscanBamReadcount)
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(reference_genome_fasta_forVarscanBamReadcount), path(reference_genome_fasta_index_forVarscanBamReadcount), path(reference_genome_fasta_dict_forVarscanBamReadcount) from bams_forVarscanBamReadcount.join(high_confidence_vcfs_forVarscanBamReadcount).combine(reference_genome_bundle_forVarscanBamReadcount)
 
 	output:
-	tuple path(snv_readcount_file), path(indel_readcount_file) into readcount_forVarscanFpFilter
+	tuple val(tumor_normal_sample_id), path(snv_readcount_file), path(indel_readcount_file) into readcount_forVarscanFpFilter
 
 	when:
 	params.varscan == "on"
@@ -833,7 +830,7 @@ process falsePositivefilterSnvAndIndels_varscan {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(snv_readcount_file), path(indel_readcount_file) from high_confidence_vcfs_forVarscanFpFilter.combine(readcount_forVarscanFpFilter)
+	tuple val(tumor_normal_sample_id), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(snv_readcount_file), path(indel_readcount_file) from high_confidence_vcfs_forVarscanFpFilter.join(readcount_forVarscanFpFilter)
 	
 	output:
 	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf) into filtered_vcfs_forVarscanBcftools
@@ -2342,16 +2339,16 @@ process prepGermlineBedForCavemanPostprocessing_bedops {
 	script:
 	germline_insertions_bed = "${tumor_normal_sample_id}.caveman.germline.ins.bed"
 	germline_deletions_bed = "${tumor_normal_sample_id}.caveman.germline.dels.bed"
-	germline_indel_bed = "${tumor_normal_sample_id}.caveman.germline.indels.bed"
+	germline_indel_bed = "${tumor_normal_sample_id}.caveman.germline.indels.bed.gz"
 	germline_indel_bed_index = "${germline_indel_bed}.tbi"
 	"""
-	zgrep -E '^#|PASS\t|MantaINS' "${germline_sv_vcf}" \
+	zgrep -E '^#|MantaINS.*PASS' "${germline_sv_vcf}" \
 	| \
 	vcf2bed --insertions \
 	| \
 	cut -f 1-4 > "${germline_insertions_bed}"
 
-	zgrep -E '^#|PASS\t|MantaDEL' "${germline_sv_vcf}" \
+	zgrep -E '^#|MantaDEL.*PASS' "${germline_sv_vcf}" \
 	| \
 	vcf2bed --deletions \
 	| \
@@ -2394,7 +2391,7 @@ process vcfFlagging_cgpcavemanpostprocessing {
 
 	script:
 	postprocessing_config_file = "${tumor_normal_sample_id}.cavemanpostprocessing.config.ini"
-	config_species = "Homo_sapiens"
+	config_species = "HOMO_SAPIENS"
 	config_study_type = "WGS"
 	final_caveman_snv_vcf = "${tumor_normal_sample_id}.caveman.somatic.snv.vcf.gz"
 	final_caveman_snv_vcf_index = "${final_caveman_snv_vcf}.tbi"
@@ -2869,15 +2866,9 @@ process mergeAndGenerateConsensusSnvCalls_mergevcf {
 	"${final_varscan_snv_vcf}" \
 	"${final_mutect_snv_vcf}" \
 	"${final_caveman_snv_vcf}" \
-	"${final_strelka_snv_vcf}"
+	"${final_strelka_snv_vcf}" \
 	| \
-	grep -v "^##" \
-	| \
-	sort -k1,1 -k2,2n \
-	| \
-	bgzip > "${merged_consensus_somatic_snv_vcf}"
-
-	tabix "${merged_consensus_somatic_snv_vcf}"
+	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' > "${merged_consensus_somatic_snv_vcf}"
 	"""
 }
 
@@ -2896,8 +2887,7 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
 	script:
-	merged_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf.gz"
-	merged_consensus_somatic_indel_vcf_index = "${merged_consensus_somatic_indel_vcf}.tbi"
+	merged_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf"
 	"""
 	mergevcf \
 	--labels varscan,mutect,strelka,svaba \
@@ -2905,16 +2895,10 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	--mincallers 2 \
 	"${final_varscan_indel_vcf}" \
 	"${final_mutect_indel_vcf}" \
-	"${final_strelka_indel_vcf}"
+	"${final_strelka_indel_vcf}" \
 	"${final_svaba_indel_vcf}" \
 	| \
-	grep -v "^##" \
-	| \
-	sort -k1,1 -k2,2n \
-	| \
-	bgzip > "${merged_consensus_somatic_indel_vcf}"
-
-	tabix "${merged_consensus_somatic_indel_vcf}"
+	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' > "${merged_consensus_somatic_indel_vcf}"
 	"""
 }
 
@@ -2932,7 +2916,7 @@ reference_genome_fasta_forFings.combine( reference_genome_fasta_index_forFings )
 
 // FiNGS ~ implement the ICGC filtering standards to provide highest quality variants
 process icgcHighQualityFilter_fings {
-	publishDir "${params.output_dir}/somatic/fings", mode: 'symlink', pattern: '*.{vcf,pdf,txt.gz}'
+	publishDir "${params.output_dir}/somatic/fings", mode: 'symlink', pattern: '*.{vcf.gz,tbi,pdf,txt.gz}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2941,7 +2925,7 @@ process icgcHighQualityFilter_fings {
 	output:
 	tuple path(high_quality_consensus_somatic_snv_vcf), path(high_quality_consensus_somatic_snv_vcf_index) into high_quality_consensus_snv_vcf_forAnnotation
 	path snv_plots_pdf
-	path snv_summary_stats
+	path snv_filter_stats
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
@@ -2950,22 +2934,27 @@ process icgcHighQualityFilter_fings {
 	high_quality_consensus_somatic_snv_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.snv.vcf.gz"
 	high_quality_consensus_somatic_snv_vcf_index = "${high_quality_consensus_somatic_snv_vcf}.tbi"
 	snv_plots_pdf = "${tumor_normal_sample_id}.fings.snv.plots.pdf"
-	snv_summary_stats = "${tumor_normal_sample_id}.fings.snv.summarystats.txt.gz"
+	snv_filter_stats = "${tumor_normal_sample_id}.fings.snv.filterstats.txt.gz"
+	snv_tumor_collected_metrics = "${tumor_normal_sample_id}.fings.snv.tumormetrics.txt.gz"
+	snv_normal_collected_metrics = "${tumor_normal_sample_id}.fings.snv.normalmetrics.txt.gz"
 	"""
 	fings \
-	-v "${merged_consensus_somatic_snv_vcf}" \
+	-v "${tumor_normal_sample_id}.consensus.somatic.snv.vcf" \
 	-t "${tumor_bam}" \
 	-n "${normal_bam}" \
-	-r "${reference_genome_fasta_index_forFings}" \
+	-r "${reference_genome_fasta_forFings}" \
 	-d results \
 	-j "${task.cpus}" \
+	-m 5000 \
 	--ICGC
 
-	bgzip < results/inputvcf.filtered.vcf > "${high_quality_consensus_somatic_snv_vcf}"
+	bgzip < "results/${tumor_normal_sample_id}.consensus.somatic.snv.filtered.vcf" > "${high_quality_consensus_somatic_snv_vcf}"
 	tabix "${high_quality_consensus_somatic_snv_vcf}"
 
 	mv results/plots.pdf "${snv_plots_pdf}"
-	mv results/summarystats.txt.gz "${snv_summary_stats}"
+	mv results/filterresults.txt.gz "${snv_filter_stats}"
+	mv results/tumor.combined.txt.gz "${snv_tumor_collected_metrics}"
+	mv results/normal.combined.txt.gz "${snv_normal_collected_metrics}"
 	"""
 }
 
@@ -3028,17 +3017,19 @@ process annotateSomaticVcf_vep {
 	params.varscan == "on" && params.mutect == "on" && params.caveman == "on" && params.strelka == "on"
 
 	script:
-	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, "")
+	vcf_id = "${high_quality_consensus_somatic_snv_vcf}".replaceFirst(/\.vcf\.gz/, "")
 	final_annotated_somatic_vcfs = "${vcf_id}.annotated.vcf.gz"
-	annotation_summary = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
+	annotation_summary = "${high_quality_consensus_somatic_snv_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
 	"""
+	zgrep -E "^#|PASS" "${high_quality_consensus_somatic_snv_vcf}" > "${vcf_id}.passonly.vcf"
+
 	vep \
 	--offline \
 	--cache \
 	--dir "${cached_ref_dir_vep}" \
 	--assembly GRCh38 \
 	--fasta "${reference_genome_fasta_forAnnotation}" \
-	--input_file "${final_somatic_vcf}" \
+	--input_file "${vcf_id}.passonly.vcf" \
 	--format vcf \
 	--hgvs \
 	--hgvsg \

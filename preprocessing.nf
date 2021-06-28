@@ -559,7 +559,7 @@ process applyBqsr_gatk {
 
 	script:
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bam")
-	bam_preprocessed_final_index = "${bam_preprocessed_final}.bai"
+	bam_preprocessed_final_index = "${bam_preprocessed_final}".replaceFirst(/\.bam$/, ".bai")
 	"""
 	gatk ApplyBQSR \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
