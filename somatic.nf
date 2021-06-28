@@ -3021,13 +3021,15 @@ process annotateSomaticVcf_vep {
 	final_annotated_somatic_vcfs = "${vcf_id}.annotated.vcf.gz"
 	annotation_summary = "${high_quality_consensus_somatic_snv_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
 	"""
+	zgrep -E "^#|PASS" "${high_quality_consensus_somatic_snv_vcf}" > "${vcf_id}.passonly.vcf"
+
 	vep \
 	--offline \
 	--cache \
 	--dir "${cached_ref_dir_vep}" \
 	--assembly GRCh38 \
 	--fasta "${reference_genome_fasta_forAnnotation}" \
-	--input_file "${high_quality_consensus_somatic_snv_vcf}" \
+	--input_file "${vcf_id}.passonly.vcf" \
 	--format vcf \
 	--hgvs \
 	--hgvsg \
