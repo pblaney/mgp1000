@@ -2945,8 +2945,11 @@ process icgcHighQualityFilter_fings {
 	snv_plots_pdf = "${tumor_normal_sample_id}.fings.snv.plots.pdf"
 	snv_summary_stats = "${tumor_normal_sample_id}.fings.snv.summarystats.txt.gz"
 	"""
+	### TESTING, IF NEEDED REMOVE BGZIP STEP IN MERGEVCF ABOVE #####
+	gunzip "${merged_consensus_somatic_snv_vcf}"
+
 	fings \
-	-v "${merged_consensus_somatic_snv_vcf}" \
+	-v "${tumor_normal_sample_id}.consensus.somatic.snv.vcf" \
 	-t "${tumor_bam}" \
 	-n "${normal_bam}" \
 	-r "${reference_genome_fasta_index_forFings}" \
