@@ -2891,8 +2891,7 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
 	script:
-	merged_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf.gz"
-	merged_consensus_somatic_indel_vcf_index = "${merged_consensus_somatic_indel_vcf}.tbi"
+	merged_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf"
 	"""
 	mergevcf \
 	--labels varscan,mutect,strelka,svaba \
@@ -2903,11 +2902,7 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	"${final_strelka_indel_vcf}" \
 	"${final_svaba_indel_vcf}" \
 	| \
-	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' \
-	| \
-	bgzip > "${merged_consensus_somatic_indel_vcf}"
-
-	tabix "${merged_consensus_somatic_indel_vcf}"
+	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' > "${merged_consensus_somatic_indel_vcf}"
 	"""
 }
 
@@ -2925,7 +2920,7 @@ reference_genome_fasta_forFings.combine( reference_genome_fasta_index_forFings )
 
 // FiNGS ~ implement the ICGC filtering standards to provide highest quality variants
 process icgcHighQualityFilter_fings {
-	publishDir "${params.output_dir}/somatic/fings", mode: 'symlink', pattern: '*.{vcf,pdf,txt.gz}'
+	publishDir "${params.output_dir}/somatic/fings", mode: 'symlink', pattern: '*.{vcf.gz,tbi,pdf,txt.gz}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2934,7 +2929,7 @@ process icgcHighQualityFilter_fings {
 	output:
 	tuple path(high_quality_consensus_somatic_snv_vcf), path(high_quality_consensus_somatic_snv_vcf_index) into high_quality_consensus_snv_vcf_forAnnotation
 	path snv_plots_pdf
-	path snv_summary_stats
+	path snv_filter_stats
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.caveman == "on"
@@ -2943,11 +2938,10 @@ process icgcHighQualityFilter_fings {
 	high_quality_consensus_somatic_snv_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.snv.vcf.gz"
 	high_quality_consensus_somatic_snv_vcf_index = "${high_quality_consensus_somatic_snv_vcf}.tbi"
 	snv_plots_pdf = "${tumor_normal_sample_id}.fings.snv.plots.pdf"
-	snv_summary_stats = "${tumor_normal_sample_id}.fings.snv.summarystats.txt.gz"
+	snv_filter_stats = "${tumor_normal_sample_id}.fings.snv.filterstats.txt.gz"
+	snv_tumor_collected_metrics = "${tumor_normal_sample_id}.fings.snv.tumormetrics.txt.gz"
+	snv_normal_collected_metrics = "${tumor_normal_sample_id}.fings.snv.normalmetrics.txt.gz"
 	"""
-	### TESTING, IF NEEDED REMOVE BGZIP STEP IN MERGEVCF ABOVE #####
-	gunzip -f "${merged_consensus_somatic_snv_vcf}"
-
 	fings \
 	-v "${tumor_normal_sample_id}.consensus.somatic.snv.vcf" \
 	-t "${tumor_bam}" \
@@ -2962,7 +2956,9 @@ process icgcHighQualityFilter_fings {
 	tabix "${high_quality_consensus_somatic_snv_vcf}"
 
 	mv results/plots.pdf "${snv_plots_pdf}"
-	mv results/summarystats.txt.gz "${snv_summary_stats}"
+	mv results/filterresults.txt.gz "${snv_filter_stats}"
+	mv results/tumor.combined.txt.gz "${snv_tumor_collected_metrics}"
+	mv results/normal.combined.txt.gz "${snv_normal_collected_metrics}"
 	"""
 }
 
@@ -3025,9 +3021,9 @@ process annotateSomaticVcf_vep {
 	params.varscan == "on" && params.mutect == "on" && params.caveman == "on" && params.strelka == "on"
 
 	script:
-	vcf_id = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, "")
+	vcf_id = "${high_quality_consensus_somatic_snv_vcf}".replaceFirst(/\.vcf\.gz/, "")
 	final_annotated_somatic_vcfs = "${vcf_id}.annotated.vcf.gz"
-	annotation_summary = "${final_somatic_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
+	annotation_summary = "${high_quality_consensus_somatic_snv_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
 	"""
 	vep \
 	--offline \
@@ -3035,7 +3031,7 @@ process annotateSomaticVcf_vep {
 	--dir "${cached_ref_dir_vep}" \
 	--assembly GRCh38 \
 	--fasta "${reference_genome_fasta_forAnnotation}" \
-	--input_file "${final_somatic_vcf}" \
+	--input_file "${high_quality_consensus_somatic_snv_vcf}" \
 	--format vcf \
 	--hgvs \
 	--hgvsg \
