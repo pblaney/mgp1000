@@ -2952,9 +2952,10 @@ process icgcHighQualityFilter_fings {
 	-v "${tumor_normal_sample_id}.consensus.somatic.snv.vcf" \
 	-t "${tumor_bam}" \
 	-n "${normal_bam}" \
-	-r "${reference_genome_fasta_index_forFings}" \
+	-r "${reference_genome_fasta_forFings}" \
 	-d results \
 	-j "${task.cpus}" \
+	-m 5000 \
 	--ICGC
 
 	bgzip < results/inputvcf.filtered.vcf > "${high_quality_consensus_somatic_snv_vcf}"
