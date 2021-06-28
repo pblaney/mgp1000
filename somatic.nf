@@ -2946,7 +2946,7 @@ process icgcHighQualityFilter_fings {
 	snv_summary_stats = "${tumor_normal_sample_id}.fings.snv.summarystats.txt.gz"
 	"""
 	### TESTING, IF NEEDED REMOVE BGZIP STEP IN MERGEVCF ABOVE #####
-	gunzip "${merged_consensus_somatic_snv_vcf}"
+	gunzip -f "${merged_consensus_somatic_snv_vcf}"
 
 	fings \
 	-v "${tumor_normal_sample_id}.consensus.somatic.snv.vcf" \
