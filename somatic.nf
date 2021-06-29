@@ -850,6 +850,10 @@ process falsePositivefilterSnvAndIndels_varscan {
 	"${unzipped_hc_snv_vcf}" \
 	"${snv_readcount_file}" \
 	--filtered-file "${tumor_normal_sample_id}.snv.failed.vcf" \
+	--min-var-count 2 \
+	--min-var-freq 0.03 \
+	--min-ref-basequal 10 \
+	--min-var-basequal 10 \
 	--output-file "${fp_filtered_snv_vcf}"
 
 	gunzip -f "${high_confidence_indel_vcf}"
@@ -858,6 +862,10 @@ process falsePositivefilterSnvAndIndels_varscan {
 	"${unzipped_hc_indel_vcf}" \
 	"${indel_readcount_file}" \
 	--filtered-file "${tumor_normal_sample_id}.indel.failed.vcf" \
+	--min-var-count 2 \
+	--min-var-freq 0.03 \
+	--min-ref-basequal 10 \
+	--min-var-basequal 10 \
 	--output-file "${fp_filtered_indel_vcf}"
 	"""
 }
