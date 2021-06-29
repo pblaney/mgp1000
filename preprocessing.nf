@@ -350,11 +350,18 @@ process alignment_bwa {
 	| \
 	sambamba view \
 	--sam-input \
-	--nthreads=${task.cpus} \
+	--nthreads=${task.cpus - 2} \
 	--filter='mapping_quality>=10' \
 	--format=bam \
 	--compression-level=0 \
-	--output-filename "${bam_aligned}" \
+	/dev/stdin \
+	| \
+	sambamba sort \
+	--nthreads=${task.cpus - 2} \
+	--tmpdir=. \
+	--memory-limit=12GB \
+	--sort-by-name \
+	--out=${bam_aligned} \
 	/dev/stdin
 
 	sambamba flagstat \
@@ -381,7 +388,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 4}G -Djava.io.tmpdir=. -XX:ParallelGCThreads=2 -XX:-UseGCOverheadLimit" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
@@ -392,7 +399,7 @@ process fixMateInformationAndSort_gatk {
 	--OUTPUT "${bam_fixed_mate_unsorted}"
 
 	gatk SortSam \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 4}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--SORT_ORDER coordinate \
