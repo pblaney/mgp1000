@@ -10,7 +10,7 @@ admixture_pop_file=$3
 
 cat $known_ancestry_pop_file > "${admixture_pop_file}"
 
-number_of_samples=$(($(cut -f 1 $family_pedigree_file | wc -l) - 1526))
+number_of_samples=$(($(cut -f 1 $family_pedigree_file | wc -l) - 2548))
 
 for i in $(eval echo {1..$number_of_samples})
 do
