@@ -637,19 +637,19 @@ process snvAndIndelCalling_varscan {
 	--positions "${gatk_bundle_wgs_bed_forVarscanSamtoolsMpileup}" \
 	--region "${chromosome}" \
 	--fasta-ref "${reference_genome_fasta_forVarscanSamtoolsMpileup}" \
-	"${tumor_bam}" "${normal_bam}" \
+	"${normal_bam}" "${tumor_bam}" \
 	| \
 	java -jar \${VARSCAN} somatic \
-	--mpileup \
+	--mpileup 1 \
 	--min-coverage-normal 8 \
 	--min-coverage-tumor 6 \
-	--min-var-freq 0.08 \
+	--min-var-freq 0.10 \
 	--min-freq-for-hom 0.75 \
 	--normal-purity 1.00 \
 	--tumor-purity 1.00 \
 	--p-value 0.99 \
 	--somatic-p-value 0.05 \
-	--strand-filter 1 \
+	--strand-filter 0 \
 	--output-vcf \
 	--output-snp "${tumor_normal_sample_id}.${chromosome}.snv" \
 	--output-indel "${tumor_normal_sample_id}.${chromosome}.indel"
@@ -811,13 +811,13 @@ process bamReadcountForVarscanFpFilter_bamreadcount {
 	--threads ${task.cpus} \
 	--allow-overlaps \
 	--output-type z \
-	--output "${tumor_normal_sample_id}.somatic.hc.filtered.vcf.gz" \
+	--output "${tumor_normal_sample_id}.somatic.hc.vcf.gz" \
 	"${high_confidence_snv_vcf}" "${high_confidence_indel_vcf}"
 
-	tabix "${tumor_normal_sample_id}.somatic.hc.filtered.vcf.gz"
+	tabix "${tumor_normal_sample_id}.somatic.hc.vcf.gz"
 
 	bam_readcount_helper.py \
-	"${tumor_normal_sample_id}.somatic.hc.filtered.vcf.gz" \
+	"${tumor_normal_sample_id}.somatic.hc.vcf.gz" \
 	TUMOR \
 	"${reference_genome_fasta_forVarscanBamReadcount}" \
 	"${tumor_bam}" \
@@ -855,9 +855,9 @@ process falsePositivefilterSnvAndIndels_varscan {
 	"${snv_readcount_file}" \
 	--filtered-file "${tumor_normal_sample_id}.snv.failed.vcf" \
 	--min-var-count 2 \
-	--min-var-freq 0.03 \
-	--min-ref-basequal 10 \
-	--min-var-basequal 10 \
+	--min-var-freq 0.01 \
+	--min-ref-basequal 25 \
+	--min-var-basequal 25 \
 	--output-file "${fp_filtered_snv_vcf}"
 
 	gunzip -f "${high_confidence_indel_vcf}"
@@ -867,9 +867,9 @@ process falsePositivefilterSnvAndIndels_varscan {
 	"${indel_readcount_file}" \
 	--filtered-file "${tumor_normal_sample_id}.indel.failed.vcf" \
 	--min-var-count 2 \
-	--min-var-freq 0.03 \
-	--min-ref-basequal 10 \
-	--min-var-basequal 10 \
+	--min-var-freq 0.01 \
+	--min-ref-basequal 25 \
+	--min-var-basequal 25 \
 	--output-file "${fp_filtered_indel_vcf}"
 	"""
 }
