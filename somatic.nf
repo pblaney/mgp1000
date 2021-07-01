@@ -2893,12 +2893,14 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_indel_vcf) into consensus_indel_vcf_forFingsIndels
+	tuple val(tumor_normal_sample_id), path(indel_vcf_base_header) into indel_vcf_base_header_forFixVcf
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
 	script:
 	merged_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf"
+	indel_vcf_base_header = "indel_vcf_base_header.txt"
 	"""
 	mergevcf \
 	--labels varscan,mutect,strelka,svaba \
@@ -2910,6 +2912,15 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	"${final_svaba_indel_vcf}" \
 	| \
 	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' > "${merged_consensus_somatic_indel_vcf}"
+
+	touch "${indel_vcf_base_header}"
+	grep '##fileformat=' "${merged_consensus_somatic_indel_vcf}" >> "${indel_vcf_base_header}"
+	zgrep '##fileDate=' "${final_svaba_indel_vcf}" >> "${indel_vcf_base_header}"
+	echo '##source=varscan,mutect,strelka,svaba' >> "${indel_vcf_base_header}"
+	zgrep '##normal_sample=' "${final_mutect_indel_vcf}" >> "${indel_vcf_base_header}"
+	zgrep '##tumor_sample=' "${final_mutect_indel_vcf}" >> "${indel_vcf_base_header}"
+	zgrep '##reference=' "${final_svaba_indel_vcf}" >> "${indel_vcf_base_header}"
+	zgrep '##contig=<ID=chr' "${final_mutect_indel_vcf}" >> "${indel_vcf_base_header}"
 	"""
 }
 
@@ -2976,8 +2987,8 @@ reference_genome_fasta_forFingsIndels.combine( reference_genome_fasta_index_forF
 	.combine( reference_genome_fasta_dict_forFingsIndels )
 	.set{ reference_genome_bundle_forFingsIndels }
 
-// FiNGS ~ implement the ICGC filtering standards to provide highest quality indels
-process icgcHighQualityFilterIndels_fings {
+// FiNGS ~ implement the high quality filtering standards to indels
+process highQualityFilterIndels_fings {
 	publishDir "${params.output_dir}/somatic/fings", mode: 'symlink', pattern: '*.{vcf.gz,tbi,pdf,txt.gz}'
 	tag "${tumor_normal_sample_id}"
 
@@ -2985,17 +2996,17 @@ process icgcHighQualityFilterIndels_fings {
 	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_indel_vcf), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forFingsIndels), path(reference_genome_fasta_index_forFingsIndels), path(reference_genome_fasta_dict_forFingsIndels) from consensus_indel_vcf_forFingsIndels.join(bams_forFingsIndels).combine(reference_genome_bundle_forFingsIndels)
 
 	output:
-	tuple path(high_quality_consensus_somatic_indel_vcf), path(high_quality_consensus_somatic_indel_vcf_index) into high_quality_consensus_indel_vcf_forAnnotation
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(high_quality_consensus_somatic_indel_vcf), path(high_quality_consensus_somatic_indel_vcf_index), path(indel_tumor_collected_metrics), path(indel_normal_collected_metrics) into high_quality_consensus_indel_vcf_and_metrics_forFixVcf
 	path indel_plots_pdf
 	path indel_summary_stats
-	path indel_tumor_collected_metrics
-	path indel_normal_collected_metrics
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
 	script:
-	high_quality_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	high_quality_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.nosamples.badheader.noformat.vcf.gz"
 	high_quality_consensus_somatic_indel_vcf_index = "${high_quality_consensus_somatic_indel_vcf}.tbi"
 	indel_plots_pdf = "${tumor_normal_sample_id}.fings.indel.plots.pdf"
 	indel_summary_stats = "${tumor_normal_sample_id}.fings.indel.summarystats.txt.gz"
@@ -3008,8 +3019,7 @@ process icgcHighQualityFilterIndels_fings {
 	-n "${normal_bam}" \
 	-r "${reference_genome_fasta_forFingsIndels}" \
 	-d results \
-	-j "${task.cpus}" \
-	--ICGC
+	-j "${task.cpus}"
 
 	bgzip < "results/${tumor_normal_sample_id}.consensus.somatic.indel.filtered.vcf" > "${high_quality_consensus_somatic_indel_vcf}"
 	tabix "${high_quality_consensus_somatic_indel_vcf}"
@@ -3018,6 +3028,86 @@ process icgcHighQualityFilterIndels_fings {
 	mv results/filterresults.txt.gz "${indel_summary_stats}"
 	mv results/tumor.combined.txt.gz "${indel_tumor_collected_metrics}"
 	mv results/normal.combined.txt.gz "${indel_normal_collected_metrics}"
+	"""
+}
+
+// BCFtools reheader / annotate ~ modify VCF for better organization of header and information per sample
+process fixHighQualityIndelConsensusVcf_bcftools {
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(high_quality_consensus_somatic_indel_vcf), path(high_quality_consensus_somatic_indel_vcf_index), path(indel_tumor_collected_metrics), path(indel_normal_collected_metrics), path(indel_vcf_base_header) from high_quality_consensus_indel_vcf_and_metrics_forFixVcf.join(indel_vcf_base_header_forFixVcf)
+	
+	output:
+	tuple path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index)
+	
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
+
+	script:
+	hq_indel_consensus_vcf_format_headers = "hq_indel_consensus_vcf_format_headers.txt"
+	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
+	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
+	"""
+	zcat "${high_quality_consensus_somatic_indel_vcf}" \
+	| \
+	sed 's|\tINFO|\tINFO\tFORMAT\t"${normal_id}"\t"${tumor_id}"|' \
+	| \
+	bgzip > "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz"
+
+	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.vcf.gz" >> "${indel_vcf_base_header}"
+	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.vcf.gz" >> "${indel_vcf_base_header}"
+
+	bcftools reheader \
+	--header "${indel_vcf_base_header}" \
+	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz" \
+	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.vcf.gz"
+
+	touch "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Count of REF alleles">' >> "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=AC,Number=1,Type=Integer,Description="Count of ALT alleles">' >> "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Depth of all reads">' >> "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=VAF,Number=1,Type=Float,Description="Variant allele frequency">' >> "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=FR,Number=1,Type=Integer,Description="Count of forward reads supporting REF allele">' >> "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Count of reverse reads supporting REF allele">' >> "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=FA,Number=1,Type=Integer,Description="Count of forward reads supporting ALT allele">' >> "${hq_indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=RA,Number=1,Type=Integer,Description="Count of reverse reads supporting ALT allele">' >> "${hq_indel_consensus_vcf_format_headers}"
+
+	zgrep -v 'UID' "${indel_normal_collected_metrics}" \
+	| \
+	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$6,\$7,\$9,\$10,\$41,\$43,\$42,\$44}' \
+	| \
+	bgzip > normal_sample_indel_format_metrics.txt.gz
+
+	tabix -b2 -e2 normal_sample_indel_format_metrics.txt.gz
+
+	bcftools annotate \
+	--output-type z \
+	--samples "${normal_id}" \
+	--annotations normal_sample_indel_format_metrics.txt.gz \
+	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
+	--columns CHROM,POS,FORMAT/RC,FORMAT/AC,FORMAT/DP,FORMAT/VAF,FORMAT/FR,FORMAT/RR,FORMAT/FA,FORMAT/RA \
+	--output-file "${tumor_normal_sample_id}.hq.consensus.somatic.indel.halfformat.vcf.gz"
+	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz"
+
+	zgrep -v 'UID' "${indel_tumor_collected_metrics}" \
+	| \
+	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$6,\$7,\$9,\$10,\$41,\$43,\$42,\$44}' \
+	| \
+	bgzip > tumor_sample_indel_format_metrics.txt.gz
+
+	tabix -b2 -e2 tumor_sample_indel_format_metrics.txt.gz
+
+	bcftools annotate \
+	--output-type z \
+	--samples "${tumor_id}" \
+	--annotations tumor_sample_indel_format_metrics.txt.gz \
+	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
+	--columns CHROM,POS,FORMAT/RC,FORMAT/AC,FORMAT/DP,FORMAT/VAF,FORMAT/FR,FORMAT/RR,FORMAT/FA,FORMAT/RA \
+	--output-file "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
+	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.halfformat.vcf.gz"
+
+	tabix "${hq_indel_consensus_vcf}"
 	"""
 }
 
@@ -3049,6 +3139,12 @@ process downloadVepAnnotationReferences_vep {
 	rm homo_sapiens_vep_101_GRCh38.tar.gz
 	"""
 }
+
+
+
+
+/*
+
 
 // Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
 // channel for the VEP annotation process
@@ -3112,3 +3208,5 @@ process annotateSomaticVcf_vep {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+*/
