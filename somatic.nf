@@ -3087,7 +3087,7 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 	--annotations normal_sample_indel_format_metrics.txt.gz \
 	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,FORMAT/RC,FORMAT/AC,FORMAT/DP,FORMAT/VAF,FORMAT/FR,FORMAT/RR,FORMAT/FA,FORMAT/RA \
-	--output-file "${tumor_normal_sample_id}.hq.consensus.somatic.indel.halfformat.vcf.gz"
+	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.halfformat.vcf.gz"
 	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz"
 
 	zgrep -v 'UID' "${indel_tumor_collected_metrics}" \
@@ -3104,7 +3104,7 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 	--annotations tumor_sample_indel_format_metrics.txt.gz \
 	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,FORMAT/RC,FORMAT/AC,FORMAT/DP,FORMAT/VAF,FORMAT/FR,FORMAT/RR,FORMAT/FA,FORMAT/RA \
-	--output-file "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
+	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
 	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.halfformat.vcf.gz"
 
 	tabix "${hq_indel_consensus_vcf}"
