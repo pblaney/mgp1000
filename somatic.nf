@@ -3013,7 +3013,7 @@ process fixConsensusIndelVcfHeader_bcftools {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	full_indel_vcf_header = "full_indel_vcf_header.txt"
-	consensus_somatic_indel_noformat_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.noformat.vcf"
+	consensus_somatic_indel_noformat_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.noformat.vcf.gz"
 	"""
 	touch "${full_indel_vcf_header}"
 	cat "${indel_vcf_base_header}" >> "${full_indel_vcf_header}"
@@ -3022,8 +3022,9 @@ process fixConsensusIndelVcfHeader_bcftools {
 
 	bcftools reheader \
 	--header "${full_indel_vcf_header}" \
-	--output "${consensus_somatic_indel_noformat_vcf}" \
-	"${consensus_somatic_indel_badheader_noformat_vcf}"
+	"${consensus_somatic_indel_badheader_noformat_vcf}" \
+	| \
+	bgzip > "${consensus_somatic_indel_noformat_vcf}"
 
 	tabix "${consensus_somatic_indel_noformat_vcf}"
 
