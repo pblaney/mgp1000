@@ -162,7 +162,7 @@ Channel
 	       reference_genome_fasta_forGridssSetup;
 	       reference_genome_fasta_forGridssPostprocessing;
 	       reference_genome_fasta_forFings;
-	       reference_genome_fasta_forFingsIndels;
+	       reference_genome_fasta_forFixIndelVcf;
 	       reference_genome_fasta_forAnnotation }
 
 Channel
@@ -188,7 +188,7 @@ Channel
 	       reference_genome_fasta_index_forGridssSetup;
 	       reference_genome_fasta_index_forGridssPostprocessing;
 	       reference_genome_fasta_index_forFings;
-	       reference_genome_fasta_index_forFingsIndels;
+	       reference_genome_fasta_index_forFixIndelVcf;
 	       reference_genome_fasta_index_forAnnotation }
 
 Channel
@@ -215,7 +215,7 @@ Channel
 	       reference_genome_fasta_dict_forSvabaBcftools;
 	       reference_genome_fasta_dict_forGridssPostprocessing;
 	       reference_genome_fasta_dict_forFings;
-	       reference_genome_fasta_dict_forFingsIndels;
+	       reference_genome_fasta_dict_forFixIndelVcf;
 	       reference_genome_fasta_dict_forAnnotation }
 
 Channel
@@ -450,7 +450,7 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFings
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFingsIndels
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFixIndelHeader
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -2892,14 +2892,13 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index), path(final_strelka_indel_vcf), path(final_strelka_indel_vcf_index), path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index) from final_varscan_indel_vcf_forConsensus.join(final_mutect_indel_vcf_forConsensus).join(final_strelka_indel_vcf_forConsensus).join(final_svaba_indel_vcf_forConsensus)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_indel_vcf) into consensus_indel_vcf_forFingsIndels
-	tuple val(tumor_normal_sample_id), path(indel_vcf_base_header) into indel_vcf_base_header_forFixVcf
+	tuple val(tumor_normal_sample_id), path(consensus_somatic_indel_badheader_noformat_vcf), path(indel_vcf_base_header) into consensus_indel_vcf_and_header_forFixIndelHeader
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
 	script:
-	merged_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf"
+	consensus_somatic_indel_badheader_noformat_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.badheader.noformat.vcf"
 	indel_vcf_base_header = "indel_vcf_base_header.txt"
 	"""
 	mergevcf \
@@ -2911,10 +2910,10 @@ process mergeAndGenerateConsensusIndelCalls_mergevcf {
 	"${final_strelka_indel_vcf}" \
 	"${final_svaba_indel_vcf}" \
 	| \
-	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' > "${merged_consensus_somatic_indel_vcf}"
+	awk '\$1 ~ /^#/ {print \$0;next} {print \$0 | "sort -k1,1V -k2,2n"}' > "${consensus_somatic_indel_badheader_noformat_vcf}"
 
 	touch "${indel_vcf_base_header}"
-	grep '##fileformat=' "${merged_consensus_somatic_indel_vcf}" >> "${indel_vcf_base_header}"
+	grep '##fileformat=' "${consensus_somatic_indel_badheader_noformat_vcf}" >> "${indel_vcf_base_header}"
 	zgrep '##fileDate=' "${final_svaba_indel_vcf}" >> "${indel_vcf_base_header}"
 	echo '##source=varscan,mutect,strelka,svaba' >> "${indel_vcf_base_header}"
 	zgrep '##normal_sample=' "${final_mutect_indel_vcf}" >> "${indel_vcf_base_header}"
@@ -2982,23 +2981,30 @@ process icgcHighQualityFilter_fings {
 	"""
 }
 
-// Combine all needed reference FASTA files into one channel for use in FiNGS indels process
-reference_genome_fasta_forFingsIndels.combine( reference_genome_fasta_index_forFingsIndels )
-	.combine( reference_genome_fasta_dict_forFingsIndels )
-	.set{ reference_genome_bundle_forFingsIndels }
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
-// FiNGS ~ implement the high quality filtering standards to indels
-process highQualityFilterIndels_fings {
-	publishDir "${params.output_dir}/somatic/fings", mode: 'symlink', pattern: '*.{vcf.gz,tbi,pdf,txt.gz}'
+
+
+
+
+// ~~~~~~~~~~~~~~~ FIX HEADER ~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all needed reference FASTA files into one channel for use in Fix Indel VCF / bam-readcount process
+reference_genome_fasta_forFixIndelVcf.combine( reference_genome_fasta_index_forFixIndelVcf )
+	.combine( reference_genome_fasta_dict_forFixIndelVcf )
+	.set{ reference_genome_bundle_forFixIndelVcf }
+
+// BCFtools reheader ~ modify VCF for better organization of header
+process fixConsensusIndelVcfHeader_bcftools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(merged_consensus_somatic_indel_vcf), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forFingsIndels), path(reference_genome_fasta_index_forFingsIndels), path(reference_genome_fasta_dict_forFingsIndels) from consensus_indel_vcf_forFingsIndels.join(bams_forFingsIndels).combine(reference_genome_bundle_forFingsIndels)
+	tuple val(tumor_normal_sample_id), path(consensus_somatic_indel_badheader_noformat_vcf), path(indel_vcf_base_header), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forFixIndelVcf), path(reference_genome_fasta_index_forFixIndelVcf), path(reference_genome_fasta_dict_forFixIndelVcf) from consensus_indel_vcf_and_header_forFixIndelHeader.join(bams_forFixIndelHeader).combine(reference_genome_bundle_forFixIndelVcf)
 
 	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(high_quality_consensus_somatic_indel_vcf), path(high_quality_consensus_somatic_indel_vcf_index), path(indel_tumor_collected_metrics), path(indel_normal_collected_metrics) into high_quality_consensus_indel_vcf_and_metrics_forFixVcf
-	path indel_plots_pdf
-	path indel_summary_stats
+	tuple val(tumor_normal_sample_id), va(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) into consensus_indel_vcf_forFormatAnnotation
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
@@ -3006,116 +3012,88 @@ process highQualityFilterIndels_fings {
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	high_quality_consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.nosamples.badheader.noformat.vcf.gz"
-	high_quality_consensus_somatic_indel_vcf_index = "${high_quality_consensus_somatic_indel_vcf}.tbi"
-	indel_plots_pdf = "${tumor_normal_sample_id}.fings.indel.plots.pdf"
-	indel_summary_stats = "${tumor_normal_sample_id}.fings.indel.summarystats.txt.gz"
-	indel_tumor_collected_metrics = "${tumor_normal_sample_id}.fings.indel.tumormetrics.txt.gz"
-	indel_normal_collected_metrics = "${tumor_normal_sample_id}.fings.indel.normalmetrics.txt.gz"
+	full_indel_vcf_header = "full_indel_vcf_header.txt"
+	consensus_somatic_indel_noformat_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.noformat.vcf"
+	normal_bamreadcount_tsv = "${normal_id}_bam_readcount_indel.tsv"
+	tumor_bamreadcount_tsv = "${tumor_id}_bam_readcount_indel.tsv"
 	"""
-	fings \
-	-v "${merged_consensus_somatic_indel_vcf}" \
-	-t "${tumor_bam}" \
-	-n "${normal_bam}" \
-	-r "${reference_genome_fasta_forFingsIndels}" \
-	-d results \
-	-j "${task.cpus}"
-
-	bgzip < "results/${tumor_normal_sample_id}.consensus.somatic.indel.filtered.vcf" > "${high_quality_consensus_somatic_indel_vcf}"
-	tabix "${high_quality_consensus_somatic_indel_vcf}"
-
-	mv results/plots.pdf "${indel_plots_pdf}"
-	mv results/filterresults.txt.gz "${indel_summary_stats}"
-	mv results/tumor.combined.txt.gz "${indel_tumor_collected_metrics}"
-	mv results/normal.combined.txt.gz "${indel_normal_collected_metrics}"
-	"""
-}
-
-// BCFtools reheader / annotate ~ modify VCF for better organization of header and information per sample
-process fixHighQualityIndelConsensusVcf_bcftools {
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(high_quality_consensus_somatic_indel_vcf), path(high_quality_consensus_somatic_indel_vcf_index), path(indel_tumor_collected_metrics), path(indel_normal_collected_metrics), path(indel_vcf_base_header) from high_quality_consensus_indel_vcf_and_metrics_forFixVcf.join(indel_vcf_base_header_forFixVcf)
-	
-	output:
-	tuple path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index)
-	
-	when:
-	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
-
-	script:
-	hq_indel_consensus_vcf_base_header = "hq_indel_consensus_vcf_header.txt"
-	hq_indel_consensus_vcf_format_headers = "hq_indel_consensus_vcf_format_header.txt"
-	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
-	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
-
-
-	//echo '##SAMPLE=<ID=${normal_id}>' >> "${hq_indel_consensus_vcf_base_header}"
-	//echo '##SAMPLE=<ID=${tumor_id}>' >> "${hq_indel_consensus_vcf_base_header}"
-
-	"""
-	touch "${hq_indel_consensus_vcf_base_header}"
-	cat "${indel_vcf_base_header}" >> "${hq_indel_consensus_vcf_base_header}"
-	zgrep '##FILTER=' "${high_quality_consensus_somatic_indel_vcf}" >> "${hq_indel_consensus_vcf_base_header}"
-	zgrep '##INFO=' "${high_quality_consensus_somatic_indel_vcf}" >> "${hq_indel_consensus_vcf_base_header}"
-	echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${normal_id}\t${tumor_id}' >> "${hq_indel_consensus_vcf_base_header}"
+	touch "${full_indel_vcf_header}"
+	cat "${indel_vcf_base_header}" >> "${full_indel_vcf_header}"
+	zgrep '##INFO=' "${consensus_somatic_indel_badheader_noformat_vcf}" >>  "${full_indel_vcf_header}"
+	echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${normal_id}\t${tumor_id}' >>  "${full_indel_vcf_header}"
 
 	bcftools reheader \
-	--header "${hq_indel_consensus_vcf_base_header}" \
-	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz" \
-	"${high_quality_consensus_somatic_indel_vcf}"
+	--header "${full_indel_vcf_header}" \
+	--output "${consensus_somatic_indel_noformat_vcf}" \
+	"${consensus_somatic_indel_badheader_noformat_vcf}"
 
-	touch "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Count of REF alleles">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=AC,Number=1,Type=Integer,Description="Count of ALT alleles">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Depth of all reads">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=VAF,Number=1,Type=Float,Description="Variant allele frequency">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=FR,Number=1,Type=Integer,Description="Count of forward reads supporting REF allele">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=RR,Number=1,Type=Integer,Description="Count of reverse reads supporting REF allele">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=FA,Number=1,Type=Integer,Description="Count of forward reads supporting ALT allele">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=RA,Number=1,Type=Integer,Description="Count of reverse reads supporting ALT allele">' >> "${hq_indel_consensus_vcf_format_headers}"
+	bam_readcount_helper.py \
+	"${consensus_somatic_indel_noformat_vcf}" \
+	${normal_id} \
+	"${reference_genome_fasta_forFixIndelVcf}" \
+	"${normal_bam}" \
+	.
 
-	zgrep -v 'UID' "${indel_normal_collected_metrics}" \
-	| \
-	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$6,\$7,\$9,\$10,\$41,\$43,\$42,\$44}' \
-	| \
-	bgzip > normal_sample_indel_format_metrics.txt.gz
-
-	tabix -b2 -e2 normal_sample_indel_format_metrics.txt.gz
-
-	bcftools annotate \
-	--output-type z \
-	--samples "${normal_id}" \
-	--annotations normal_sample_indel_format_metrics.txt.gz \
-	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
-	--columns CHROM,POS,FORMAT/RC,FORMAT/AC,FORMAT/DP,FORMAT/VAF,FORMAT/FR,FORMAT/RR,FORMAT/FA,FORMAT/RA \
-	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.halfformat.vcf.gz" \
-	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz"
-
-	zgrep -v 'UID' "${indel_tumor_collected_metrics}" \
-	| \
-	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$6,\$7,\$9,\$10,\$41,\$43,\$42,\$44}' \
-	| \
-	bgzip > tumor_sample_indel_format_metrics.txt.gz
-
-	tabix -b2 -e2 tumor_sample_indel_format_metrics.txt.gz
-
-	bcftools annotate \
-	--output-type z \
-	--samples "${tumor_id}" \
-	--annotations tumor_sample_indel_format_metrics.txt.gz \
-	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
-	--columns CHROM,POS,FORMAT/RC,FORMAT/AC,FORMAT/DP,FORMAT/VAF,FORMAT/FR,FORMAT/RR,FORMAT/FA,FORMAT/RA \
-	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz" \
-	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.halfformat.vcf.gz"
-
-	tabix "${hq_indel_consensus_vcf}"
+	bam_readcount_helper.py \
+	"${consensus_somatic_indel_noformat_vcf}" \
+	${tumor_id} \
+	"${reference_genome_fasta_forFixIndelVcf}" \
+	"${tumor_bam}" \
+	.
 	"""
 }
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~ FORMAT ANNOTATION ~~~~~~~~~~~ \\
+// START
+
+// VAtools vcf-readcount-annotator ~ take an output file from bam-readcount and add its data to your VCF
+process readcountAnnotationForConsensusIndelVcf_vatools {
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), va(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) from consensus_indel_vcf_forFormatAnnotation
+
+	output:
+	path consensus_somatic_indel_vcf
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
+
+	script:
+	consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf"
+	"""
+	vcf-readcount-annotator \
+	--sample-name "${normal_id}" \
+	--output-vcf "${tumor_normal_sample_id}.consensus.somatic.indel.halfformat.vcf" \
+	--variant-type indel \
+	"${consensus_somatic_indel_noformat_vcf}" \
+	"${normal_bamreadcount_tsv}" \
+	DNA
+
+	vcf-readcount-annotator \
+	--sample-name "${tumor_id}" \
+	--output-vcf "${consensus_somatic_indel_vcf}" \
+	--variant-type indel \
+	"${tumor_normal_sample_id}.consensus.somatic.indel.halfformat.vcf" \
+	"${tumor_bamreadcount_tsv}" \
+	DNA
+	"""
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 // ~~~~~~~~~~~~ VEP ANNOTATION ~~~~~~~~~~~~~ \\
