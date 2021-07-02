@@ -3045,7 +3045,8 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
 	script:
-	hq_indel_consensus_vcf_format_headers = "hq_indel_consensus_vcf_format_headers.txt"
+	hq_indel_consensus_vcf_base_header = "hq_indel_consensus_vcf_header.txt"
+	hq_indel_consensus_vcf_format_headers = "hq_indel_consensus_vcf_format_header.txt"
 	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
 	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
 	"""
@@ -3055,6 +3056,8 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 	| \
 	bgzip > "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz"
 
+	touch "${hq_indel_consensus_vcf_base_header}"
+	cat "${indel_vcf_base_header}" >> "${hq_indel_consensus_vcf_base_header}"
 	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
 	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
 	echo '##SAMPLE=<ID=${normal_id}>' >> "${indel_vcf_base_header}"
