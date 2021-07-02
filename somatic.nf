@@ -3059,7 +3059,7 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 	cat "${indel_vcf_base_header}" >> "${hq_indel_consensus_vcf_base_header}"
 	zgrep '##FILTER=' "${high_quality_consensus_somatic_indel_vcf}" >> "${hq_indel_consensus_vcf_base_header}"
 	zgrep '##INFO=' "${high_quality_consensus_somatic_indel_vcf}" >> "${hq_indel_consensus_vcf_base_header}"
-	echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${normal_id}\t${tumor_id}' >> 
+	echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${normal_id}\t${tumor_id}' >> "${hq_indel_consensus_vcf_base_header}"
 
 	bcftools reheader \
 	--header "${hq_indel_consensus_vcf_base_header}" \
