@@ -3057,6 +3057,8 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 
 	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
 	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
+	echo '##SAMPLE=<ID=${normal_id}>' >> "${indel_vcf_base_header}"
+	echo '##SAMPLE=<ID=${tumor_id}>' >> "${indel_vcf_base_header}"
 
 	bcftools reheader \
 	--header "${indel_vcf_base_header}" \
