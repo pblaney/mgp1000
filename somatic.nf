@@ -3049,24 +3049,22 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 	hq_indel_consensus_vcf_format_headers = "hq_indel_consensus_vcf_format_header.txt"
 	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
 	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
-	"""
-	zcat "${high_quality_consensus_somatic_indel_vcf}" \
-	| \
-	sed 's|\tINFO|\tINFO\tFORMAT\t${normal_id}\t${tumor_id}|' \
-	| \
-	bgzip > "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz"
 
+
+	//echo '##SAMPLE=<ID=${normal_id}>' >> "${hq_indel_consensus_vcf_base_header}"
+	//echo '##SAMPLE=<ID=${tumor_id}>' >> "${hq_indel_consensus_vcf_base_header}"
+
+	"""
 	touch "${hq_indel_consensus_vcf_base_header}"
 	cat "${indel_vcf_base_header}" >> "${hq_indel_consensus_vcf_base_header}"
-	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${hq_indel_consensus_vcf_base_header}"
-	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${hq_indel_consensus_vcf_base_header}"
-	echo '##SAMPLE=<ID=${normal_id}>' >> "${hq_indel_consensus_vcf_base_header}"
-	echo '##SAMPLE=<ID=${tumor_id}>' >> "${hq_indel_consensus_vcf_base_header}"
+	zgrep '##FILTER=' "${high_quality_consensus_somatic_indel_vcf}" >> "${hq_indel_consensus_vcf_base_header}"
+	zgrep '##INFO=' "${high_quality_consensus_somatic_indel_vcf}" >> "${hq_indel_consensus_vcf_base_header}"
+	echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${normal_id}\t${tumor_id}' >> 
 
 	bcftools reheader \
 	--header "${hq_indel_consensus_vcf_base_header}" \
 	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz" \
-	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz"
+	"${high_quality_consensus_somatic_indel_vcf}"
 
 	touch "${hq_indel_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Count of REF alleles">' >> "${hq_indel_consensus_vcf_format_headers}"
