@@ -3004,7 +3004,7 @@ process fixConsensusIndelVcfHeader_bcftools {
 	tuple val(tumor_normal_sample_id), path(consensus_somatic_indel_badheader_noformat_vcf), path(indel_vcf_base_header), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forFixIndelVcf), path(reference_genome_fasta_index_forFixIndelVcf), path(reference_genome_fasta_dict_forFixIndelVcf) from consensus_indel_vcf_and_header_forFixIndelHeader.join(bams_forFixIndelHeader).combine(reference_genome_bundle_forFixIndelVcf)
 
 	output:
-	tuple val(tumor_normal_sample_id), va(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) into consensus_indel_vcf_forFormatAnnotation
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) into consensus_indel_vcf_forFormatAnnotation
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
