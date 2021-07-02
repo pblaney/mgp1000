@@ -3055,7 +3055,7 @@ process readcountAnnotationForConsensusIndelVcf_vatools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), va(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) from consensus_indel_vcf_forFormatAnnotation
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) from consensus_indel_vcf_forFormatAnnotation
 
 	output:
 	path consensus_somatic_indel_vcf
