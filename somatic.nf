@@ -3058,13 +3058,13 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 
 	touch "${hq_indel_consensus_vcf_base_header}"
 	cat "${indel_vcf_base_header}" >> "${hq_indel_consensus_vcf_base_header}"
-	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
-	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
-	echo '##SAMPLE=<ID=${normal_id}>' >> "${indel_vcf_base_header}"
-	echo '##SAMPLE=<ID=${tumor_id}>' >> "${indel_vcf_base_header}"
+	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${hq_indel_consensus_vcf_base_header}"
+	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${hq_indel_consensus_vcf_base_header}"
+	echo '##SAMPLE=<ID=${normal_id}>' >> "${hq_indel_consensus_vcf_base_header}"
+	echo '##SAMPLE=<ID=${tumor_id}>' >> "${hq_indel_consensus_vcf_base_header}"
 
 	bcftools reheader \
-	--header "${indel_vcf_base_header}" \
+	--header "${hq_indel_consensus_vcf_base_header}" \
 	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz" \
 	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz"
 
