@@ -3003,8 +3003,8 @@ process fixConsensusIndelVcfHeader_bcftools {
 	input:
 	tuple val(tumor_normal_sample_id), path(consensus_somatic_indel_badheader_noformat_vcf), path(indel_vcf_base_header), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forFixIndelVcf), path(reference_genome_fasta_index_forFixIndelVcf), path(reference_genome_fasta_dict_forFixIndelVcf) from consensus_indel_vcf_and_header_forFixIndelHeader.join(bams_forFixIndelHeader).combine(reference_genome_bundle_forFixIndelVcf)
 
-	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) into consensus_indel_vcf_forFormatAnnotation
+	//output:
+
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
@@ -3014,8 +3014,6 @@ process fixConsensusIndelVcfHeader_bcftools {
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	full_indel_vcf_header = "full_indel_vcf_header.txt"
 	consensus_somatic_indel_noformat_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.noformat.vcf"
-	normal_bamreadcount_tsv = "${normal_id}_bam_readcount_indel.tsv"
-	tumor_bamreadcount_tsv = "${tumor_id}_bam_readcount_indel.tsv"
 	"""
 	touch "${full_indel_vcf_header}"
 	cat "${indel_vcf_base_header}" >> "${full_indel_vcf_header}"
@@ -3027,63 +3025,25 @@ process fixConsensusIndelVcfHeader_bcftools {
 	--output "${consensus_somatic_indel_noformat_vcf}" \
 	"${consensus_somatic_indel_badheader_noformat_vcf}"
 
-	bam_readcount_helper.py \
-	"${consensus_somatic_indel_noformat_vcf}" \
-	${normal_id} \
-	"${reference_genome_fasta_forFixIndelVcf}" \
-	"${normal_bam}" \
-	.
+	tabix "${consensus_somatic_indel_noformat_vcf}"
 
-	bam_readcount_helper.py \
-	"${consensus_somatic_indel_noformat_vcf}" \
-	${tumor_id} \
-	"${reference_genome_fasta_forFixIndelVcf}" \
-	"${tumor_bam}" \
-	.
+	bcftools mpileup \
+	--no-BAQ \
+	--fasta-ref "${reference_genome_fasta_forFixIndelVcf}" \
+	--min-MQ 30 \
+	--min-BQ 30 \
+	--regions-file "${consensus_somatic_indel_noformat_vcf}" \
+	--samples ${normal_id},${tumor_id} \
+	--annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,FORMAT/SCR \
+	--threads ${task.cpus} \
+	--output-type v \
+	--output "${tumor_normal_sample_id}.consensus.somatic.indel.vcf" \
+	"${normal_bam}" "${tumor_bam}"
 	"""
 }
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~ FORMAT ANNOTATION ~~~~~~~~~~~ \\
-// START
-
-// VAtools vcf-readcount-annotator ~ take an output file from bam-readcount and add its data to your VCF
-process readcountAnnotationForConsensusIndelVcf_vatools {
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(consensus_somatic_indel_noformat_vcf), path(normal_bamreadcount_tsv), path(tumor_bamreadcount_tsv) from consensus_indel_vcf_forFormatAnnotation
-
-	output:
-	path consensus_somatic_indel_vcf
-
-	when:
-	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
-
-	script:
-	consensus_somatic_indel_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf"
-	"""
-	vcf-readcount-annotator \
-	--sample-name "${normal_id}" \
-	--output-vcf "${tumor_normal_sample_id}.consensus.somatic.indel.halfformat.vcf" \
-	--variant-type indel \
-	"${consensus_somatic_indel_noformat_vcf}" \
-	"${normal_bamreadcount_tsv}" \
-	DNA
-
-	vcf-readcount-annotator \
-	--sample-name "${tumor_id}" \
-	--output-vcf "${consensus_somatic_indel_vcf}" \
-	--variant-type indel \
-	"${tumor_normal_sample_id}.consensus.somatic.indel.halfformat.vcf" \
-	"${tumor_bamreadcount_tsv}" \
-	DNA
-	"""
-}
-
 
 
 
