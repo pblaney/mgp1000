@@ -3051,17 +3051,17 @@ process fixHighQualityIndelConsensusVcf_bcftools {
 	"""
 	zcat "${high_quality_consensus_somatic_indel_vcf}" \
 	| \
-	sed 's|\tINFO|\tINFO\tFORMAT\t"${normal_id}"\t"${tumor_id}"|' \
+	sed 's|\tINFO|\tINFO\tFORMAT\t${normal_id}\t${tumor_id}|' \
 	| \
 	bgzip > "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz"
 
-	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.vcf.gz" >> "${indel_vcf_base_header}"
-	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.vcf.gz" >> "${indel_vcf_base_header}"
+	zgrep '##FILTER=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
+	zgrep '##INFO=' "${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz" >> "${indel_vcf_base_header}"
 
 	bcftools reheader \
 	--header "${indel_vcf_base_header}" \
 	--output "${tumor_normal_sample_id}.hq.consensus.somatic.indel.noformat.vcf.gz" \
-	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.vcf.gz"
+	"${tumor_normal_sample_id}.hq.consensus.somatic.indel.badheader.noformat.vcf.gz"
 
 	touch "${hq_indel_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Count of REF alleles">' >> "${hq_indel_consensus_vcf_format_headers}"
