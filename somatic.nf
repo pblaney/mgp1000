@@ -3031,8 +3031,8 @@ process fixConsensusIndelVcfHeader_bcftools {
 	bcftools mpileup \
 	--no-BAQ \
 	--fasta-ref "${reference_genome_fasta_forFixIndelVcf}" \
-	--min-MQ 30 \
-	--min-BQ 30 \
+	--min-MQ 20 \
+	--min-BQ 20 \
 	--regions-file "${consensus_somatic_indel_noformat_vcf}" \
 	--samples ${normal_id},${tumor_id} \
 	--annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,FORMAT/SCR \
