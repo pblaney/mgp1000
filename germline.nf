@@ -819,11 +819,13 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 
 	output:
 	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) into hard_filtered_refmerged_plink_files
+	path hard_filtered_stats_file
 
 	script:
 	hard_filtered_plink_file_prefix = "${params.cohort_name}.hardfiltered.refmerged"
 	hard_filtered_plink_ped_file = "${hard_filtered_plink_file_prefix}.ped"
 	hard_filtered_plink_map_file = "${hard_filtered_plink_file_prefix}.map"
+	hard_filtered_stats_file = "${hard_filtered_plink_file_prefix}.stats.txt"
 	"""
 	vcftools \
 	--gzvcf "${sample_ref_merged_vcf}" \
@@ -833,7 +835,8 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 	--non-ref-ac 2 \
 	--plink \
 	--temp . \
-	--out "${hard_filtered_plink_file_prefix}"
+	--out "${hard_filtered_plink_file_prefix}" \
+	2>"${hard_filtered_stats_file}"
 	"""
 }
 
@@ -849,13 +852,17 @@ process filterPlinkFilesForAdmixture_plink {
 
 	output:
 	tuple val(pruned_filtered_plink_file_prefix), path(pruned_filtered_plink_bed_file), path(pruned_filtered_plink_bim_file), path(pruned_filtered_plink_fam_file) into pruned_filtered_refmerged_plink_files
+	path maf_gt_filtered_plink_stats
+	path pruned_filtered_plink_stats
 
 	script:
 	maf_gt_filtered_plink_file_prefix = "${params.cohort_name}.maf.gt.filtered.refmerged"
+	maf_gt_filtered_plink_stats = "${maf_gt_filtered_plink_file_prefix}.stats.txt"
 	pruned_filtered_plink_file_prefix = "${params.cohort_name}.pruned.maf.gt.filtered.refmerged"
 	pruned_filtered_plink_bed_file = "${pruned_filtered_plink_file_prefix}.bed"
 	pruned_filtered_plink_bim_file = "${pruned_filtered_plink_file_prefix}.bim"
 	pruned_filtered_plink_fam_file = "${pruned_filtered_plink_file_prefix}.fam"
+	pruned_filtered_plink_stats = "${pruned_filtered_plink_file_prefix}.stats.txt"
 	"""
 	plink \
 	--threads ${task.cpus} \
@@ -864,14 +871,18 @@ process filterPlinkFilesForAdmixture_plink {
 	--make-bed \
 	--maf 0.05 \
 	--geno 0.1 \
-	--indep-pairwise 50 10 0.5
+	--indep-pairwise 50 10 0.5 \
+	
+	mv "${maf_gt_filtered_plink_file_prefix}.log" "${maf_gt_filtered_plink_stats}"
 
 	plink \
 	--threads ${task.cpus} \
 	--bfile "${maf_gt_filtered_plink_file_prefix}" \
 	--extract "${maf_gt_filtered_plink_file_prefix}.prune.in" \
 	--make-bed \
-	--out "${pruned_filtered_plink_file_prefix}"
+	--out "${pruned_filtered_plink_file_prefix}" \
+	
+	mv "${pruned_filtered_plink_file_prefix}.log" "${pruned_filtered_plink_stats}"
 	"""
 }
 
