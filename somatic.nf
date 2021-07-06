@@ -2985,78 +2985,6 @@ process icgcHighQualityFilter_fings {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
-
-// ~~~~~~~~~~~~~~~ FIX HEADER ~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all needed reference FASTA files into one channel for use in Fix Indel VCF / bam-readcount process
-reference_genome_fasta_forFixIndelVcf.combine( reference_genome_fasta_index_forFixIndelVcf )
-	.combine( reference_genome_fasta_dict_forFixIndelVcf )
-	.set{ reference_genome_bundle_forFixIndelVcf }
-
-// BCFtools reheader ~ modify VCF for better organization of header
-process fixConsensusIndelVcfHeader_bcftools {
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(consensus_somatic_indel_badheader_noformat_vcf), path(indel_vcf_base_header), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forFixIndelVcf), path(reference_genome_fasta_index_forFixIndelVcf), path(reference_genome_fasta_dict_forFixIndelVcf) from consensus_indel_vcf_and_header_forFixIndelHeader.join(bams_forFixIndelHeader).combine(reference_genome_bundle_forFixIndelVcf)
-
-	//output:
-
-
-	when:
-	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
-
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	full_indel_vcf_header = "full_indel_vcf_header.txt"
-	consensus_somatic_indel_noformat_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.noformat.vcf.gz"
-	"""
-	touch "${full_indel_vcf_header}"
-	cat "${indel_vcf_base_header}" >> "${full_indel_vcf_header}"
-	zgrep '##INFO=' "${consensus_somatic_indel_badheader_noformat_vcf}" >>  "${full_indel_vcf_header}"
-	echo -e '#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t${normal_id}\t${tumor_id}' >>  "${full_indel_vcf_header}"
-
-	bcftools reheader \
-	--header "${full_indel_vcf_header}" \
-	"${consensus_somatic_indel_badheader_noformat_vcf}" \
-	| \
-	bgzip > "${consensus_somatic_indel_noformat_vcf}"
-
-	tabix "${consensus_somatic_indel_noformat_vcf}"
-
-	bcftools mpileup \
-	--no-BAQ \
-	--fasta-ref "${reference_genome_fasta_forFixIndelVcf}" \
-	--min-MQ 35 \
-	--min-BQ 30 \
-	--regions-file "${consensus_somatic_indel_noformat_vcf}" \
-	--samples ${normal_id},${tumor_id} \
-	--annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP,FORMAT/SP,FORMAT/SCR \
-	--threads ${task.cpus} \
-	--output-type v \
-	--output "${tumor_normal_sample_id}.consensus.somatic.indel.vcf" \
-	"${normal_bam}" "${tumor_bam}"
-	"""
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-
-
-
-
-
-
-
-
-
-
 // ~~~~~~~~~~~~ VEP ANNOTATION ~~~~~~~~~~~~~ \\
 // START
 
@@ -3082,12 +3010,6 @@ process downloadVepAnnotationReferences_vep {
 	"""
 }
 
-
-
-
-/*
-
-
 // Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
 // channel for the VEP annotation process
 if( params.vep_ref_cached == "yes" ) {
@@ -3102,13 +3024,16 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
 
+
+/*
+
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
 	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy'
 	tag "${vcf_id}"
 
 	input:
-	tuple path(high_quality_consensus_somatic_snv_vcf), path(high_quality_consensus_somatic_snv_vcf_index), path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from high_quality_consensus_snv_vcf_forAnnotation.combine(vep_ref_dir).combine(reference_genome_bundle_forAnnotation)
+	tuple path(high_quality_consensus_somatic_snv_vcf), path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from high_quality_consensus_snv_vcf_forAnnotation.combine(vep_ref_dir).combine(reference_genome_bundle_forAnnotation)
 
 	output:
 	path final_annotated_somatic_vcfs
@@ -3148,7 +3073,9 @@ process annotateSomaticVcf_vep {
 	"""
 }
 
+*/
+
+
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
-*/
