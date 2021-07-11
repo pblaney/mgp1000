@@ -3040,7 +3040,7 @@ process addSamplesToConsensusIndelVcf_vatools {
 	"""
 	vcf-genotype-annotator \
 	--output-vcf "${tumor_normal_sample_id}.ms.consensus.somatic.indel.halfsamples.noformat.vcf" \
-	"${mpileup_supported_consensus_somatic_indel_nosamples_badheader_noformat_vcf}" \
+	"${mpileup_supported_consensus_somatic_indel_nosamples_noformat_vcf}" \
 	"${normal_id}" \
 	.
 
