@@ -3087,7 +3087,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	touch "${hq_indel_consensus_vcf_info_header}"
 	echo '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth across samples (normal sample DP + tumor sample DP)">' >> "${hq_indel_consensus_vcf_info_header}"
 	echo '##INFO=<ID=AC,Number=1,Type=Integer,Description="Count of ALT allele reads in tumor sample">' >> "${hq_indel_consensus_vcf_info_header}"
-	echo '##INFO=<ID=VAF,Number=1,Type=Float,Description="Variant allele frequency, expressed as fraction of ALT allele reads in total read depth in tumor sample (tumor sample ALT AC / tumor sample ALT DP)">' >> "${hq_indel_consensus_vcf_info_header}"
+	echo '##INFO=<ID=VAF,Number=1,Type=Float,Description="Variant allele frequency, expressed as fraction of ALT allele reads in total read depth in tumor sample (tumor sample ALT AC / tumor sample DP)">' >> "${hq_indel_consensus_vcf_info_header}"
 
 	bcftools annotate \
 	--output-type z \
@@ -3123,7 +3123,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.halfformat.vcf.gz"
 
 	bcftools filter \
-	--output-type z \
+	--output-type v \
 	--exclude 'INFO/AC<2 | INFO/VAF<0.01' \
 	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.format.vcf.gz" \
 	| \
