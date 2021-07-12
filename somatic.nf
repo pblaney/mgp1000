@@ -2987,8 +2987,7 @@ process consensusSnvMpileup_bcftools {
 	- \
 	| \
 	bcftools filter \
-	--output-type v \
-	--exclude 'FORMAT/DP[*] == 0' \
+	--exclude 'FORMAT/DP == 0' \
 	- \
 	| \
 	grep -v '<\*>|INDEL;' \
@@ -3207,8 +3206,7 @@ process consensusIndelMpileup_bcftools {
 	- \
 	| \
 	bcftools filter \
-	--output-type v \
-	--exclude 'FORMAT/DP[*] == 0' \
+	--exclude 'FORMAT/DP == 0' \
 	- \
 	| \
 	grep -E '^#|INDEL;' \
