@@ -2990,7 +2990,7 @@ process consensusSnvMpileup_bcftools {
 	--exclude 'FORMAT/DP == 0' \
 	- \
 	| \
-	grep -Ev '<\*>|INDEL;' \
+	grep -Ev '<.>|INDEL;' \
 	| \
 	bgzip > "${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz"
 	tabix "${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz"
