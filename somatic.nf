@@ -1835,7 +1835,7 @@ process prepareVcfForSclust_vcftools {
 	"""
 }
 
-// Sclust cn ~ perform copy-number analysis and estimation of tumor purity
+// Sclust cn / cluster ~ perform copy-number analysis, estimation of tumor purity, and mutational clustering
 process cnvCalling_sclust {
 	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
 	tag "${tumor_normal_sample_id}"
@@ -1844,12 +1844,15 @@ process cnvCalling_sclust {
 	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf) from read_count_and_snp_count_files.join(vcf_forSclustCn)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(mutations_exp_af_file) into mutations_exp_af_forSclustCluster
+	path mutations_exp_af_file
 	path allelic_states_file
 	path cnv_profile_pdf
 	path cnv_profile_file
 	path cnv_segments_file
 	path sclust_subclones_file
+	path mutation_clusters_file
+	path mutation_clusters_pdf
+	path cluster_assignment_file
 
 	when:
 	params.sclust == "on" && params.mutect == "on"
@@ -1861,10 +1864,14 @@ process cnvCalling_sclust {
 	cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
 	mutations_exp_af_file = "${tumor_normal_sample_id}_muts_expAF.txt"
 	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
+	mutation_clusters_file = "${tumor_normal_sample_id}.sclust.mutclusters.txt"
+	mutation_clusters_pdf = "${tumor_normal_sample_id}.sclust.mutclusters.pdf"
+	cluster_assignment_file = "${tumor_normal_sample_id}.sclust.clusterassignments.txt"
 	"""
 	gunzip -f "${mutations_vcf}"
 
 	Sclust cn \
+	-ns 1000 \
 	-rc "${read_count_file}" \
 	-snp "${common_snp_count_file}" \
 	-vcf "${tumor_normal_sample_id}.sclust.final.vcf" \
@@ -1875,32 +1882,11 @@ process cnvCalling_sclust {
 	mv "${tumor_normal_sample_id}_cn_summary.txt" "${cnv_profile_file}"
 	mv "${tumor_normal_sample_id}_iCN.seg" "${cnv_segments_file}"
 	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${sclust_subclones_file}"
-	"""
-}
 
-// Sclust cluster ~ perform mutational clustering
-process mutationalClustering_sclust {
-	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(mutations_exp_af_file) from mutations_exp_af_forSclustCluster
-
-	output:
-	path mutation_clusters_file
-	path mutation_clusters_pdf
-	path cluster_assignment_file
-
-	when:
-	params.sclust == "on" && params.mutect == "on"
-
-	script:
-	mutation_clusters_file = "${tumor_normal_sample_id}.sclust.mutclusters.txt"
-	mutation_clusters_pdf = "${tumor_normal_sample_id}.sclust.mutclusters.pdf"
-	cluster_assignment_file = "${tumor_normal_sample_id}.sclust.clusterassignments.txt"
-	"""
 	Sclust cluster \
-	-i "${tumor_normal_sample_id}"
+	-i "${tumor_normal_sample_id}" \
+	-lambda 1e-6 \
+	-indel
 
 	mv "${tumor_normal_sample_id}_mclusters.txt" "${mutation_clusters_file}"
 	mv "${tumor_normal_sample_id}_mcluster.pdf" "${mutation_clusters_pdf}"
@@ -3076,7 +3062,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_snv_noformat_vcf), path(snv_mpileup_info_dp_metrics), path(snv_mpileup_normal_format_metrics), path(snv_mpileup_normal_format_metrics_index), path(snv_mpileup_tumor_format_metrics), path(snv_mpileup_tumor_format_metrics_index) from consensus_snv_vcf_forAddFormat.join(consensus_snv_mpileup_metrics_forAddFormat)
 
 	output:
-	tuple path(hq_snv_consensus_vcf), path(hq_snv_consensus_vcf_index)
+	tuple path(hq_snv_consensus_vcf), path(hq_snv_consensus_vcf_index) into high_quality_consensus_snv_forAnnotation
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.caveman == "on"
@@ -3295,7 +3281,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_indel_noformat_vcf), path(indel_mpileup_info_dp_metrics), path(indel_mpileup_normal_format_metrics), path(indel_mpileup_normal_format_metrics_index), path(indel_mpileup_tumor_format_metrics), path(indel_mpileup_tumor_format_metrics_index) from consensus_indel_vcf_forAddFormat.join(consensus_indel_mpileup_metrics_forAddFormat)
 
 	output:
-	tuple path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index)
+	tuple path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index) into high_quality_consensus_indel_forAnnotation
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
