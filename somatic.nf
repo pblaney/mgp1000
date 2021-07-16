@@ -1504,10 +1504,10 @@ process bamMpileupForControlFreec_samtools {
 // Mpileup Merge ~ Combine all tumor and normal per chromosome mpileup files separately
 process mergeMpileupsForControlFreec_samtools {
 	publishDir "${params.output_dir}/somatic/controlFreec/pileups", mode: 'symlink'
-	tag "T=${tumor_id} N=${normal_id}"
+	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(tumor_pileup_per_chromosome), path(normal_pileup_per_chromosome) from per_chromosome_tumor_normal_pileups_forControlFreecMerge.groupTuple()
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(tumor_pileup_per_chromosome), path(normal_pileup_per_chromosome) from per_chromosome_tumor_normal_pileups_forControlFreecMerge.groupTuple(by: [0,1,2])
 	val chromosome_list from chromosome_list_forControlFreecMerge.collect()
 
 	output:
