@@ -1917,7 +1917,7 @@ process svAndIndelCalling_manta {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
-	tuple path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index)
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index) into manta_sv_vcf_forSurvivorPrep
 	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
 	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) into germline_indel_vcf_forCaveman
 
@@ -2502,7 +2502,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	tuple path(filtered_somatic_sv_vcf), path(filtered_somatic_sv_vcf_index)
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(sample_renaming_file) into svaba_sv_vcf_forSurvivorPrep
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -2522,8 +2522,9 @@ process svAndIndelCalling_svaba {
 	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
 	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
 	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
-	filtered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
-	filtered_somatic_sv_vcf_index = "${filtered_somatic_sv_vcf}.tbi"
+	final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
+	final_svaba_somatic_sv_vcf_index = "${final_svaba_somatic_sv_vcf}.tbi"
+	sample_renaming_file = "sample_renaming_file.txt"
 	"""
 	svaba run \
 	-t "${tumor_bam}" \
@@ -2542,7 +2543,10 @@ process svAndIndelCalling_svaba {
 	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
 
 	tabix "${filtered_somatic_indel_vcf}"
-	tabix "${filtered_somatic_sv_vcf}"
+	tabix "${final_svaba_somatic_sv_vcf}"
+
+	touch "${sample_renaming_file}"
+	echo "${tumor_bam} ${tumor_id}" >> "${sample_renaming_file}"
 	"""
 }
 
