@@ -2641,7 +2641,7 @@ process svAndIndelCalling_delly {
 
 	touch samples.tsv
 	echo "${tumor_id}\ttumor" >> samples.tsv
-	echo "${normal_bam}\tcontrol" >> samples.tsv
+	echo "${normal_id}\tcontrol" >> samples.tsv
 
 	delly filter \
 	--filter somatic \
