@@ -2621,7 +2621,7 @@ process svAndIndelCalling_delly {
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forDelly), path(reference_genome_fasta_index_forDelly), path(reference_genome_fasta_dict_forDelly), path(gatk_bundle_wgs_bed_blacklist_0based_forDelly) from tumor_normal_pair_forDelly.combine(reference_genome_and_blacklist_bundle_forDelly)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index)
+	tuple val(tumor_normal_sample_id), val(tumor_id) path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) into delly_sv_vcf_forSurvivorPrep
 
 	when:
 	params.delly == "on"
@@ -2909,7 +2909,7 @@ process filteringAndPostprocessesing_gridss {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~~~~~ CONSENSUS ~~~~~~~~~~~~~~~~ \\
+// ~~~~~~~~~ CONSENSUS SNV/INDEL ~~~~~~~~~~~ \\
 // START
 
 // MergeVCF ~ merge VCF files by calls, labelling calls by the callers that made them to generate consensus
@@ -3432,6 +3432,89 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+// ~~~~~~~~~~~~~~~ SURVIVOR ~~~~~~~~~~~~~~~~ \\
+// START
+
+// BCFtools reheader / view ~ rename the samples within SvABA VCF and then remove normal sample from both SvABA, Manta, and DELLY VCFs
+process prepSvVcfsForSurvivor_bcftools {
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(sample_renaming_file), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) from manta_sv_vcf_forSurvivorPrep.join(svaba_sv_vcf_forSurvivorPrep, by: [0,1]).join(delly_sv_vcf_forSurvivorPrep, by: [0,1])
+
+	output:
+	tuple val(tumor_normal_sample_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) into sv_vcfs_forSurvivor
+
+	when:
+	params.manta == "on" && params.svaba == "on" && params.delly == "on"
+
+	script:
+	manta_tumor_sample_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.tumorsample.vcf"
+	svaba_tumor_sample_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.tumorsample.vcf"
+	delly_tumor_sample_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.tumorsample.vcf"
+	"""
+	bcftools view \
+	--output-type v \
+	--samples "${tumor_id}" \
+	--output-file "${manta_tumor_sample_sv_vcf}" \
+	"${final_manta_somatic_sv_vcf}"
+
+	bcftools reheader \
+	--samples "${sample_renaming_file}" \
+	"${final_svaba_somatic_sv_vcf}" \
+	| \
+	bcftools view \
+	--output-type v \
+	--samples "${tumor_id}" \
+	--output-file "${svaba_tumor_sample_sv_vcf}"
+
+	bcftools view \
+	--output-type v \
+	--samples "${tumor_id}" \
+	--output-file "${delly_tumor_sample_sv_vcf}" \
+	"${final_delly_somatic_sv_vcf}"
+	"""
+}
+
+// SURVIVOR ~ merge SV VCF files to generate a consensus
+process mergeAndGenerateConsensusSvCalls_survivor {
+	publishDir "${params.output_dir}/somatic/consensus/intermediates", mode: 'copy', pattern: '*.{vcf}'
+	tag	"${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) from sv_vcfs_forSurvivor
+
+	output:
+	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf)
+
+	when:
+	params.manta == "on" && params.svaba == "on" && params.delly == "on"
+
+	script:
+	consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
+	"""
+	ls *.vcf > input_vcf_list.txt
+
+	SURVIVOR merge \
+	input_vcf_list.txt \
+	300 \
+	2 \
+	0 \
+	1 \
+	0 \
+	51 \
+	"${consensus_somatic_sv_vcf}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
 
 
 // ~~~~~~~~~~~~ VEP ANNOTATION ~~~~~~~~~~~~~ \\
