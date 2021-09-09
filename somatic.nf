@@ -88,9 +88,12 @@ def helpMessage() {
 		--svaba                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--gridss                       [str]  Indicates whether or not to use this tool
+		--delly                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--gridss DISABLED              [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: off
 
 	################################################
 
@@ -118,7 +121,8 @@ params.controlfreec = "on"
 params.sclust = "on"
 params.manta = "on"
 params.svaba = "on"
-params.gridss = "on"
+params.delly = "on"
+params.gridss = "off"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
 params.cpus = null
@@ -159,6 +163,7 @@ Channel
 	       reference_genome_fasta_forStrelka;
 	       reference_genome_fasta_forStrelkaBcftools;
 	       reference_genome_fasta_forSvabaBcftools;
+	       reference_genome_fasta_forDelly;
 	       reference_genome_fasta_forGridssSetup;
 	       reference_genome_fasta_forGridssPostprocessing;
 	       reference_genome_fasta_forConsensusSnvMpileup;
@@ -185,6 +190,7 @@ Channel
 	       reference_genome_fasta_index_forStrelka;
 	       reference_genome_fasta_index_forStrelkaBcftools;
 	       reference_genome_fasta_index_forSvabaBcftools;
+	       reference_genome_fasta_index_forDelly;
 	       reference_genome_fasta_index_forGridssSetup;
 	       reference_genome_fasta_index_forGridssPostprocessing;
 	       reference_genome_fasta_index_forConsensusSnvMpileup;
@@ -213,6 +219,7 @@ Channel
 	       reference_genome_fasta_dict_forStrelkaBcftools;
 	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forSvabaBcftools;
+	       reference_genome_fasta_dict_forDelly;
 	       reference_genome_fasta_dict_forGridssPostprocessing;
 	       reference_genome_fasta_dict_forConsensusSnvMpileup;
 	       reference_genome_fasta_dict_forConsensusIndelMpileup;
@@ -227,6 +234,10 @@ Channel
 	       gatk_bundle_wgs_bed_forManta;
 	       gatk_bundle_wgs_bed_forStrelka;
 	       gatk_bundle_wgs_bed_forSvaba }
+
+Channel
+	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.0based.hg38.bed' )
+	.set{ gatk_bundle_wgs_bed_blacklist_0based_forDelly }
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed' )
@@ -431,6 +442,7 @@ Channel
 	       tumor_normal_pair_forSclustBamprocess;
 	       tumor_normal_pair_forManta;
 	       tumor_normal_pair_forSvaba;
+	       tumor_normal_pair_forDelly;
 	       tumor_normal_pair_forGridssPreprocess }
 
 // Combine reference FASTA index and sex identification loci files into one channel for use in alleleCount process
@@ -1917,7 +1929,7 @@ process svAndIndelCalling_manta {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
-	tuple path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index)
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index) into manta_sv_vcf_forSurvivorPrep
 	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
 	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) into germline_indel_vcf_forCaveman
 
@@ -2502,7 +2514,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	tuple path(filtered_somatic_sv_vcf), path(filtered_somatic_sv_vcf_index)
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(sample_renaming_file) into svaba_sv_vcf_forSurvivorPrep
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -2522,8 +2534,9 @@ process svAndIndelCalling_svaba {
 	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
 	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
 	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
-	filtered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
-	filtered_somatic_sv_vcf_index = "${filtered_somatic_sv_vcf}.tbi"
+	final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
+	final_svaba_somatic_sv_vcf_index = "${final_svaba_somatic_sv_vcf}.tbi"
+	sample_renaming_file = "sample_renaming_file.txt"
 	"""
 	svaba run \
 	-t "${tumor_bam}" \
@@ -2542,7 +2555,10 @@ process svAndIndelCalling_svaba {
 	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
 
 	tabix "${filtered_somatic_indel_vcf}"
-	tabix "${filtered_somatic_sv_vcf}"
+	tabix "${final_svaba_somatic_sv_vcf}"
+
+	touch "${sample_renaming_file}"
+	echo "${tumor_bam} ${tumor_id}" >> "${sample_renaming_file}"
 	"""
 }
 
@@ -2580,6 +2596,65 @@ process leftNormalizeSvabaVcf_bcftools {
 	"${filtered_somatic_indel_vcf}" 2>"${svaba_realign_normalize_stats}"
 
 	tabix "${final_svaba_indel_vcf}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~ DELLY2 ~~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference FASTA files and calling blacklist into one channel for use in DELLY2 process
+reference_genome_fasta_forDelly.combine( reference_genome_fasta_index_forDelly )
+	.combine( reference_genome_fasta_dict_forDelly )
+	.combine( gatk_bundle_wgs_bed_blacklist_0based_forDelly )
+	.set{ reference_genome_and_blacklist_bundle_forDelly }
+
+// DELLY2 ~ discover structural variants using paired-ends, split-reads and read-depth
+process svAndIndelCalling_delly {
+	publishDir "${params.output_dir}/somatic/delly", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forDelly), path(reference_genome_fasta_index_forDelly), path(reference_genome_fasta_dict_forDelly), path(gatk_bundle_wgs_bed_blacklist_0based_forDelly) from tumor_normal_pair_forDelly.combine(reference_genome_and_blacklist_bundle_forDelly)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index)
+
+	when:
+	params.delly == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf.gz"
+	final_delly_somatic_sv_vcf_index = "${final_delly_somatic_sv_vcf}.tbi"
+	"""
+	delly call \
+	--genome "${reference_genome_fasta_forDelly}" \
+	--exclude "${gatk_bundle_wgs_bed_blacklist_0based_forDelly}" \
+	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.unfiltered.bcf" \
+	"${tumor_bam}" "${normal_bam}"
+
+	touch samples.tsv
+	echo "${tumor_id}\ttumor" >> samples.tsv
+	echo "${normal_id}\tcontrol" >> samples.tsv
+
+	delly filter \
+	--filter somatic \
+	--pass \
+	--samples samples.tsv \
+	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.bcf" \
+	"${tumor_normal_sample_id}.delly.somatic.sv.unfiltered.bcf"
+
+	bcftools view \
+	--output-type z \
+	"${tumor_normal_sample_id}.delly.somatic.sv.bcf" > "${final_delly_somatic_sv_vcf}"
+
+	tabix "${final_delly_somatic_sv_vcf}"
 	"""
 }
 
