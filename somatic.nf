@@ -91,9 +91,9 @@ def helpMessage() {
 		--delly                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--gridss                       [str]  Indicates whether or not to use this tool
+		--gridss DISABLED              [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
-		                                      Default: on
+		                                      Default: off
 
 	################################################
 
@@ -122,7 +122,7 @@ params.sclust = "on"
 params.manta = "on"
 params.svaba = "on"
 params.delly = "on"
-params.gridss = "on"
+params.gridss = "off"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
 params.cpus = null
