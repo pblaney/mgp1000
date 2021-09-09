@@ -153,9 +153,7 @@ Channel
 	       reference_genome_fasta_forMutectCalling;
 	       reference_genome_fasta_forMutectFilter;
 	       reference_genome_fasta_forMutectBcftools;
-	       reference_genome_fasta_forCavemanSetupSplit;
-	       reference_genome_fasta_forCavemanEstep;
-	       reference_genome_fasta_forCavemanPostprocessing;
+	       reference_genome_fasta_forCaveman;
 	       reference_genome_fasta_forAscatNgs;
 	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_forControlFreecCalling;
@@ -180,9 +178,7 @@ Channel
 	       reference_genome_fasta_index_forMutectCalling;
 	       reference_genome_fasta_index_forMutectFilter;
 	       reference_genome_fasta_index_forMutectBcftools;
-	       reference_genome_fasta_index_forCavemanSetupSplit;
-	       reference_genome_fasta_index_forCavemanEstep;
-	       reference_genome_fasta_index_forCavemanPostprocessing;
+	       reference_genome_fasta_index_forCaveman;
 	       reference_genome_fasta_index_forAscatNgs;
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
@@ -208,9 +204,7 @@ Channel
 	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
 	       reference_genome_fasta_dict_forMutectFilter;
 	       reference_genome_fasta_dict_forMutectBcftools;
-	       reference_genome_fasta_dict_forCavemanSetupSplit;
-	       reference_genome_fasta_dict_forCavemanEstep;
-	       reference_genome_fasta_dict_forCavemanPostprocessing;
+	       reference_genome_fasta_dict_forCaveman;
 	       reference_genome_fasta_dict_forAscatNgs;
 	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_dict_forControlFreecCalling;
@@ -241,7 +235,7 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed' )
-	.into{ gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit;
+	.into{ gatk_bundle_wgs_bed_blacklist_1based_forCaveman;
 	       gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup }
 
 Channel
@@ -392,6 +386,14 @@ Channel
 Channel
 	.fromPath( 'references/hg38/dbsnp138.hg38.bed.gz.tbi' )
 	.set{ dbsnp_bed_index }
+
+Channel
+	.fromPath( 'references/hg38/unmatched_normal.cpbi.hg38.bed.gz' )
+	.set{ unmatched_normal_bed }
+
+Channel
+	.fromPath( 'references/hg38/unmatched_normal.cpbi.hg38.bed.gz.tbi' )
+	.set{ unmatched_normal_bed_index }
 
 if( params.vep_ref_cached == "yes" ) {
 	Channel
@@ -1398,8 +1400,7 @@ process cnvCalling_ascatngs {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(reference_genome_fasta_forAscatNgs), path(reference_genome_fasta_index_forAscatNgs), path(reference_genome_fasta_dict_forAscatNgs), path(snp_gc_corrections) from bams_and_sex_of_sample_forAscatNgs.combine(reference_genome_and_snpgc_forAscatNgs)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cnv_profile_final) into bams_cnv_profile_forCaveman
-	tuple val(tumor_normal_sample_id), path(run_statistics) into normal_contamination_forCavemanEstep
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cnv_profile_final), path(run_statistics) into bams_cnv_profile_and_statistics_forCaveman
 	tuple path(cnv_profile_vcf), path(cnv_profile_vcf_index)
 	path ascat_profile_png
 	path ascat_raw_profile_png
@@ -2112,226 +2113,8 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 // ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all needed reference FASTA files and WGS blacklist BED into one channel for CaVEMan setup and split process
-reference_genome_fasta_forCavemanSetupSplit.combine( reference_genome_fasta_index_forCavemanSetupSplit )
-	.combine( reference_genome_fasta_dict_forCavemanSetupSplit )
-	.combine( gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit )
-	.set{ reference_genome_bundle_and_bed_forCavemanSetupSplit }
-
-// CaVEMan setup / split ~ generate a config file for downstream processes and create a list of segments to be analysed
-process setupAndSplit_caveman {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{bed,config.ini,splitfile}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cnv_profile_final), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit) from bams_cnv_profile_forCaveman.combine(reference_genome_bundle_and_bed_forCavemanSetupSplit)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path("readpos.chr*") into setup_and_split_output_forCavemanMstep, setup_and_split_output_forCavemanMerge
-	tuple val(tumor_normal_sample_id), path("readpos.chr*") into setup_and_split_readpos_forCavemanEstep
-
-	when:
-	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
-
-	script:
-	tumor_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.tumor.cvn.bed"
-	config_file = "${tumor_normal_sample_id}.caveman.config.ini"
-	results_directory = "results"
-	split_file = "${tumor_normal_sample_id}.caveman.splitfile"
-	alg_bean_file = "alg_bean"
-	"""
-	grep -v 'segment_number' "${cnv_profile_final}" \
-	| \
-	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${tumor_cnv_profile_bed}"
-
-	caveman setup \
-	--tumour-bam "${tumor_bam}" \
-	--normal-bam "${normal_bam}" \
-	--reference-index "${reference_genome_fasta_index_forCavemanSetupSplit}" \
-	--ignore-regions-file "${gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit}" \
-	--config-file "${config_file}" \
-	--results-folder "${results_directory}" \
-	--split-file "${split_file}" \
-	--alg-bean-file "${alg_bean_file}" \
-	--tumour-copy-no-file "${tumor_cnv_profile_bed}"
-
-	for i in `seq 24`;
-		do
-			caveman split \
-			--config-file "${config_file}" \
-			--index \${i}
-		done
-
-	for i in `ls -1v "${split_file}.chr"*`;
-		do
-			cat \${i} >> "${split_file}"
-		done
-	"""
-}
-
-// CaVEMan mstep ~ tune the size of section downloaded from bam at a time
-process mstepPerChromosome_caveman {
-	tag "C=${chromosome} ${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path("readpos.chr*") from setup_and_split_output_forCavemanMstep
-	each chromosome from chromosome_list_forCavemanMstep
-
-	output:
-	tuple val(tumor_normal_sample_id), val("${chromosome}") into mstep_per_chromosome_output_forCavemanMerge
-
-	when:
-	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
-
-	script:
-	"""
-	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
-	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
-	mv readpos.chr23 readpos.chrX
-	mv readpos.chr24 readpos.chrY
-
-	indexes=\$(cat "${split_file}" | wc -l)
-	seq \${indexes} > indexes.txt
-	paste indexes.txt "${split_file}" > split_step_indexes.txt
-
-	start=\$(grep -w "${chromosome}" split_step_indexes.txt | cut -f 1 | head -n 1)
-	end=\$(grep -w "${chromosome}" split_step_indexes.txt | cut -f 1 | tail -n 1)
-
-	for i in `seq \${start} \${end}`;
-		do
-			caveman mstep \
-			--config-file "${config_file}" \
-			--index \${i}
-		done
-	"""
-}
-
-// CaVEMan merge ~ create covariate and probabilities files
-process merge_caveman {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{covariates,probabilities}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(reference_genome_fasta_forCavemanSetupSplit), path(reference_genome_fasta_index_forCavemanSetupSplit), path(reference_genome_fasta_dict_forCavemanSetupSplit), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path("readpos.chr*"), val(chromosome) from setup_and_split_output_forCavemanMerge.join(mstep_per_chromosome_output_forCavemanMerge.groupTuple())
-
-	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path(covariate_file), path(probabilities_file) into merge_output_forCavemanEstep
-
-	when:
-	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
-
-	script:
-	covariate_file = "${tumor_normal_sample_id}.caveman.covariates"
-	probabilities_file = "${tumor_normal_sample_id}.caveman.probabilities"
-	"""
-	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
-	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
-	mv readpos.chr23 readpos.chrX
-	mv readpos.chr24 readpos.chrY
-
-	caveman merge \
-	--config-file "${config_file}" \
-	--covariate-file "${covariate_file}" \
-	--probabilities-file "${probabilities_file}"
-	"""
-}
-
-// Combine all needed reference FASTA files into one channel for CaVEMan estep process
-reference_genome_fasta_forCavemanEstep.combine( reference_genome_fasta_index_forCavemanEstep )
-	.combine( reference_genome_fasta_dict_forCavemanEstep )
-	.into{ reference_genome_bundle_forCavemanEstep;
-		   reference_genome_bundle_forCavemanMergeResults }
-
-// Combine all sample specific input across CaVEMan steup/split/mstep processes and ascatNGS process
-merge_output_forCavemanEstep.join( setup_and_split_readpos_forCavemanEstep )
-	.join( normal_contamination_forCavemanEstep )
-	.into{ collected_output_forCavemanEstep;
-	       collected_output_forCavemanMergeResults }
-
-// CaVEMan estep ~ call single base substitutions using an expectation maximisation approach
-process snvCallingPerChromosome_caveman {
-	tag "C=${chromosome} ${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path(covariate_file), path(probabilities_file), path("readpos.chr*"), path(run_statistics), path(reference_genome_fasta_forCavemanEstep), path(reference_genome_fasta_index_forCavemanEstep), path(reference_genome_fasta_dict_forCavemanEstep) from collected_output_forCavemanEstep.combine(reference_genome_bundle_forCavemanEstep)
-	each chromosome from chromosome_list_forCavemanEstep
-
-	output:
-	tuple val(tumor_normal_sample_id), val("${chromosome}") into estep_per_chromosome_output_forCavemanMergeResults
-
-	when:
-	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
-
-	script:
-	"""
-	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
-	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
-	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
-	mv readpos.chr23 readpos.chrX
-	mv readpos.chr24 readpos.chrY
-
-	indexes=\$(cat "${split_file}" | wc -l)
-	seq \${indexes} > indexes.txt
-	paste indexes.txt "${split_file}" > split_step_indexes.txt
-
-	start=\$(grep -w "${chromosome}" split_step_indexes.txt | cut -f 1 | head -n 1)
-	end=\$(grep -w "${chromosome}" split_step_indexes.txt | cut -f 1 | tail -n 1)
-
-	for i in `seq \${start} \${end}`;
-	do
-		caveman estep \
-		--index \${i} \
-		--config-file "${config_file}" \
-		--cov-file "${covariate_file}" \
-		--prob-file "${probabilities_file}" \
-		--normal-contamination \${normal_contamination} \
-		--species-assembly GRCh38 \
-		--species Homo_sapiens
-	done
-	"""
-}
-
-// CaVEMan mergeCavemanResults ~ combine all per chunk calling results
-process mergeCavemanResults_caveman {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit), path(config_file), path(results_directory), path(split_file), path(alg_bean_file), path(covariate_file), path(probabilities_file), path("readpos.chr*"), path(run_statistics), path(reference_genome_fasta_forCavemanEstep), path(reference_genome_fasta_index_forCavemanEstep), path(reference_genome_fasta_dict_forCavemanEstep), val(chromosome) from collected_output_forCavemanMergeResults.combine(reference_genome_bundle_forCavemanMergeResults).join(estep_per_chromosome_output_forCavemanMergeResults.groupTuple())
-
-	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(raw_caveman_somatic_vcf), path(raw_caveman_somatic_vcf_index) into raw_caveman_snv_vcf_and_bams_forCavemanPostprocessing
-	tuple path(final_caveman_germline_vcf), path(final_caveman_germline_vcf_index)
-
-	when:
-	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
-
-	script:
-	raw_caveman_somatic_vcf = "${tumor_normal_sample_id}.caveman.somatic.raw.snv.vcf.gz"
-	raw_caveman_somatic_vcf_index = "${raw_caveman_somatic_vcf}.tbi"
-	final_caveman_germline_vcf = "${tumor_normal_sample_id}.caveman.germline.vcf.gz"
-	final_caveman_germline_vcf_index = "${final_caveman_germline_vcf}.tbi"
-	"""
-	mergeCavemanResults \
-	--output "${tumor_normal_sample_id}.caveman.somatic.raw.vcf" \
-	--splitlist "${split_file}" \
-	-f results/%/%.muts.vcf.gz
-
-	bgzip < "${tumor_normal_sample_id}.caveman.somatic.raw.vcf" > "${raw_caveman_somatic_vcf}"
-	tabix "${raw_caveman_somatic_vcf}"
-
-	mergeCavemanResults \
-	--output "${tumor_normal_sample_id}.caveman.germline.vcf" \
-	--splitlist "${split_file}" \
-	-f results/%/%.snps.vcf.gz
-
-	bgzip < "${tumor_normal_sample_id}.caveman.germline.vcf" > "${final_caveman_germline_vcf}"
-	tabix "${final_caveman_germline_vcf}"
-	"""
-}
-
 // BEDOPS vcf2bed / sort-bed ~ convert germline indel VCF to sorted BED file
-process prepGermlineBedForCavemanPostprocessing_bedops {
+process prepGermlineBedForCaveman_bedops {
 	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{bed,tbi}'
 	tag "${tumor_normal_sample_id}"
 
@@ -2339,7 +2122,7 @@ process prepGermlineBedForCavemanPostprocessing_bedops {
 	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) from germline_indel_vcf_forCaveman
 
 	output:
-	tuple val(tumor_normal_sample_id), path(germline_indel_bed), path(germline_indel_bed_index) into germline_indel_bed_forCavemanPostprocessing
+	tuple val(tumor_normal_sample_id), path(germline_indel_bed), path(germline_indel_bed_index) into germline_indel_bed_forCaveman
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
@@ -2370,29 +2153,30 @@ process prepGermlineBedForCavemanPostprocessing_bedops {
 	"""
 }
 
-// Combine all needed reference FASTA and BED files into one channel for CaVEMan Postprocessing process
-reference_genome_fasta_forCavemanPostprocessing.combine( reference_genome_fasta_index_forCavemanPostprocessing )
-	.combine( reference_genome_fasta_dict_forCavemanPostprocessing )
-	.set{ reference_genome_bundle_forCavemanPostprocessing }
-
-reference_genome_bundle_forCavemanPostprocessing.combine( centromeric_repeats_bed )
+// Combine all needed reference FASTA files, blacklist BED, and flagging resource BEDs into one channel for CaVEMan processes
+reference_genome_fasta_forCaveman.combine( reference_genome_fasta_index_forCaveman )
+	.combine( reference_genome_fasta_dict_forCaveman )
+	.combine( gatk_bundle_wgs_bed_blacklist_1based_forCaveman )
+	.combine( centromeric_repeats_bed )
 	.combine( centromeric_repeats_bed_index )
 	.combine( simple_repeats_bed )
 	.combine( simple_repeats_bed_index )
 	.combine( dbsnp_bed )
 	.combine( dbsnp_bed_index )
-	.set{ reference_genome_and_beds_forCavemanPostprocessing }
+	.combine( unmatched_normal_bed )
+	.combine( unmatched_normal_bed_index )
+	.set{ resource_bundle_forCaveman }
 
-// cgpCaVEManPostProcessing cgpFlagCaVEMan ~ apply filtering on raw VCF calls generated using CaVEMan
-process vcfFlagging_cgpcavemanpostprocessing {
-	publishDir "${params.output_dir}/somatic/caveman", mode: 'symlink', pattern: '*.{vcf.gz,tbi,config.ini}'
+// CaVEMan setup ~ generate configuration files for all execution steps
+process setup_caveman {
+	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(raw_caveman_somatic_vcf), path(raw_caveman_somatic_vcf_index), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCavemanPostprocessing), path(reference_genome_fasta_index_forCavemanPostprocessing), path(reference_genome_fasta_dict_forCavemanPostprocessing), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index) from raw_caveman_snv_vcf_and_bams_forCavemanPostprocessing.join(germline_indel_bed_forCavemanPostprocessing).combine(reference_genome_and_beds_forCavemanPostprocessing)
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cnv_profile_final), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index) from bams_cnv_profile_and_statistics_forCaveman.join(germline_indel_bed_forCaveman).combine(resource_bundle_forCaveman)
 
-	output:
-	tuple val(tumor_normal_sample_id), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) into final_caveman_snv_vcf_forConsensus
+	//output:
+
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
@@ -2401,8 +2185,6 @@ process vcfFlagging_cgpcavemanpostprocessing {
 	postprocessing_config_file = "${tumor_normal_sample_id}.cavemanpostprocessing.config.ini"
 	config_species = "HOMO_SAPIENS"
 	config_study_type = "WGS"
-	final_caveman_snv_vcf = "${tumor_normal_sample_id}.caveman.somatic.snv.vcf.gz"
-	final_caveman_snv_vcf_index = "${final_caveman_snv_vcf}.tbi"
 	"""
 	touch "${postprocessing_config_file}"
 	echo "[${config_species}_${config_study_type} PARAMS]" >> "${postprocessing_config_file}"
@@ -2441,6 +2223,7 @@ process vcfFlagging_cgpcavemanpostprocessing {
 	echo "snpFlag" >> "${postprocessing_config_file}"
 	echo "phasingFlag" >> "${postprocessing_config_file}"
 	echo "germlineIndelFlag" >> "${postprocessing_config_file}"
+	echo "unmatchedNormalVcfFlag" >> "${postprocessing_config_file}"
 	echo "singleEndFlag" >> "${postprocessing_config_file}"
 	echo "matchedNormalProportion" >> "${postprocessing_config_file}"
 	echo "alignmentScoreReadLengthAdjustedFlag" >> "${postprocessing_config_file}"
@@ -2455,34 +2238,35 @@ process vcfFlagging_cgpcavemanpostprocessing {
 	echo "snpBed=${dbsnp_bed}" >> "${postprocessing_config_file}"
 	echo "" >> "${postprocessing_config_file}"
 
-	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
-		cp "${tumor_bam_index}" "${tumor_bam}.bai"
-	fi
-
-	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
-		cp "${normal_bam_index}" "${normal_bam}.bai"
-	fi
-
-	cgpFlagCaVEMan.pl \
-	--input "${raw_caveman_somatic_vcf}" \
-	--outFile "${tumor_normal_sample_id}.caveman.somatic.flagged.snv.vcf" \
-	--species "${config_species}" \
-	--species-assembly GRCh38 \
-	--tumBam "${tumor_bam}" \
-	--normBam "${normal_bam}" \
-	--bedFileLoc . \
-	--indelBed "${germline_indel_bed}" \
-	--reference "${reference_genome_fasta_index_forCavemanPostprocessing}" \
-	--flagConfig "${postprocessing_config_file}" \
-	--studyType "${config_study_type}"
-
-	cat "${tumor_normal_sample_id}.caveman.somatic.flagged.snv.vcf" \
+	grep -v 'segment_number' "${cnv_profile_final}" \
 	| \
-	grep -E '^#|PASS' \
-	| \
-	bgzip > "${final_caveman_snv_vcf}"
+	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${tumor_cnv_profile_bed}"
 
-	tabix "${final_caveman_snv_vcf}"
+	grep -v 'segment_number' "${cnv_profile_final}" \
+	| \
+	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$5}' > "${normal_cnv_profile_bed}"
+
+	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
+
+	caveman.pl \
+	-outdir . \
+	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-tumour-bam "${tumor_bam}" \
+	-normal-bam "${normal_bam}" \
+	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
+	-tumour-cn "${tumor_cnv_profile_bed}" \
+	-normal-cn "${normal_cnv_profile_bed}" \
+	-species Homo_sapiens \
+	-species-assembly GRCh38 \
+	-flag-bed-files . \
+	-germline-indel "${germline_indel_bed}" \
+	-unmatched-vcf "${unmatched_normal_bed}" \
+	-seqType genome \
+	-threads "${task.cpus}" \
+	-normal-contamination \${normal_contamination} \
+	-flagConfig "${postprocessing_config_file}" \
+	-process setup \
+	-index 1
 	"""
 }
 
