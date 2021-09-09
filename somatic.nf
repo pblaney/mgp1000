@@ -2693,6 +2693,11 @@ process filteringAndPostprocessesing_gridss {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+
+
+/*
+
+
 // ~~~~~~~~~ CONSENSUS SNV/INDEL ~~~~~~~~~~~ \\
 // START
 
@@ -3299,6 +3304,8 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 
 
 
+
+*/
 
 
 // ~~~~~~~~~~~~ VEP ANNOTATION ~~~~~~~~~~~~~ \\
