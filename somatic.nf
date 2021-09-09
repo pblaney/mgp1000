@@ -91,9 +91,6 @@ def helpMessage() {
 		--delly                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--gridss DISABLED              [str]  Indicates whether or not to use this tool
-		                                      Available: off, on
-		                                      Default: off
 
 	################################################
 
@@ -122,7 +119,6 @@ params.sclust = "on"
 params.manta = "on"
 params.svaba = "on"
 params.delly = "on"
-params.gridss = "off"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
 params.cpus = null
@@ -164,8 +160,6 @@ Channel
 	       reference_genome_fasta_forStrelkaBcftools;
 	       reference_genome_fasta_forSvabaBcftools;
 	       reference_genome_fasta_forDelly;
-	       reference_genome_fasta_forGridssSetup;
-	       reference_genome_fasta_forGridssPostprocessing;
 	       reference_genome_fasta_forConsensusSnvMpileup;
 	       reference_genome_fasta_forConsensusIndelMpileup;
 	       reference_genome_fasta_forAnnotation }
@@ -191,8 +185,6 @@ Channel
 	       reference_genome_fasta_index_forStrelkaBcftools;
 	       reference_genome_fasta_index_forSvabaBcftools;
 	       reference_genome_fasta_index_forDelly;
-	       reference_genome_fasta_index_forGridssSetup;
-	       reference_genome_fasta_index_forGridssPostprocessing;
 	       reference_genome_fasta_index_forConsensusSnvMpileup;
 	       reference_genome_fasta_index_forConsensusIndelMpileup;
 	       reference_genome_fasta_index_forAnnotation }
@@ -220,7 +212,6 @@ Channel
 	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forSvabaBcftools;
 	       reference_genome_fasta_dict_forDelly;
-	       reference_genome_fasta_dict_forGridssPostprocessing;
 	       reference_genome_fasta_dict_forConsensusSnvMpileup;
 	       reference_genome_fasta_dict_forConsensusIndelMpileup;
 	       reference_genome_fasta_dict_forAnnotation }
@@ -241,8 +232,7 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed' )
-	.into{ gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit;
-	       gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup }
+	.set{ gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit }
 
 Channel
 	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
@@ -358,18 +348,6 @@ Channel
 	.set{ dbsnp_known_indel_ref_vcf_index }
 
 Channel
-	.fromPath( 'references/hg38/pon_single_breakend.hg38.bed' )
-	.set{ pon_single_breakend_bed }
-
-Channel
-	.fromPath( 'references/hg38/pon_breakpoint.hg38.bedpe' )
-	.set{ pon_breakpoint_bedpe }
-
-Channel
-	.fromPath( 'references/hg38/known_fusion_pairs_v3.hg38.bedpe' )
-	.set{ known_fusion_pairs_bedpe }
-
-Channel
 	.fromPath( 'references/hg38/centromeric_repeats.hg38.bed.gz' )
 	.set{ centromeric_repeats_bed }
 
@@ -442,8 +420,7 @@ Channel
 	       tumor_normal_pair_forSclustBamprocess;
 	       tumor_normal_pair_forManta;
 	       tumor_normal_pair_forSvaba;
-	       tumor_normal_pair_forDelly;
-	       tumor_normal_pair_forGridssPreprocess }
+	       tumor_normal_pair_forDelly }
 
 // Combine reference FASTA index and sex identification loci files into one channel for use in alleleCount process
 reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
@@ -2661,252 +2638,6 @@ process svAndIndelCalling_delly {
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
-
-// ~~~~~~~~~~~~~~~~ GRIDSS ~~~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all needed reference FASTA files and WGS blacklist BED into one channel for GRIDSS setupreference process
-reference_genome_fasta_forGridssSetup.combine( reference_genome_fasta_index_forGridssSetup )
-	.combine( gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup )
-	.set{ reference_genome_bundle_and_bed_forGridssSetup }
-
-// GRIDSS setupreference ~ generate additional needed files in the same directory as the reference genome
-process setupreference_gridss {
-
-	input:
-	tuple path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup) from reference_genome_bundle_and_bed_forGridssSetup
-
-	output:
-	tuple path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa") into setup_reference_output_forGridssPreprocess
-
-	when:
-	params.gridss == "on"
-
-	script:
-	"""
-	gridss.sh --steps setupreference \
-	--jvmheap "${task.memory.toGiga()}"g \
-	--otherjvmheap "${task.memory.toGiga()}"g \
-	--threads "${task.cpus}" \
-	--reference "${reference_genome_fasta_forGridssSetup}" \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}"
-	"""
-}
-
-// GRIDSS preprocess ~ preprocess input tumor and normal BAMs separately
-process preprocess_gridss {
-	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${tumor_bam_working_dir}'
-	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${normal_bam_working_dir}'
-	tag "T=${tumor_id} N=${normal_id}"
-
-	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa") from tumor_normal_pair_forGridssPreprocess.combine(setup_reference_output_forGridssPreprocess)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa"), path(tumor_bam_working_dir), path(normal_bam_working_dir) into preprocess_output_forGridssAssemble, preprocess_output_forGridssMergeAssembly
-
-	when:
-	params.gridss == "on"
-
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	tumor_bam_working_dir = "${tumor_bam}.gridss.working"
-	normal_bam_working_dir = "${normal_bam}.gridss.working"
-	"""
-	gridss.sh --steps preprocess \
-	--jvmheap "${task.memory.toGiga()}"g \
-	--otherjvmheap "${task.memory.toGiga()}"g \
-	--threads "${task.cpus}" \
-	--reference "${reference_genome_fasta_forGridssSetup}" \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
-	"${tumor_bam}"
-
-	gridss.sh --steps preprocess \
-	--jvmheap "${task.memory.toGiga()}"g \
-	--otherjvmheap "${task.memory.toGiga()}"g \
-	--threads "${task.cpus}" \
-	--reference "${reference_genome_fasta_forGridssSetup}" \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
-	"${normal_bam}"
-	"""
-}
-
-// Create channel for job index of each GRIDSS assemble processs
-Channel
-	.from( 0,1 )
-	.set{ job_index_list_forGridssAssemble }
-
-// GRIDSS assemble ~ perform breakend assembly split up across multiple jobs
-process assemble_gridss {
-	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${assembly_bam_per_index_working_dir}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa"), path(tumor_bam_working_dir), path(normal_bam_working_dir) from preprocess_output_forGridssAssemble
-	each index from job_index_list_forGridssAssemble
-
-	output:
-	tuple val(tumor_normal_sample_id), path(assembly_bam_per_index_working_dir) into split_assemble_output_forGridssMergeAssembly
-
-	when:
-	params.gridss == "on"
-
-	script:
-	assembly_bam = "${tumor_normal_sample_id}.assembly.bam"
-	assembly_bam_per_index_working_dir = "${assembly_bam}.gridss.working_${index}"
-	"""
-	touch gridss.properties
-	echo "chunkSize=5000000" >> gridss.properties
-
-	gridss.sh --steps assemble \
-	--jvmheap "${task.memory.toGiga()}"g \
-	--otherjvmheap "${task.memory.toGiga()}"g \
-	--threads "${task.cpus}" \
-	--configuration gridss.properties \
-	--picardoptions TMP_DIR=. \
-	--picardoptions MAX_RECORDS_IN_RAM=4000000 \
-	--jobindex "${index}" \
-	--jobnodes 2 \
-	--assembly "${assembly_bam}" \
-	--reference "${reference_genome_fasta_forGridssSetup}" \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
-	"${normal_bam}" "${tumor_bam}"
-
-	mv "${assembly_bam}.gridss.working" "${assembly_bam_per_index_working_dir}"
-	"""
-}
-
-// GRIDSS assemble ~ merge all assembly results together
-process mergeAssembly_gridss {
-	publishDir "${params.output_dir}/somatic/gridss/intermediates", mode: 'symlink', pattern: '*${assembly_bam}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(assembly_bam_per_index_working_dir), val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa"), path(tumor_bam_working_dir), path(normal_bam_working_dir) from split_assemble_output_forGridssMergeAssembly.groupTuple().combine(preprocess_output_forGridssMergeAssembly)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa"), path(tumor_bam_working_dir), path(normal_bam_working_dir), path(assembly_bam), path(assembly_bam_working_dir) into merge_assembly_output_forGridssCalling
-
-	when:
-	params.gridss == "on"
-
-	script:
-	assembly_bam = "${tumor_normal_sample_id}.assembly.bam"
-	assembly_bam_working_dir = "${assembly_bam}.gridss.working"
-	"""
-	touch gridss.properties
-	echo "chunkSize=5000000" >> gridss.properties
-
-	gridss.sh --steps assemble \
-	--jvmheap "${task.memory.toGiga() - 4}"g \
-	--otherjvmheap "${task.memory.toGiga() - 4}"g \
-	--threads "${task.cpus}" \
-	--configuration gridss.properties \
-	--picardoptions TMP_DIR=. \
-	--picardoptions MAX_RECORDS_IN_RAM=4000000 \
-	--assembly "${assembly_bam}" \
-	--reference "${reference_genome_fasta_forGridssSetup}" \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
-	"${normal_bam}" "${tumor_bam}"
-	"""
-}
-
-// GRIDSS call ~ calls structural variants based on alignment-guided positional de Bruijn graph genome
-process svAndIndelCalling_gridss {
-	publishDir "${params.output_dir}/somatic/gridss/rawVcfs", mode: 'symlink', pattern: '*.{vcf.gz,tbi}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forGridssSetup), path(reference_genome_fasta_index_forGridssSetup), path(gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup), path("Homo_sapiens_assembly38.fasta.amb"), path("Homo_sapiens_assembly38.fasta.ann"), path("Homo_sapiens_assembly38.fasta.bwt"), path("Homo_sapiens_assembly38.fasta.dict"), path("Homo_sapiens_assembly38.fasta.gridsscache"), path("Homo_sapiens_assembly38.fasta.img"), path("Homo_sapiens_assembly38.fasta.pac"), path("Homo_sapiens_assembly38.fasta.sa"), path(tumor_bam_working_dir), path(normal_bam_working_dir), path(assembly_bam), path(assembly_bam_working_dir) from merge_assembly_output_forGridssCalling
-
-	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(raw_gridss_vcf), path(raw_gridss_vcf_index) into raw_vcf_forGridssPostprocessing
-
-	when:
-	params.gridss == "on"
-
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	raw_gridss_vcf = "${tumor_normal_sample_id}.gridss.raw.vcf.gz"
-	raw_gridss_vcf_index = "${raw_gridss_vcf}.tbi"
-	"""
-	touch gridss.properties
-	echo "chunkSize=5000000" >> gridss.properties
-
-	gridss.sh --steps call \
-	--jvmheap "${task.memory.toGiga() - 4}"g \
-	--otherjvmheap "${task.memory.toGiga() - 4}"g \
-	--threads "${task.cpus}" \
-	--configuration gridss.properties \
-	--picardoptions TMP_DIR=. \
-	--picardoptions MAX_RECORDS_IN_RAM=4000000 \
-	--assembly "${assembly_bam}" \
-	--reference "${reference_genome_fasta_forGridssSetup}" \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_1based_forGridssSetup}" \
-	--output "${tumor_normal_sample_id}" \
-	"${normal_bam}" "${tumor_bam}"
-
-	bgzip < "${tumor_normal_sample_id}.gridss.working/${tumor_normal_sample_id}.allocated.vcf" > "${raw_gridss_vcf}"
-	tabix "${raw_gridss_vcf}"
-	"""
-}
-
-// Combine Combine all needed reference FASTA and PoN SV BED/BEDPE files into one channel for GRIDSS setupreference process
-reference_genome_fasta_forGridssPostprocessing.combine( reference_genome_fasta_index_forGridssPostprocessing )
-	.combine( reference_genome_fasta_dict_forGridssPostprocessing )
-	.set{ reference_genome_bundle_forGridssPostprocessing }
-
-reference_genome_bundle_forGridssPostprocessing.combine( pon_single_breakend_bed )
-	.combine( pon_breakpoint_bedpe )
-	.combine( known_fusion_pairs_bedpe )
-	.set{ ref_genome_and_pon_beds_forGridssPostprocessing }
-
-// GRIPSS ~ apply a set of filtering and post processing steps to raw GRIDSS calls
-process filteringAndPostprocessesing_gridss {
-	publishDir "${params.output_dir}/somatic/gridss", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(raw_gridss_vcf), path(raw_gridss_vcf_index), path(reference_genome_fasta_forGridssPostprocessing), path(reference_genome_fasta_index_forGridssPostprocessing), path(reference_genome_fasta_dict_forGridssPostprocessing), path(pon_single_breakend_bed), path(pon_breakpoint_bedpe), path(known_fusion_pairs_bedpe) from raw_vcf_forGridssPostprocessing.combine(ref_genome_and_pon_beds_forGridssPostprocessing)
-
-	output:
-	tuple path(final_gridss_vcf), path(final_gridss_vcf_index)
-
-	when:
-	params.gridss == "on"
-
-	script:
-	intermediate_filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".intermediate.vcf.gz")
-	filterted_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, "filtered.vcf.gz")
-	final_gridss_vcf = "${raw_gridss_vcf}".replaceFirst(/\.raw\.vcf\.gz/, ".somatic.sv.vcf.gz")
-	final_gridss_vcf_index = "${final_gridss_vcf}.tbi"
-	"""
-	java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssApplicationKt \
-	-tumor "${tumor_id}" \
-    -reference "${normal_id}" \
-    -ref_genome "${reference_genome_fasta_forGridssPostprocessing}" \
-    -breakend_pon "${pon_single_breakend_bed}" \
-    -breakpoint_pon "${pon_breakpoint_bedpe}" \
-    -breakpoint_hotspot "${known_fusion_pairs_bedpe}" \
-    -input_vcf "${raw_gridss_vcf}" \
-    -output_vcf "${intermediate_filterted_vcf}"
-
-    java -Xmx${task.memory.toGiga()}G -cp /opt/gripss/gripss.jar com.hartwig.hmftools.gripss.GripssHardFilterApplicationKt \
-    -input_vcf  "${intermediate_filterted_vcf}" \
-    -output_vcf "${filterted_vcf}"
-
-    zgrep -E '^#|PASS' "${filterted_vcf}" \
-    | \
-    bgzip > "${final_gridss_vcf}"
-    tabix "${final_gridss_vcf}"
-	"""
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
 // ~~~~~~~~~~~~~~ CONSENSUS ~~~~~~~~~~~~~~~~ \\
