@@ -2621,7 +2621,7 @@ process svAndIndelCalling_delly {
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forDelly), path(reference_genome_fasta_index_forDelly), path(reference_genome_fasta_dict_forDelly), path(gatk_bundle_wgs_bed_blacklist_0based_forDelly) from tumor_normal_pair_forDelly.combine(reference_genome_and_blacklist_bundle_forDelly)
 
 	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id) path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) into delly_sv_vcf_forSurvivorPrep
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) into delly_sv_vcf_forSurvivorPrep
 
 	when:
 	params.delly == "on"
