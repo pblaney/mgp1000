@@ -2192,7 +2192,6 @@ process setup_caveman {
 	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${tumor_bam_index}" "${tumor_bam}.bai"
 	fi
-
 	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${normal_bam_index}" "${normal_bam}.bai"
 	fi
@@ -2303,7 +2302,6 @@ process split_caveman {
 	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${normal_bam_index}" "${normal_bam}.bai"
 	fi
-
 	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}"/caveman.cfg.ini
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}/alg_bean"'|' "${working_directory}"/caveman.cfg.ini
 	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
@@ -2338,16 +2336,6 @@ process splitConcat_caveman {
 	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink'
 	tag "${tumor_normal_sample_id}"
 
-	beforeScript 'if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
-		          	cp "${tumor_bam_index}" "${tumor_bam}.bai"
-	              fi
-	              if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
-		          	cp "${normal_bam_index}" "${normal_bam}.bai"
-	              fi
-	              sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}"/caveman.cfg.ini
-	              sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}/alg_bean"'|' "${working_directory}"/caveman.cfg.ini
-	              normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)'
-
 	input:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(working_directory) into split_forCavemanConcat
 
@@ -2359,6 +2347,16 @@ process splitConcat_caveman {
 
 	script:
 	"""
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${tumor_bam_index}" "${tumor_bam}.bai"
+	fi
+	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${normal_bam_index}" "${normal_bam}.bai"
+	fi
+	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}"/caveman.cfg.ini
+	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}/alg_bean"'|' "${working_directory}"/caveman.cfg.ini
+	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
+
 	caveman.pl \
 	-outdir . \
 	-reference "${reference_genome_fasta_index_forCaveman}" \
