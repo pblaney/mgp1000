@@ -2304,8 +2304,10 @@ process split_caveman {
 	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${normal_bam_index}" "${normal_bam}.bai"
 	fi
-	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}"/caveman.cfg.ini
-	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}/alg_bean"'|' "${working_directory}"/caveman.cfg.ini
+
+	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}/caveman.cfg.ini"
+	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}/alg_bean"'|' "${working_directory}/caveman.cfg.ini"
+
 	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
 
 	i=\$(grep -wn "${chromosome}" "${reference_genome_fasta_index_forCaveman}" | cut -f 1 | cut -d ':' -f 1)
