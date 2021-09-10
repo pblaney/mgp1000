@@ -2188,6 +2188,14 @@ process setup_caveman {
 	config_species = "HOMO_SAPIENS"
 	config_study_type = "WGS"
 	"""
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${tumor_bam_index}" "${tumor_bam}.bai"
+	fi
+
+	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${normal_bam_index}" "${normal_bam}.bai"
+	fi
+	
 	touch "${postprocessing_config_file}"
 	echo "[${config_species}_${config_study_type} PARAMS]" >> "${postprocessing_config_file}"
 	echo "keepSW=1" >> "${postprocessing_config_file}"
