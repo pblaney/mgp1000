@@ -2298,8 +2298,8 @@ process split_caveman {
 	script:
 
 	"""
-	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}"caveman.cfg.ini
-	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}alg_bean"'|' "${working_directory}"caveman.cfg.ini
+	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}"/caveman.cfg.ini
+	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}/alg_bean"'|' "${working_directory}"/caveman.cfg.ini
 	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
 
 	for i in `seq 24`;
