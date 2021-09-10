@@ -2296,8 +2296,15 @@ process split_caveman {
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
 	script:
-
 	"""
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${tumor_bam_index}" "${tumor_bam}.bai"
+	fi
+
+	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${normal_bam_index}" "${normal_bam}.bai"
+	fi
+
 	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${working_directory}"/caveman.cfg.ini
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${working_directory}/alg_bean"'|' "${working_directory}"/caveman.cfg.ini
 	normal_contamination=\$(grep "NormalContamination" "${run_statistics}" | cut -d ' ' -f 2)
