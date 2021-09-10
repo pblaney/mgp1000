@@ -2298,7 +2298,7 @@ process split_caveman {
 	script:
 
 	"""
-	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
+
 
 	for i in `seq 24`;
 		do
