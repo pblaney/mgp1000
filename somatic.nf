@@ -2308,7 +2308,8 @@ process split_caveman {
 	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
 
-	mv -uf "${config_file}" "${working_directory}"
+	rm tmpCaveman/caveman.cfg.ini
+	mv "${config_file}" "${working_directory}"
 
 	i=\$(grep -wn "${chromosome}" "${reference_genome_fasta_index_forCaveman}" | cut -f 1 | cut -d ':' -f 1)
 
