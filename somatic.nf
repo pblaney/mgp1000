@@ -2187,7 +2187,7 @@ process setup_caveman {
 	postprocessing_config_file = "${tumor_normal_sample_id}.cavemanpostprocessing.config.ini"
 	config_species = "HOMO_SAPIENS"
 	config_study_type = "WGS"
-	working_directory = "tmp/Caveman"
+	working_directory = "tmpCaveman/"
 	config_file = "tmpCaveman/caveman.cfg.ini"
 	alg_bean_file = "tmpCaveman/alg_bean"
 	results_directory = "tmpCaveman/results"
