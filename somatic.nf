@@ -2308,6 +2308,10 @@ process split_caveman {
 	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
 
+	mv "${config_file}" tmpCaveman/
+	mv "${alg_bean_file}" tmpCaveman/
+	mv "${results_directory}" tmpCaveman/
+
 	i=\$(grep -wn "${chromosome}" "${reference_genome_fasta_index_forCaveman}" | cut -f 1 | cut -d ':' -f 1)
 
 	caveman.pl \
