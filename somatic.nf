@@ -2311,7 +2311,7 @@ process split_caveman {
 
 	mv "${config_file}" "${working_directory}"
 	mv "${alg_bean_file}" "${working_directory}"
-	mv "${results_directory}" "${working_directory]"
+	mv "${results_directory}" "${working_directory}"
 
 	i=\$(grep -wn "${chromosome}" "${reference_genome_fasta_index_forCaveman}" | cut -f 1 | cut -d ':' -f 1)
 
