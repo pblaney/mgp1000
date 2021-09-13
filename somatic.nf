@@ -2365,6 +2365,8 @@ process splitConcat_caveman {
 
 	mkdir -p tmpCaveman/
 	mv "${config_file}" tmpCaveman/
+	mv splitList.chr* tmpCaveman/
+	mv readpos.chr* tmpCaveman/
 
 	caveman.pl \
 	-outdir . \
