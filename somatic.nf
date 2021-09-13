@@ -2334,10 +2334,6 @@ process split_caveman {
 	"""
 }
 
-
-
-/*
-
 // CaVEMan split_concat ~ concatenate the split file sections into a single split section reference file
 process splitConcat_caveman {
 	tag "${tumor_normal_sample_id}"
@@ -2391,6 +2387,10 @@ process splitConcat_caveman {
 	-index 1
 	"""
 }
+
+
+
+/*
 
 // CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
 process mstep_caveman {
