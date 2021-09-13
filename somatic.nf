@@ -2416,7 +2416,7 @@ process mstep_caveman {
 	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
 
-	indexes=\$(wc -l "${split_list}")
+	indexes=\$(cat "${split_list}" | wc -l)
 	seq \${indexes} > indexes.txt
 	paste indexes.txt "${split_list}" > split_step_indexes.txt
 
