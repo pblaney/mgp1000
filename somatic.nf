@@ -2388,7 +2388,7 @@ process mstep_caveman {
 			-normal-contamination "${run_statistics}" \
 			-flagConfig "${postprocessing_config_file}" \
 			-process mstep \
-			-index \${i} \ 
+			-index \${i} \
 			-limit ${task.cpus}
 		done
 	"""
