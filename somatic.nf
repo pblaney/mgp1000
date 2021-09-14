@@ -2366,7 +2366,6 @@ process mstep_caveman {
 	mv "${config_file}" tmpCaveman/
 	mv "${split_list_per_chromosome}" tmpCaveman/
 	mv "${read_position_per_chromosome}" tmpCaveman/
-	mv "${split_list}" tmpCaveman/
 
 	for i in `seq ${task.cpus}`;
 		do
