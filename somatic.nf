@@ -2360,11 +2360,10 @@ process mstep_caveman {
 
 	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
-	sed -i'' 's|SPLIT_FILE=tmpCaveman/splitList|SPLIT_FILE='"tmpCaveman/${split_list_per_chromosome}"'|' "${config_file}"
 
 	mkdir -p tmpCaveman/
 	mv "${config_file}" tmpCaveman/
-	mv "${split_list_per_chromosome}" tmpCaveman/
+	cp "${split_list_per_chromosome}" tmpCaveman/splitList
 	mv "${read_position_per_chromosome}" tmpCaveman/
 
 	for i in `seq ${task.cpus}`;
