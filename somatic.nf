@@ -2288,7 +2288,7 @@ process split_caveman {
 	each chromosome from chromosome_list_forCavemanSplit
 
 	output:
-	tuple val(tumor_normal_sample_id), val(chromosome), path(split_list_per_chromosome), path(read_position_per_chromosome) into split_per_chromosome_forCavemanMstep
+	tuple val(tumor_normal_sample_id), path(split_list_per_chromosome), path(read_position_per_chromosome) into split_per_chromosome_forCavemanMstep
 
 	//tuple val(tumor_normal_sample_id), path(split_list_per_chromosome), path(read_position_per_chromosome) into split_per_chromosome_forCavemanConcat, split_per_chromosome_forCavemanMstep
 
@@ -2341,7 +2341,8 @@ process mstep_caveman {
 	tag "C=${chromosome} ${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), val(chromosome), path(split_list_per_chromosome), path(read_position_per_chromosome) from setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep)
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome) from setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
+	each chromosome from chromosome_list_forCavemanMstep
 
 	//output:
 
@@ -2363,32 +2364,28 @@ process mstep_caveman {
 
 	mkdir -p tmpCaveman/
 	mv "${config_file}" tmpCaveman/
-	cp "${split_list_per_chromosome}" tmpCaveman/splitList
-	mv "${read_position_per_chromosome}" tmpCaveman/
+	cp "splitList.${chromosome}" tmpCaveman/splitList
+	mv "readpos.${chromosome}" tmpCaveman/
 
-	for i in `seq ${task.cpus}`;
-		do
-			caveman.pl \
-			-outdir . \
-			-reference "${reference_genome_fasta_index_forCaveman}" \
-			-tumour-bam "${tumor_bam}" \
-			-normal-bam "${normal_bam}" \
-			-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
-			-tumour-cn "${tumor_cnv_profile_bed}" \
-			-normal-cn "${normal_cnv_profile_bed}" \
-			-species Homo_sapiens \
-			-species-assembly GRCh38 \
-			-flag-bed-files . \
-			-germline-indel "${germline_indel_bed}" \
-			-unmatched-vcf "${unmatched_normal_bed}" \
-			-seqType genome \
-			-threads ${task.cpus} \
-			-normal-contamination "${run_statistics}" \
-			-flagConfig "${postprocessing_config_file}" \
-			-process mstep \
-			-index \${i} \
-			-limit ${task.cpus}
-		done
+	caveman.pl \
+	-outdir . \
+	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-tumour-bam "${tumor_bam}" \
+	-normal-bam "${normal_bam}" \
+	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
+	-tumour-cn "${tumor_cnv_profile_bed}" \
+	-normal-cn "${normal_cnv_profile_bed}" \
+	-species Homo_sapiens \
+	-species-assembly GRCh38 \
+	-flag-bed-files . \
+	-germline-indel "${germline_indel_bed}" \
+	-unmatched-vcf "${unmatched_normal_bed}" \
+	-seqType genome \
+	-threads ${task.cpus} \
+	-normal-contamination "${run_statistics}" \
+	-flagConfig "${postprocessing_config_file}" \
+	-process mstep
+	done
 	"""
 }
 
