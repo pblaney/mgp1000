@@ -2351,6 +2351,7 @@ process mstep_caveman {
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
 	script:
+
 	"""
 	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${tumor_bam_index}" "${tumor_bam}.bai"
@@ -2384,8 +2385,8 @@ process mstep_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-process mstep
-	done
+	-process mstep \
+	-limit ${task.cpus}
 	"""
 }
 
