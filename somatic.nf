@@ -2387,23 +2387,70 @@ process splitConcat_caveman {
 	"""
 }
 
+// Create channel for section index of each CaVEMan mstep job
+Channel
+	.from( 1..31 )
+	.set{ section_index_forCavemanMstep }
+
+// CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
+process mstep_caveman {
+	tag "IDX=${index} ${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list) from setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple()).join(split_concat_forCavemanMstep)
+	each index from section_index_forCavemanMstep
+
+	//output:
 
 
+	when:
+	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
+	script:
+	"""
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${tumor_bam_index}" "${tumor_bam}.bai"
+	fi
+	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${normal_bam_index}" "${normal_bam}.bai"
+	fi
 
+	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
+	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
 
+	mkdir -p tmpCaveman/
+	mv "${config_file}" tmpCaveman/
+	mv splitList.chr* tmpCaveman/
+	mv readpos.chr* tmpCaveman/
+	mv "${split_list}" tmpCaveman/
 
+	end=\$((${index} * 73))
+	start=\$((\$end - 72))
 
-
-
-
-
-
-
-
-
-
-
+	for i in `seq \${start} \${end}`;
+		do
+			caveman.pl \
+			-outdir . \
+			-reference "${reference_genome_fasta_index_forCaveman}" \
+			-tumour-bam "${tumor_bam}" \
+			-normal-bam "${normal_bam}" \
+			-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
+			-tumour-cn "${tumor_cnv_profile_bed}" \
+			-normal-cn "${normal_cnv_profile_bed}" \
+			-species Homo_sapiens \
+			-species-assembly GRCh38 \
+			-flag-bed-files . \
+			-germline-indel "${germline_indel_bed}" \
+			-unmatched-vcf "${unmatched_normal_bed}" \
+			-seqType genome \
+			-threads ${task.cpus} \
+			-normal-contamination "${run_statistics}" \
+			-flagConfig "${postprocessing_config_file}" \
+			-process mstep \
+			-index \${i}
+		done
+	"""
+}
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
