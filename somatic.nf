@@ -2424,8 +2424,8 @@ process mstep_caveman {
 	mv readpos.chr* tmpCaveman/
 	mv "${split_list}" tmpCaveman/
 
-	end=\$((${index} * 73))
-	start=\$((\$end - 72))
+	end=\$(( ${index} * 73 ))
+	start=\$(( \$end - 72 ))
 
 	for i in `seq \${start} \${end}`;
 		do
