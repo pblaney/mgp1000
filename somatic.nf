@@ -2470,8 +2470,8 @@ process merge_caveman {
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
 	script:
-	covariate_file = "tmpCaveman/covs_arr"
-	probabilities_file = "tmpCaveman/probs_arr"
+	covariate_file = "tmpCaveman/cov_arr"
+	probabilities_file = "tmpCaveman/prob_arr"
 	"""
 	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${tumor_bam_index}" "${tumor_bam}.bai"
