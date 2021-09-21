@@ -2158,14 +2158,14 @@ process prepGermlineBedForCaveman_bedops {
 reference_genome_fasta_forCaveman.combine( reference_genome_fasta_index_forCaveman )
 	.combine( reference_genome_fasta_dict_forCaveman )
 	.combine( gatk_bundle_wgs_bed_blacklist_1based_forCaveman )
+	.combine( unmatched_normal_bed )
+	.combine( unmatched_normal_bed_index )
 	.combine( centromeric_repeats_bed )
 	.combine( centromeric_repeats_bed_index )
 	.combine( simple_repeats_bed )
 	.combine( simple_repeats_bed_index )
 	.combine( dbsnp_bed )
 	.combine( dbsnp_bed_index )
-	.combine( unmatched_normal_bed )
-	.combine( unmatched_normal_bed_index )
 	.set{ resource_bundle_forCaveman }
 
 // CaVEMan setup ~ generate configuration files for all execution steps
