@@ -2185,7 +2185,7 @@ process setup_caveman {
 	tumor_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.tumor.cvn.bed"
 	normal_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.normal.cvn.bed"
 	postprocessing_config_file = "${tumor_normal_sample_id}.cavemanpostprocessing.config.ini"
-	config_species = "HOMO_SAPIENS"
+	config_species = "Homo_sapiens"
 	config_study_type = "WGS"
 	config_file = "tmpCaveman/caveman.cfg.ini"
 	alg_bean_file = "tmpCaveman/alg_bean"
@@ -2217,7 +2217,7 @@ process setup_caveman {
 	echo "minNormMutAllelequal=15" >> "${postprocessing_config_file}"
 	echo "minRdPosDepth=8" >> "${postprocessing_config_file}"
 	echo "vcfUnmatchedMinMutAlleleCvg=3" >> "${postprocessing_config_file}"
-	echo "vcfUnmatchedMinSamplePct=1" >> "${postprocessing_config_file}"
+	echo "vcfUnmatchedMinSamplePct=1.000" >> "${postprocessing_config_file}"
 	echo "matchedNormalMaxMutProportion=0.2" >> "${postprocessing_config_file}"
 	echo "minSingleEndCoverage=10" >> "${postprocessing_config_file}"
 	echo "" >> "${postprocessing_config_file}"
@@ -2600,8 +2600,6 @@ process flag_cgpcavemanpostprocessing {
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
-
-	//////// NEED TO CHANGE SPECIES IN POSTPROCESSING CONFIG IN SETUP PROCESS AND MATCH IT HERE ////////
 	script:
 	"""
 	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
@@ -2620,16 +2618,6 @@ process flag_cgpcavemanpostprocessing {
 	mv readpos.chr* tmpCaveman/
 	mv "${split_list}" tmpCaveman/
 
-
-
-	### REMOVE AFTER TESTING WHICH SOLUTION WORKS ####
-
-	cp "${unmatched_normal_bed}" unmatchedNormal.bed.gz
-	cp "${unmatched_normal_bed_index}" unmatchedNormal.bed.gz.tbi
-
-	sed -i'' 's|vcfUnmatchedMinSamplePct=1|vcfUnmatchedMinSamplePct=1.000|' "${postprocessing_config_file}"
-
-
 	for input_vcf in `ls -1v results.estep.${index}/*/*.muts.vcf.gz`;
 		do
 			flagged_vcf=\$(echo \$input_vcf | sed 's|.muts.vcf.gz|.flagged.muts.vcf|')
@@ -2637,7 +2625,7 @@ process flag_cgpcavemanpostprocessing {
 			cgpFlagCaVEMan.pl \
 			--input \${input_vcf} \
 			--outFile \${flagged_vcf} \
-			--species HOMO_SAPIENS \
+			--species Homo_sapiens \
 			--species-assembly GRCh38 \
 			--tumBam "${tumor_bam}" \
 			--normBam "${normal_bam}" \
