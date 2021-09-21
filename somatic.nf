@@ -2619,8 +2619,6 @@ process flag_cgpcavemanpostprocessing {
 	mv splitList.chr* tmpCaveman/
 	mv readpos.chr* tmpCaveman/
 	mv "${split_list}" tmpCaveman/
-	mv "${covariate_file}" tmpCaveman/
-	mv "${probabilities_file}" tmpCaveman/
 
 	for input_vcf in `ls -1v results.estep.${index}/*/*.muts.vcf.gz`;
 		do
