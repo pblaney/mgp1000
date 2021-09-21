@@ -2633,6 +2633,7 @@ process flag_cgpcavemanpostprocessing {
 			--normBam "${normal_bam}" \
 			--bedFileLoc . \
 			--indelBed "${germline_indel_bed}" \
+			--unmatchedVCFLoc "${unmatched_normal_bed}" \
 			--reference "${reference_genome_fasta_index_forCaveman}" \
 			--flagConfig "${postprocessing_config_file}" \
 			--studyType WGS
