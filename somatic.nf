@@ -2620,6 +2620,16 @@ process flag_cgpcavemanpostprocessing {
 	mv readpos.chr* tmpCaveman/
 	mv "${split_list}" tmpCaveman/
 
+
+
+	### REMOVE AFTER TESTING WHICH SOLUTION WORKS ####
+
+	cp "${unmatched_normal_bed}" unmatchedNormal.bed.gz
+	cp "${unmatched_normal_bed_index}" unmatchedNormal.bed.gz.tbi
+
+	
+
+
 	for input_vcf in `ls -1v results.estep.${index}/*/*.muts.vcf.gz`;
 		do
 			flagged_vcf=\$(echo \$input_vcf | sed 's|.muts.vcf.gz|.flagged.muts.vcf|')
@@ -2633,7 +2643,7 @@ process flag_cgpcavemanpostprocessing {
 			--normBam "${normal_bam}" \
 			--bedFileLoc . \
 			--indelBed "${germline_indel_bed}" \
-			--unmatchedVCFLoc "${unmatched_normal_bed}" \
+			--unmatchedVCFLoc . \
 			--reference "${reference_genome_fasta_index_forCaveman}" \
 			--flagConfig "${postprocessing_config_file}" \
 			--studyType WGS
