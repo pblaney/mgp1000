@@ -2627,7 +2627,7 @@ process flag_cgpcavemanpostprocessing {
 	cp "${unmatched_normal_bed}" unmatchedNormal.bed.gz
 	cp "${unmatched_normal_bed_index}" unmatchedNormal.bed.gz.tbi
 
-	
+	sed -i'' 's|vcfUnmatchedMinSamplePct=1|vcfUnmatchedMinSamplePct=1.000|' "${postprocessing_config_file}"
 
 
 	for input_vcf in `ls -1v results.estep.${index}/*/*.muts.vcf.gz`;
