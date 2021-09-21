@@ -2600,6 +2600,8 @@ process flag_cgpcavemanpostprocessing {
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
+
+	//////// NEED TO CHANGE SPECIES IN POSTPROCESSING CONFIG IN SETUP PROCESS AND MATCH IT HERE ////////
 	script:
 	"""
 	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
@@ -2612,8 +2614,15 @@ process flag_cgpcavemanpostprocessing {
 	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
 	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
 
+	mkdir -p tmpCaveman/
+	mv "${config_file}" tmpCaveman/
+	mv splitList.chr* tmpCaveman/
+	mv readpos.chr* tmpCaveman/
+	mv "${split_list}" tmpCaveman/
+	mv "${covariate_file}" tmpCaveman/
+	mv "${probabilities_file}" tmpCaveman/
 
-	for input_vcf in in `ls -1v results.estep.${index}/*/*.muts.vcf.gz`;
+	for input_vcf in `ls -1v results.estep.${index}/*/*.muts.vcf.gz`;
 		do
 			flagged_vcf=\$(echo \$input_vcf | sed 's|.muts.vcf.gz|.flagged.muts.vcf|')
 
