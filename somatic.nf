@@ -389,11 +389,11 @@ Channel
 	.set{ dbsnp_bed_index }
 
 Channel
-	.fromPath( 'references/hg38/unmatched_normal.cpbi.hg38.bed.gz' )
+	.fromPath( 'references/hg38/unmatchedNormal.bed.gz' )
 	.set{ unmatched_normal_bed }
 
 Channel
-	.fromPath( 'references/hg38/unmatched_normal.cpbi.hg38.bed.gz.tbi' )
+	.fromPath( 'references/hg38/unmatchedNormal.bed.gz.tbi' )
 	.set{ unmatched_normal_bed_index }
 
 if( params.vep_ref_cached == "yes" ) {
