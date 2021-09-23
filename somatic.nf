@@ -2636,10 +2636,6 @@ process flag_cgpcavemanpostprocessing {
 			--reference "${reference_genome_fasta_index_forCaveman}" \
 			--flagConfig "${postprocessing_config_file}" \
 			--studyType WGS
-
-			pass_only_vcf=\$(echo \${flagged_vcf} | sed 's|.muts.vcf|.pass.muts.vcf|' | sed 's|results.estep.${index}|${flag_results_directory_per_index}|')
-
-			grep -E '^#|PASS' \${flagged_vcf} > \${pass_only_vcf}
 		done
 
 	cp results.estep.${index}/*/*.snps.vcf.gz "${flag_results_directory_per_index}"
