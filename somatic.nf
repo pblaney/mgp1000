@@ -2639,7 +2639,7 @@ process flag_cgpcavemanpostprocessing {
 		done
 
 	mkdir -p "${flag_results_directory_per_index}"
-	cp results.estep.${index}/* "${flag_results_directory_per_index}/"
+	cp -a results.estep.${index}/* "${flag_results_directory_per_index}/"
 	"""
 }
 
