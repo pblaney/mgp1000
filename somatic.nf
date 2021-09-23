@@ -2639,8 +2639,7 @@ process flag_cgpcavemanpostprocessing {
 		done
 
 	mkdir -p "${flag_results_directory_per_index}"
-	cp results.estep.${index}/*/*.snps.vcf.gz "${flag_results_directory_per_index}/"
-	cp results.estep.${index}/*/*.no_analysis.bed "${flag_results_directory_per_index}/"
+	cp results.estep.${index}/* "${flag_results_directory_per_index}/"
 	"""
 }
 
