@@ -2638,8 +2638,9 @@ process flag_cgpcavemanpostprocessing {
 			--studyType WGS
 		done
 
-	cp results.estep.${index}/*/*.snps.vcf.gz "${flag_results_directory_per_index}"
-	cp results.estep.${index}/*/*.no_analysis.bed "${flag_results_directory_per_index}"
+	mkdir -p "${flag_results_directory_per_index}"
+	cp results.estep.${index}/*/*.snps.vcf.gz "${flag_results_directory_per_index}/"
+	cp results.estep.${index}/*/*.no_analysis.bed "${flag_results_directory_per_index}/"
 	"""
 }
 
