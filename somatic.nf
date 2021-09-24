@@ -2681,7 +2681,7 @@ process mergeResults_caveman {
 
 	mergeCavemanResults \
 	--output "${tumor_normal_sample_id}.caveman.somatic.vcf" \
-	--splitlist "${split_file}" \
+	--splitlist "${split_list}" \
 	-f tmpCaveman/results/%/%.flagged.muts.vcf
 
 	grep -E '^#|PASS' "${tumor_normal_sample_id}.caveman.somatic.vcf" \
