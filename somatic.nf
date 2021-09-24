@@ -2675,7 +2675,6 @@ process mergeResults_caveman {
 	mv "${config_file}" tmpCaveman/
 	mv splitList.chr* tmpCaveman/
 	mv readpos.chr* tmpCaveman/
-	mv "${split_list}" tmpCaveman/
 	mkdir -p tmpCaveman/results
 	cp -a results.flag.*/* tmpCaveman/results/
 
