@@ -2636,6 +2636,10 @@ process flag_caveman {
 			--reference "${reference_genome_fasta_index_forCaveman}" \
 			--flagConfig "${postprocessing_config_file}" \
 			--studyType WGS
+
+			corrected_header_vcf=\$(echo \${flagged_vcf} | sed 's|.muts.vcf|.fixedheader.muts.vcf|')
+
+			grep -v '##vcfProcessLog' \${flagged_vcf} > \${corrected_header_vcf}
 		done
 
 	mkdir -p "${flag_results_directory_per_index}"
@@ -2681,7 +2685,7 @@ process mergeResults_caveman {
 	mergeCavemanResults \
 	--output "${tumor_normal_sample_id}.caveman.somatic.vcf" \
 	--splitlist "${split_list}" \
-	-f tmpCaveman/results/%/%.flagged.muts.vcf
+	-f tmpCaveman/results/%/%.flagged.fixedheader.muts.vcf
 
 	grep -E '^#|PASS' "${tumor_normal_sample_id}.caveman.somatic.vcf" \
 	| \
