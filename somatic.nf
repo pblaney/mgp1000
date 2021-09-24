@@ -2586,8 +2586,8 @@ process snvCalling_caveman {
 	"""
 }
 
-// cgpCaVEManPostProcessing cgpFlagCaVEMan ~ apply filtering on raw VCF calls generated using CaVEMan
-process flag_cgpcavemanpostprocessing {
+// CaVEMan flag ~ apply filtering on raw VCF calls generated using CaVEMan
+process flag_caveman {
 	tag "IDX=${index} ${tumor_normal_sample_id}"
 
 	input:
@@ -2679,27 +2679,12 @@ process mergeResults_caveman {
 	mkdir -p tmpCaveman/results
 	cp -a results.flag.*/* tmpCaveman/results/
 
-	caveman.pl \
-	-outdir . \
-	-reference "${reference_genome_fasta_index_forCaveman}" \
-	-tumour-bam "${tumor_bam}" \
-	-normal-bam "${normal_bam}" \
-	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
-	-tumour-cn "${tumor_cnv_profile_bed}" \
-	-normal-cn "${normal_cnv_profile_bed}" \
-	-species Homo_sapiens \
-	-species-assembly GRCh38 \
-	-flag-bed-files . \
-	-germline-indel "${germline_indel_bed}" \
-	-unmatched-vcf "${unmatched_normal_bed}" \
-	-seqType genome \
-	-threads ${task.cpus} \
-	-normal-contamination "${run_statistics}" \
-	-flagConfig "${postprocessing_config_file}" \
-	-process merge_results \
-	-index 1
+	mergeCavemanResults \
+	--output "${tumor_normal_sample_id}.caveman.somatic.vcf" \
+	--splitlist "${split_file}" \
+	-f tmpCaveman/results/%/%.flagged.muts.vcf
 
-	grep -E '^#|PASS' "tmpCaveman/${tumor_normal_sample_id}.muts.vcf" \
+	grep -E '^#|PASS' "${tumor_normal_sample_id}.caveman.somatic.vcf" \
 	| \
 	bgzip > "${final_caveman_snv_vcf}"
 
