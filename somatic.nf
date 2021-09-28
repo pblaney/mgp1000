@@ -226,7 +226,7 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed' )
-	.set{ gatk_bundle_wgs_bed_blacklist_1based_forCavemanSetupSplit }
+	.set{ gatk_bundle_wgs_bed_blacklist_1based_forCaveman }
 
 Channel
 	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
