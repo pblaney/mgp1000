@@ -3118,11 +3118,6 @@ process filteringAndPostprocessesing_gridss {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
-/*
-
-
 // ~~~~~~~~~ CONSENSUS SNV/INDEL ~~~~~~~~~~~ \\
 // START
 
@@ -3648,7 +3643,6 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
 // ~~~~~~~~~~~~~~~ SURVIVOR ~~~~~~~~~~~~~~~~ \\
 // START
 
@@ -3728,11 +3722,6 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
-*/
-
-
 // ~~~~~~~~~~~~ VEP ANNOTATION ~~~~~~~~~~~~~ \\
 // START
 
@@ -3771,9 +3760,6 @@ else {
 reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAnnotation )
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
-
-
-/*
 
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
@@ -3821,9 +3807,5 @@ process annotateSomaticVcf_vep {
 	"""
 }
 
-*/
-
-
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
