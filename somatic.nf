@@ -3077,7 +3077,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_snv_noformat_vcf), path(snv_mpileup_info_dp_metrics), path(snv_mpileup_normal_format_metrics), path(snv_mpileup_normal_format_metrics_index), path(snv_mpileup_tumor_format_metrics), path(snv_mpileup_tumor_format_metrics_index) from consensus_snv_vcf_forAddFormat.join(consensus_snv_mpileup_metrics_forAddFormat)
 
 	output:
-	tuple path(hq_snv_consensus_vcf), path(hq_snv_consensus_vcf_index) into high_quality_consensus_snv_forAnnotation
+	tuple val(tumor_normal_sample_id), path(hq_snv_consensus_vcf), path(hq_snv_consensus_vcf_index) into high_quality_consensus_snv_forAnnotation
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.caveman == "on"
@@ -3296,7 +3296,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_indel_noformat_vcf), path(indel_mpileup_info_dp_metrics), path(indel_mpileup_normal_format_metrics), path(indel_mpileup_normal_format_metrics_index), path(indel_mpileup_tumor_format_metrics), path(indel_mpileup_tumor_format_metrics_index) from consensus_indel_vcf_forAddFormat.join(consensus_indel_mpileup_metrics_forAddFormat)
 
 	output:
-	tuple path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index) into high_quality_consensus_indel_forAnnotation
+	tuple val(tumor_normal_sample_id), path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index) into high_quality_consensus_indel_forAnnotation
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
@@ -3492,49 +3492,53 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
 
+// Create a channel of both consensus SNV and indel VCFs for annotation
+final_consensus_somatic_vcfs_forAnnotation = high_quality_consensus_snv_forAnnotation.join(high_quality_consensus_indel_forAnnotation)
+
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
-	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy'
-	tag "${vcf_id}"
+	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy', pattern: '*.{vcf.gz,html}'
+	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(high_quality_consensus_somatic_snv_vcf), path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from high_quality_consensus_snv_vcf_forAnnotation.combine(vep_ref_dir).combine(reference_genome_bundle_forAnnotation)
+	tuple val(tumor_normal_sample_id), path(hq_snv_consensus_vcf), path(hq_snv_consensus_vcf_index), path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index), path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from final_consensus_somatic_vcfs_forAnnotation.combine(vep_ref_dir).combine(reference_genome_bundle_forAnnotation)
 
 	output:
-	path final_annotated_somatic_vcfs
-	path annotation_summary
+	path("*.annotated.vcf.gz")
+	path("*.vep.summary.html")
 
 	when:
-	params.varscan == "on" && params.mutect == "on" && params.caveman == "on" && params.strelka == "on"
+	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.caveman == "on" && params.svaba == "on"
 
 	script:
-	vcf_id = "${high_quality_consensus_somatic_snv_vcf}".replaceFirst(/\.vcf\.gz/, "")
-	final_annotated_somatic_vcfs = "${vcf_id}.annotated.vcf.gz"
-	annotation_summary = "${high_quality_consensus_somatic_snv_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
 	"""
-	zgrep -E "^#|PASS" "${high_quality_consensus_somatic_snv_vcf}" > "${vcf_id}.passonly.vcf"
+	for vcf in `ls *.vcf.gz`;
+		do
+			output_vcf=\$(echo \${vcf} | sed 's|.vcf.gz|.annotated.vcf.gz|')
+			output_stats=\$(echo \${vcf} | sed 's|.vcf.gz|.vep.summary.html|')
 
-	vep \
-	--offline \
-	--cache \
-	--dir "${cached_ref_dir_vep}" \
-	--assembly GRCh38 \
-	--fasta "${reference_genome_fasta_forAnnotation}" \
-	--input_file "${vcf_id}.passonly.vcf" \
-	--format vcf \
-	--hgvs \
-	--hgvsg \
-	--protein \
-	--symbol \
-	--ccds \
-	--canonical \
-	--biotype \
-	--sift b \
-	--polyphen b \
-	--stats_file "${annotation_summary}" \
-	--output_file "${final_annotated_somatic_vcfs}" \
-	--compress_output bgzip \
-	--vcf
+			vep \
+			--offline \
+			--cache \
+			--dir "${cached_ref_dir_vep}" \
+			--assembly GRCh38 \
+			--fasta "${reference_genome_fasta_forAnnotation}" \
+			--input_file "${vcf_id}.passonly.vcf" \
+			--format vcf \
+			--hgvs \
+			--hgvsg \
+			--protein \
+			--symbol \
+			--ccds \
+			--canonical \
+			--biotype \
+			--sift b \
+			--polyphen b \
+			--stats_file \${output_stats} \
+			--output_file \${output_vcf} \
+			--compress_output bgzip \
+			--vcf
+		done
 	"""
 }
 
