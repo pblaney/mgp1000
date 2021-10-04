@@ -2403,8 +2403,13 @@ process mstep_caveman {
 	mv readpos.chr* tmpCaveman/
 	mv "${split_list}" tmpCaveman/
 
-	end=\$(( ${index} * 73 ))
-	start=\$(( \$end - 72 ))
+	if [[ ${index} == 31 ]]; then
+		end=\$(( ${index} * 70 + 1))
+		start=\$(( \$end - 70 ))
+	else
+		end=\$(( ${index} * 70 ))
+		start=\$(( \$end - 69 ))
+	fi
 
 	for i in `seq \${start} \${end}`;
 		do
@@ -2492,7 +2497,7 @@ process merge_caveman {
 
 // Create channel for section index of each CaVEMan estep and flag job
 Channel
-	.from( 1..73 )
+	.from( 1..70 )
 	.into{ section_index_forCavemanEstep;
 	       section_index_forCavemanFlag }
 
@@ -2533,8 +2538,13 @@ process snvCalling_caveman {
 	mkdir -p tmpCaveman/results
 	cp -a results.mstep.*/* tmpCaveman/results/
 
-	end=\$(( ${index} * 31 ))
-	start=\$(( \$end - 30 ))
+	if [[ ${index} == 70 ]]; then
+		end=\$(( ${index} * 31 + 1))
+		start=\$(( \$end - 31 ))
+	else
+		end=\$(( ${index} * 31 ))
+		start=\$(( \$end - 30 ))
+	fi
 
 	for i in `seq \${start} \${end}`;
 		do
