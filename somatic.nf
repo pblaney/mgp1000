@@ -2370,10 +2370,8 @@ process splitConcat_caveman {
 }
 
 // Create channel for section index of each CaVEMan mstep job
-//Channel
-//	.from( 1..31 )
-//	.into{ section_index_forCavemanMstep;
-//	       section_index_forCavemanMerge }
+step_index_total_forCavemanMstep.map{ 1..it }
+	.set{ section_index_forCavemanMstep }
 
 // CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
 process mstep_caveman {
@@ -2381,7 +2379,7 @@ process mstep_caveman {
 
 	input:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list) from setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple()).join(split_concat_forCavemanMstep)
-	each index from 1..step_index_total_forCavemanMstep
+	each index from section_index_forCavemanMstep
 
 	output:
 	tuple val(tumor_normal_sample_id), path(mstep_results_directory_per_index) into mstep_covs_forCavemanMerge, mstep_covs_forCavemanEstep
@@ -2501,10 +2499,9 @@ process merge_caveman {
 }
 
 // Create channel for section index of each CaVEMan estep and flag job
-//Channel
-//	.from( 1..70 )
-//	.into{ section_index_forCavemanEstep;
-//	       section_index_forCavemanFlag }
+step_index_total_forCavemanEstep.map{ 1..it }
+	.into{ section_index_forCavemanEstep;
+	       section_index_forCavemanFlag }
 
 // CaVEMan estep ~ assign probability to genotype at each position using mstep profile, sequence data, and copy number information
 process snvCalling_caveman {
