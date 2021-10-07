@@ -2369,37 +2369,8 @@ process splitConcat_caveman {
 	"""
 }
 
-
-
-
-
-// CaVEMan index calculation ~ determine the number of jobs to be submitted for the mstep/estep/flag CaVEMan processes
-process indexCacluation_caveman {
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), val(step_index_total) from step_index_total_forCaveman
-
-	output:
-	path step_index_list
-
-	when:
-	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
-
-	script:
-	step_index_list = "${tumor_normal_sample_id}.step_index_list"
-	"""
-	seq 1 "${step_index_total}" > "${step_index_list}"
-	"""
-}
-
-
-
-
-
-
 // Create channel for section index of each CaVEMan mstep job
-step_index_list.readLines()
+step_index_list.splitText()
 	.into{ step_index_list_forCavemanMstep;
 	       step_index_list_forCavemanEstep; 
 	       step_index_list_forCavemanFlag }
