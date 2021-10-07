@@ -2322,14 +2322,14 @@ process splitConcat_caveman {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(split_list) into split_concat_forCavemanMstep, split_concat_forCavemanMerge, split_concat_forCavemanEstep, split_concat_forCavemanFlag, split_concat_forCavemanResults
-	tuple val(tumor_normal_sample_id), val(step_index_total) into step_index_total_forCaveman
+	path step_index_list into step_index_total_forCaveman
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
 	script:
 	split_list = "tmpCaveman/splitList"
-	step_index_total = "${split_list}".countLines()
+	step_index_list = "${tumor_normal_sample_id}.step_index_list"
 	"""
 	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
 		cp "${tumor_bam_index}" "${tumor_bam}.bai"
@@ -2366,11 +2366,13 @@ process splitConcat_caveman {
 	-read-count 1000000 \
 	-process split_concat \
 	-index 1
+
+	seq 1 \$(cat ${split_list} | wc -l) > "${step_index_list}"
 	"""
 }
 
 // Create channel for section index of each CaVEMan mstep job
-step_index_list.splitText()
+step_index_total_forCaveman.splitText()
 	.into{ step_index_list_forCavemanMstep;
 	       step_index_list_forCavemanEstep; 
 	       step_index_list_forCavemanFlag }
