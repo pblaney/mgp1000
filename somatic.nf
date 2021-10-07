@@ -2381,8 +2381,6 @@ setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 		index_list: 1..test
 	}.set{ input_forCavemanMstep }
 
-input_forCavemanMstep.index_list.flatten()
-
 
 
 
