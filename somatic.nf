@@ -2378,7 +2378,7 @@ process indexCacluation_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(step_index_total) into step_index_total_forCaveman
+	tuple val(tumor_normal_sample_id), val(step_index_total) from step_index_total_forCaveman
 
 	output:
 	path step_index_list into step_index_list_forCavemanMstep, step_index_list_forCavemanEstep, step_index_list_forCavemanFlag
