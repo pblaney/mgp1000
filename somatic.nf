@@ -2380,7 +2380,7 @@ setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 		files: it[0,1,2,3,4,5,6,7,8,9,10,11,
 		          12,13,14,15,16,17,18,19,
 		          20,21,22,23,24,25,26,27]
-		index_list: it[28].splitText()
+		index_list: it[28].splitText().toList()
 	}.set{ input_forCavemanMstep }
 
 
