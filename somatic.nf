@@ -2376,12 +2376,13 @@ process splitConcat_caveman {
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
-	.set{ input_forCavemanMstep }
+	.into{ input_forCavemanMstep1;
+	       input_forCavemanMstep2 }
 
-step_index_max = Channel.of(input_forCavemanMstep.map{ it[28].readLines() })
+step_index_max = Channel.of(input_forCavemanMstep1.map{ it[28].readLines() })
 
 Channel.of(step_index_max)
-	.combine(input_forCavemanMstep.map { it[0..27]} )
+	.combine(input_forCavemanMstep2.map { it[0..27]} )
 	.set{ testinput }
 
 
