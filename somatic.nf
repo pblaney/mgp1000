@@ -2379,7 +2379,7 @@ setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.into{ input_forCavemanMstep1;
 	       input_forCavemanMstep2 }
 
-step_index_max = input_forCavemanMstep1.map{ it[28].countLines().getVal() }
+step_index_max = input_forCavemanMstep1.map{ it[28].countLines() }.getVal()
 println step_index_max
 
 //Channel.of(step_index_max)
