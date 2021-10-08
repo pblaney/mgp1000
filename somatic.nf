@@ -2378,7 +2378,7 @@ setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
 	.set{ input_forCavemanMstep }
 
-step_index_max = input_forCavemanMstep.map{ it[28].countLines() }
+step_index_max = input_forCavemanMstep.map{ it[28].readLines().count() }
 
 Channel.of(1..step_index_max)
 	.combine(input_forCavemanMstep.map { it[0..27]} )
