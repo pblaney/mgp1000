@@ -2370,7 +2370,7 @@ process splitConcat_caveman {
 	"""
 }
 
-
+//Kathryn Crouch 
 
 //test = 2
 
@@ -2378,9 +2378,9 @@ setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
 	.set{ input_forCavemanMstep }
 
-step_index_max = Channel.from input_forCavemanMstep.map{ it[28].readLines().count().getVal() }
+step_index_max = Channel.of(input_forCavemanMstep.map{ it[28].readLines().count().getVal() })
 
-Channel.of(1..step_index_max)
+Channel.of(step_index_max.map{ 1..it })
 	.combine(input_forCavemanMstep.map { it[0..27]} )
 	.set{ testinput }
 
