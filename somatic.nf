@@ -2251,7 +2251,6 @@ process setup_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 3000000 \
 	-process setup \
 	-index 1
 	"""
@@ -2307,7 +2306,6 @@ process split_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 3000000 \
 	-process split \
 	-index \${i}
 	"""
@@ -2362,17 +2360,12 @@ process splitConcat_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 3000000 \
 	-process split_concat \
 	-index 1
 
 	seq 1 \$(cat ${split_list} | wc -l) > "${step_index_list}"
 	"""
 }
-
-//Kathryn Crouch 
-
-//test = 2
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
@@ -2384,22 +2377,6 @@ step_index_max = input_forCavemanMstep1.map{ it[28].countLines() }.getVal()
 Channel.of(1..step_index_max)
 	.combine(input_forCavemanMstep2.map { it[0..27]} )
 	.set{ testinput }
-
-
-//setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
-//	.join(split_concat_forCavemanMstep)
-//	.multiMap{ it ->
-//		files: it[0..27]
-//		index_list: 1..test
-//	}.set{ input_forCavemanMstep }
-
-
-
-// Create channel for section index of each CaVEMan mstep job
-//step_index_total_forCaveman.splitText()
-//	.into{ step_index_list_forCavemanMstep;
-//	       step_index_list_forCavemanEstep; 
-//	       step_index_list_forCavemanFlag }
 
 // CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
 process mstep_caveman {
