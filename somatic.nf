@@ -2364,7 +2364,7 @@ process splitConcat_caveman {
 
 	for index in `seq 1 \$(cat ${split_list} | wc -l)`;
 		do
-			echo $index;
+			echo \$index;
 		done
 	"""
 }
