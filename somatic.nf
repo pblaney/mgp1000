@@ -2381,7 +2381,6 @@ process stdout_test_process {
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
 
-	script:
 	"""
 	seq 1 \$(cat ${split_list} | wc -l)
 	"""
