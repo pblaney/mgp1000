@@ -2376,7 +2376,7 @@ process stdout_test_process {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list) from setup_forCavemanTest.join(split_per_chromosome_forCavemanTest.groupTuple()).join(split_concat_forCavemanTest)
 
 	output:
-	stdout step_index_list
+	stdout step_index_list1, step_index_list2
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
@@ -2387,16 +2387,13 @@ process stdout_test_process {
 	"""
 }
 
-
-
-step_index_list.view()
-
+step_index_list1.view()
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
 	.set{ input_forCavemanMstep }
 
-step_index_list.combine(input_forCavemanMstep.map { it[0..27]} )
+step_index_list2.combine(input_forCavemanMstep.map { it[0..27]} )
 	.set{ testinput }
 
 //setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
