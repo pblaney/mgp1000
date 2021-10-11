@@ -2387,7 +2387,7 @@ process stdout_test_process {
 }
 
 
-Channel.fromList(step_index_list.toList()).set{ steplist }
+step_index_list.toList().set{ steplist }
 
 
 
