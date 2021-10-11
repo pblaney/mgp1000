@@ -2319,7 +2319,7 @@ process splitConcat_caveman {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome) from setup_forCavemanConcat.join(split_per_chromosome_forCavemanConcat.groupTuple())
 
 	output:
-	tuple val(tumor_normal_sample_id), path(split_list) into split_concat_forCavemanMstep, split_concat_forCavemanMerge, split_concat_forCavemanEstep, split_concat_forCavemanFlag, split_concat_forCavemanResults, split_concat_forCavemanTest
+	tuple val(tumor_normal_sample_id), path(split_list), env(index) into split_concat_forCavemanMstep, split_concat_forCavemanMerge, split_concat_forCavemanEstep, split_concat_forCavemanFlag, split_concat_forCavemanResults, split_concat_forCavemanTest
 
 	when:
 	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
@@ -2361,28 +2361,32 @@ process splitConcat_caveman {
 	-flagConfig "${postprocessing_config_file}" \
 	-process split_concat \
 	-index 1
+
+	for index in `seq 1 \$(cat ${split_list} | wc -l)`;
+		do
+			echo $index;
+		done
 	"""
 }
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
  	.join(split_concat_forCavemanMstep)
- 	.into{ input_forCavemanMstep1;
- 	       input_forCavemanMstep2 }
-
-step_index_max = Channel.of(input_forCavemanMstep1.map{ it[27].countLines() }.getVal())
-
-println step_index_max
-
-Channel.of(1..step_index_max)
- 	.combine(input_forCavemanMstep2.map { it[0..27]} )
  	.set{ testinput }
+
+//step_index_max = Channel.of(input_forCavemanMstep1.map{ it[27].countLines() }).getVal()
+
+//println step_index_max
+
+//Channel.of(1..step_index_max)
+// 	.combine(input_forCavemanMstep2.map { it[0..27]} )
+// 	.set{ testinput }
 
 // CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
 process mstep_caveman {
 	tag "IDX=${index} ${tumor_normal_sample_id}"
 
 	input:
-	tuple val(index), val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list) from testinput
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), env(index) from testinput
 
 	output:
 	tuple val(tumor_normal_sample_id), path(mstep_results_directory_per_index) into mstep_covs_forCavemanMerge, mstep_covs_forCavemanEstep
