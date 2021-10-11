@@ -2388,7 +2388,7 @@ process stdout_test_process {
 	"""
 }
 
-step_index_list.toList().set{ steplist }
+Channel.of( step_index_list.toList() ).set{steplist}
 
 
 //setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
