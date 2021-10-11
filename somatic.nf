@@ -2392,7 +2392,7 @@ setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
 	.set{ input_forCavemanMstep }
 
-Channel.of(step_index_list.toList())
+Channel.of(step_index_list)
 	.combine(input_forCavemanMstep.map { it[0..27]} )
 	.set{ testinput }
 
