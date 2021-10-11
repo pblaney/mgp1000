@@ -2362,9 +2362,9 @@ process splitConcat_caveman {
 	-process split_concat \
 	-index 1
 
-	for index in `seq 1 \$(cat ${split_list} | wc -l)`;
+	for i in `seq 1 \$(cat ${split_list} | wc -l)`;
 		do
-			echo \$index;
+			index=\${i}
 		done
 	"""
 }
