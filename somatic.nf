@@ -2386,15 +2386,12 @@ process stdout_test_process {
 	"""
 }
 
-step_index_list.view()
-
-/*
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
 	.set{ input_forCavemanMstep }
 
-step_index_list.combine(input_forCavemanMstep.map { it[0..27]} )
+step_index_list.toList().combine(input_forCavemanMstep.map { it[0..27]} )
 	.set{ testinput }
 
 //setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
@@ -2527,7 +2524,6 @@ process merge_caveman {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-*/
 
 
 
