@@ -2367,7 +2367,7 @@ process splitConcat_caveman {
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
  	.join(split_concat_forCavemanMstep)
  	.set{ input_forCavemanMstep1;
- 	      input_forCavemanMstep1 }
+ 	      input_forCavemanMstep2 }
 
 input_forCavemanMstep1.splitText(elem: 27, by:1).combine(input_forCavemanMstep2.map { it[0..27]} ).set{ testinput }
 
