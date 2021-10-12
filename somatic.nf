@@ -2362,6 +2362,8 @@ process splitConcat_caveman {
 	-flagConfig "${postprocessing_config_file}" \
 	-process split_concat \
 	-index 1
+
+	seq 1 \$(cat ${split_list} | wc -l) > "${index_step_list}"
 	"""
 }
 
