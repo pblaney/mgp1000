@@ -896,12 +896,14 @@ process ancestryEstimation_admixture {
 	path known_ancestry_file_ref_vcf from reference_vcf_1000G_known_ancestry
 
 	output:
+	path admixture_supervised_analysis_pop_file
 	path admixture_ancestry_fractions
 	path admixture_allele_frequencies
 	path admixture_standard_error
 
 	script:
 	ancestry_groups = 26
+	admixture_supervised_analysis_pop_file = "${pruned_filtered_plink_file_prefix}.pop"
 	admixture_ancestry_fractions = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.Q"
 	admixture_allele_frequencies = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.P"
 	admixture_standard_error = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.Q_se"
@@ -909,7 +911,7 @@ process ancestryEstimation_admixture {
 	cohort_pop_file_creator.sh \
 	"${pruned_filtered_plink_file_prefix}.fam" \
 	"${known_ancestry_file_ref_vcf}" \
-	"${pruned_filtered_plink_file_prefix}.pop"
+	"${admixture_supervised_analysis_pop_file}"
 
 	admixture \
 	-j${task.cpus}\
