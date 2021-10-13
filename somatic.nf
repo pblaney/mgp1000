@@ -2239,7 +2239,6 @@ process setup_caveman {
 	-reference "${reference_genome_fasta_index_forCaveman}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 	-tumour-cn "${tumor_cnv_profile_bed}" \
 	-normal-cn "${normal_cnv_profile_bed}" \
 	-species Homo_sapiens \
@@ -2251,10 +2250,11 @@ process setup_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 1000000 \
 	-process setup \
 	-index 1
 	"""
+
+	//-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 }
 
 // CaVEMan split ~ split the genome into chunks by readsize and hard stop forced by contig ends
@@ -2295,7 +2295,6 @@ process split_caveman {
 	-reference "${reference_genome_fasta_index_forCaveman}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 	-tumour-cn "${tumor_cnv_profile_bed}" \
 	-normal-cn "${normal_cnv_profile_bed}" \
 	-species Homo_sapiens \
@@ -2307,10 +2306,11 @@ process split_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 1000000 \
 	-process split \
 	-index \${i}
 	"""
+
+	//-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 }
 
 // CaVEMan split_concat ~ concatenate the split file sections into a single split section reference file
@@ -2350,7 +2350,6 @@ process splitConcat_caveman {
 	-reference "${reference_genome_fasta_index_forCaveman}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 	-tumour-cn "${tumor_cnv_profile_bed}" \
 	-normal-cn "${normal_cnv_profile_bed}" \
 	-species Homo_sapiens \
@@ -2362,28 +2361,19 @@ process splitConcat_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 1000000 \
 	-process split_concat \
 	-index 1
 
 	seq 1 \$(cat ${split_list} | wc -l) > "${index_step_list}"
 	"""
+
+	//-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 }
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
 	.splitText(elem: 28, by:1)
 	.set{ input_forCavemanMstep }
-
-//input_forCavemanMstep1.splitText(elem: 27, by:1).combine(input_forCavemanMstep2.map { it[0..27]} ).set{ testinput }
-
-//step_index_max = Channel.of(input_forCavemanMstep1.map{ it[27].countLines() }).getVal()
-
-//println step_index_max
-
-//Channel.of(1..step_index_max)
-// 	.combine(input_forCavemanMstep2.map { it[0..27]} )
-// 	.set{ testinput }
 
 // CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
 process mstep_caveman {
@@ -2423,7 +2413,6 @@ process mstep_caveman {
 	-reference "${reference_genome_fasta_index_forCaveman}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 	-tumour-cn "${tumor_cnv_profile_bed}" \
 	-normal-cn "${normal_cnv_profile_bed}" \
 	-species Homo_sapiens \
@@ -2435,13 +2424,14 @@ process mstep_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 1000000 \
 	-process mstep \
 	-index "${index}"
 
 	mkdir "${mstep_results_directory_per_index}"
 	cp -a tmpCaveman/results/* "${mstep_results_directory_per_index}"
 	"""
+
+	//-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 }
 
 // CaVEMan merge ~ build a single profile of the whole genome using the mstep covariates
@@ -2484,7 +2474,6 @@ process merge_caveman {
 	-reference "${reference_genome_fasta_index_forCaveman}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 	-tumour-cn "${tumor_cnv_profile_bed}" \
 	-normal-cn "${normal_cnv_profile_bed}" \
 	-species Homo_sapiens \
@@ -2496,10 +2485,11 @@ process merge_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
-	-read-count 1000000 \
 	-process merge \
 	-index 1
 	"""
+
+	//-ignore-file "${gatk_bundle_wgs_bed_blacklist_1based_forCaveman}" \
 }
 
 
