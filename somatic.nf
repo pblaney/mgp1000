@@ -2251,6 +2251,7 @@ process setup_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
+	-read-count 3000000 \
 	-process setup \
 	-index 1
 	"""
@@ -2306,6 +2307,7 @@ process split_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
+	-read-count 3000000 \
 	-process split \
 	-index \${i}
 	"""
@@ -2360,6 +2362,7 @@ process splitConcat_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
+	-read-count 3000000 \
 	-process split_concat \
 	-index 1
 
@@ -2422,6 +2425,7 @@ process mstep_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
+	-read-count 3000000 \
 	-process mstep \
 	-index "${index}"
 
@@ -2482,6 +2486,7 @@ process merge_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
+	-read-count 3000000 \
 	-process merge \
 	-index 1
 	"""
@@ -2548,6 +2553,7 @@ process snvCalling_caveman {
 	-threads ${task.cpus} \
 	-normal-contamination "${run_statistics}" \
 	-flagConfig "${postprocessing_config_file}" \
+	-read-count 3000000 \
 	-process estep \
 	-index "${index}"
 
