@@ -2562,10 +2562,120 @@ process snvCalling_caveman {
 	"""
 }
 
+setup_forCavemanFlag.join(split_per_chromosome_forCavemanFlag.groupTuple())
+	.join(raw_vcfs_forCavemanFlag.groupTuple())
+	.join(split_concat_forCavemanFlag)
+	.splitText(elem: 28, by:1)
+	.set{ input_forCavemanFlag }
 
+// CaVEMan flag ~ apply filtering on raw VCF calls generated using CaVEMan
+process flag_caveman {
+	tag "IDX=${index} ${tumor_normal_sample_id}"
 
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(estep_results_directory_per_index), path(split_list), val(index_dirty) from input_forCavemanFlag
 
+	output:
+	tuple val(tumor_normal_sample_id), path(flag_results_directory_per_index) into postprocessing_output_forCavemanResults
 
+	when:
+	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
+
+	script:
+	index = "${index_dirty}".replaceFirst("\\s","")
+	flag_results_directory_per_index = "results_flag_${index}"
+	"""
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${tumor_bam_index}" "${tumor_bam}.bai"
+	fi
+	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${normal_bam_index}" "${normal_bam}.bai"
+	fi
+
+	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
+	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
+
+	mkdir -p tmpCaveman/
+	mv "${config_file}" tmpCaveman/
+	mv splitList.chr* tmpCaveman/
+	mv readpos.chr* tmpCaveman/
+	mv "${split_list}" tmpCaveman/
+
+	for input_vcf in `ls -1v results_estep_${index}/*/*.muts.vcf.gz`;
+		do
+			flagged_vcf=\$(echo \$input_vcf | sed 's|.muts.vcf.gz|.flagged.muts.vcf|')
+
+			cgpFlagCaVEMan.pl \
+			--input \${input_vcf} \
+			--outFile \${flagged_vcf} \
+			--species Homo_sapiens \
+			--species-assembly GRCh38 \
+			--tumBam "${tumor_bam}" \
+			--normBam "${normal_bam}" \
+			--bedFileLoc . \
+			--indelBed "${germline_indel_bed}" \
+			--unmatchedVCFLoc . \
+			--reference "${reference_genome_fasta_index_forCaveman}" \
+			--flagConfig "${postprocessing_config_file}" \
+			--studyType WGS
+
+			corrected_header_vcf=\$(echo \${flagged_vcf} | sed 's|.muts.vcf|.fixedheader.muts.vcf|')
+
+			grep -v '##vcfProcessLog' \${flagged_vcf} > \${corrected_header_vcf}
+		done
+
+	mkdir -p "${flag_results_directory_per_index}"
+	cp -a results_estep_${index}/* "${flag_results_directory_per_index}/"
+	"""
+}
+
+// CaVEMan merge_results ~ merge all per split index VCFs into a single final result
+process mergeResults_caveman {
+	publishDir "${params.output_dir}/somatic/caveman", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(run_statistics), path(germline_indel_bed), path(germline_indel_bed_index), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(gatk_bundle_wgs_bed_blacklist_1based_forCaveman), path(unmatched_normal_bed), path(unmatched_normal_bed_index), path(centromeric_repeats_bed), path(centromeric_repeats_bed_index), path(simple_repeats_bed), path(simple_repeats_bed_index), path(dbsnp_bed), path(dbsnp_bed_index), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(flag_results_directory_per_index) from setup_forCavemanResults.join(split_per_chromosome_forCavemanResults.groupTuple()).join(split_concat_forCavemanResults).join(postprocessing_output_forCavemanResults.groupTuple())
+
+	output:
+	tuple val(tumor_normal_sample_id), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) into final_caveman_snv_vcf_forConsensus
+
+	when:
+	params.caveman == "on" && params.ascatngs == "on" && params.manta == "on"
+
+	script:
+	final_caveman_snv_vcf = "${tumor_normal_sample_id}.caveman.somatic.snv.vcf.gz"
+	final_caveman_snv_vcf_index = "${final_caveman_snv_vcf}.tbi"
+	"""
+	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${tumor_bam_index}" "${tumor_bam}.bai"
+	fi
+	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+		cp "${normal_bam_index}" "${normal_bam}.bai"
+	fi
+
+	sed -i'' 's|CWD=.*|CWD='"\$PWD"'|' "${config_file}"
+	sed -i'' 's|ALG_FILE=.*|ALG_FILE='"\$PWD/${alg_bean_file}"'|' "${config_file}"
+
+	mkdir -p tmpCaveman/
+	mv "${config_file}" tmpCaveman/
+	mv splitList.chr* tmpCaveman/
+	mv readpos.chr* tmpCaveman/
+	mkdir -p tmpCaveman/results
+	cp -a results_flag_*/* tmpCaveman/results/
+
+	mergeCavemanResults \
+	--output "${tumor_normal_sample_id}.caveman.somatic.vcf" \
+	--splitlist "${split_list}" \
+	-f tmpCaveman/results/%/%.flagged.fixedheader.muts.vcf
+
+	grep -E '^#|PASS' "${tumor_normal_sample_id}.caveman.somatic.vcf" \
+	| \
+	bgzip > "${final_caveman_snv_vcf}"
+
+	tabix "${final_caveman_snv_vcf}"
+	"""
+}
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
@@ -2750,7 +2860,6 @@ process svAndIndelCalling_delly {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
 
 
 // ~~~~~~~~~ CONSENSUS SNV/INDEL ~~~~~~~~~~~ \\
