@@ -1365,7 +1365,7 @@ process cnvCalling_ascatngs {
 	tumor_png = "${tumor_normal_sample_id}.ascat.tumor.png"
 	ascat_cnv_profile_final = "${tumor_normal_sample_id}.ascat.cnv.csv"
 	ascat_cnv_profile_vcf = "${tumor_normal_sample_id}.ascat.vcf.gz"
-	ascat_cnv_profile_vcf_index = "${cnv_profile_vcf}.tbi"
+	ascat_cnv_profile_vcf_index = "${ascat_cnv_profile_vcf}.tbi"
 	ascat_run_statistics = "${tumor_normal_sample_id}.ascat.runstatistics.txt"
 	"""
 	sex=\$(cut -d ' ' -f 2 "${sample_sex}")
