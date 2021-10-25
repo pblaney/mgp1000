@@ -30,9 +30,9 @@ def helpMessage() {
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
 		--input_dir                    [str]  Directory that holds BAMs and associated index files
-		                                      Default: ./input/preprocessedBams
+		                                      Default: input/preprocessedBams/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
-		                                      Default: ./output
+		                                      Default: output/
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -48,10 +48,13 @@ def helpMessage() {
 		                                      Default: yes
 		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes that allow for multithreading
 		                                      Available: 2, 4, 8, 16, etc.
-		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
+		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
 		--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
 		                                      Available: 32.GB, 2400.MB, etc.
-		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
+		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+		--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
+		                                      Available: 25, 50, 100, 150, etc.
+		                                      Default: 100
 		--help                        [flag]  Prints this message
 
 	Toolbox Switches:
@@ -119,6 +122,7 @@ params.ascatngs_ploidy = null
 params.ascatngs_purity = null
 params.cpus = null
 params.memory = null
+params.queue_size = 100
 params.help = null
 
 // Print help message if requested
@@ -134,6 +138,12 @@ if( params.sample_sheet == null ) exit 1, "The run command issued does not have 
 
 // Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
 if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
+
+// Print preemptive error message if Sclust is set while MuTect is not
+if( params.sclust == "on" && params.mutect == "off" ) exit 1, "Sclust requires output from MuTect to run so both must be turned on"
+
+// Print preemptive error message if Strelka is set while Manta is not
+if( params.strelka == "on" && params.manta == "off" ) exit 1, "Strelka requires output from Manta to run so both must be turned on"
 
 // Set channels for reference files
 Channel
@@ -1332,7 +1342,8 @@ process cnvCalling_ascatngs {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(reference_genome_fasta_forAscatNgs), path(reference_genome_fasta_index_forAscatNgs), path(reference_genome_fasta_dict_forAscatNgs), path(snp_gc_corrections) from bams_and_sex_of_sample_forAscatNgs.combine(reference_genome_and_snpgc_forAscatNgs)
 
 	output:
-	tuple path(cnv_profile_vcf), path(cnv_profile_vcf_index)
+	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) into final_ascat_cnv_profile_forConsensus
+	tuple path(ascat_cnv_profile_vcf), path(ascat_cnv_profile_vcf_index)
 	path ascat_profile_png
 	path ascat_raw_profile_png
 	path sunrise_png
@@ -1352,10 +1363,10 @@ process cnvCalling_ascatngs {
 	aspcf_png = "${tumor_normal_sample_id}.ascat.aspcf.png"
 	germline_png = "${tumor_normal_sample_id}.ascat.germline.png"
 	tumor_png = "${tumor_normal_sample_id}.ascat.tumor.png"
-	cnv_profile_final = "${tumor_normal_sample_id}.ascat.cnv.csv"
-	cnv_profile_vcf = "${tumor_normal_sample_id}.ascat.vcf.gz"
-	cnv_profile_vcf_index = "${cnv_profile_vcf}.tbi"
-	run_statistics = "${tumor_normal_sample_id}.ascat.runstatistics.txt"
+	ascat_cnv_profile_final = "${tumor_normal_sample_id}.ascat.cnv.csv"
+	ascat_cnv_profile_vcf = "${tumor_normal_sample_id}.ascat.vcf.gz"
+	ascat_cnv_profile_vcf_index = "${cnv_profile_vcf}.tbi"
+	ascat_run_statistics = "${tumor_normal_sample_id}.ascat.runstatistics.txt"
 	"""
 	sex=\$(cut -d ' ' -f 2 "${sample_sex}")
 
@@ -1380,13 +1391,13 @@ process cnvCalling_ascatngs {
 	mv "${tumor_id}.ASPCF.png" "${aspcf_png}"
 	mv "${tumor_id}.germline.png" "${germline_png}"
 	mv "${tumor_id}.tumour.png" "${tumor_png}"
-	mv "${tumor_id}.copynumber.caveman.vcf.gz" "${cnv_profile_vcf}"
-	mv "${tumor_id}.copynumber.caveman.vcf.gz.tbi" "${cnv_profile_vcf_index}"
-	mv "${tumor_id}.samplestatistics.txt" "${run_statistics}"
+	mv "${tumor_id}.copynumber.caveman.vcf.gz" "${ascat_cnv_profile_vcf}"
+	mv "${tumor_id}.copynumber.caveman.vcf.gz.tbi" "${ascat_cnv_profile_vcf_index}"
+	mv "${tumor_id}.samplestatistics.txt" "${ascat_run_statistics}"
 
-	touch "${cnv_profile_final}"
-	echo "segment_number,chromosome,start_position,end_position,normal_total_copy_number,normal_minor_copy_number,tumor_total_copy_number,tumor_minor_copy_number" >> "${cnv_profile_final}"
-	cat "${tumor_id}.copynumber.caveman.csv" >> "${cnv_profile_final}"
+	touch "${ascat_cnv_profile_final}"
+	echo "segment_number,chromosome,start_position,end_position,normal_total_copy_number,normal_minor_copy_number,tumor_total_copy_number,tumor_minor_copy_number" >> "${ascat_cnv_profile_final}"
+	cat "${tumor_id}.copynumber.caveman.csv" >> "${ascat_cnv_profile_final}"
 	"""
 }
 
@@ -1565,8 +1576,8 @@ process cnvPredictionPostProcessing_controlfreec {
 	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) from cnv_calling_files_forControlFreecPostProcessing
 
 	output:
-	path cnv_profile_final
-	path cnv_ratio_bed_file
+	tuple val(tumor_normal_sample_id), path(control_freec_cnv_ratio_bed_file) into final_control_freec_cnv_profile_forConsensus
+	path control_freec_cnv_profile_final
 	path ratio_graph_png
 	path ratio_log2_graph_png
 	path baf_graph_png
@@ -1575,21 +1586,21 @@ process cnvPredictionPostProcessing_controlfreec {
 	params.controlfreec == "on"
 
 	script:
-	cnv_profile_final = "${tumor_normal_sample_id}.controlfreec.cnv.txt"
-	cnv_ratio_bed_file = "${tumor_normal_sample_id}.controlfreec.ratio.bed"
+	control_freec_cnv_profile_final = "${tumor_normal_sample_id}.controlfreec.cnv.txt"
+	control_freec_cnv_ratio_bed_file = "${tumor_normal_sample_id}.controlfreec.ratio.bed"
 	ratio_graph_png = "${tumor_normal_sample_id}.controlfreec.ratio.png"
 	ratio_log2_graph_png = "${tumor_normal_sample_id}.controlfreec.ratio.log2.png"
 	baf_graph_png = "${tumor_normal_sample_id}.controlfreec.baf.png"
 	"""
 	cat \${CONTROLFREEC_DIR}/scripts/assess_significance.R | R --slave --args "${cnv_profile_raw}" "${cnv_ratio_file}"
-	mv "${cnv_profile_raw}.p.value.txt" "${cnv_profile_final}"
+	mv "${cnv_profile_raw}.p.value.txt" "${control_freec_cnv_profile_final}"
 
 	cat \${CONTROLFREEC_DIR}/scripts/makeGraph.R | R --slave --args 2 "${cnv_ratio_file}" "${baf_file}"
 	mv "${cnv_ratio_file}.png" "${ratio_graph_png}"
 	mv "${cnv_ratio_file}.log2.png" "${ratio_log2_graph_png}"
 	mv "${baf_file}.png" "${baf_graph_png}"
 
-	perl \${CONTROLFREEC_DIR}/scripts/freec2bed.pl -f "${cnv_ratio_file}" > "${cnv_ratio_bed_file}"
+	perl \${CONTROLFREEC_DIR}/scripts/freec2bed.pl -f "${cnv_ratio_file}" > "${control_freec_cnv_ratio_bed_file}"
 	"""
 }
 
@@ -1788,11 +1799,11 @@ process cnvCalling_sclust {
 	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf) from read_count_and_snp_count_files.join(vcf_forSclustCn)
 
 	output:
+	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file) into final_sclust_cnv_profile_forConsensus
 	path mutations_exp_af_file
-	path allelic_states_file
-	path cnv_profile_pdf
-	path cnv_profile_file
-	path cnv_segments_file
+	path sclust_cnv_profile_pdf
+	path sclust_cnv_profile_file
+	path sclust_cnv_segments_file
 	path sclust_subclones_file
 	path mutation_clusters_file
 	path mutation_clusters_pdf
@@ -1802,10 +1813,10 @@ process cnvCalling_sclust {
 	params.sclust == "on" && params.mutect == "on"
 
 	script:
-	allelic_states_file = "${tumor_normal_sample_id}.sclust.allelicstates.txt"
-	cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
-	cnv_profile_file = "${tumor_normal_sample_id}.sclust.cnvsummary.txt"
-	cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
+	sclust_allelic_states_file = "${tumor_normal_sample_id}.sclust.allelicstates.txt"
+	sclust_cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
+	sclust_cnv_profile_file = "${tumor_normal_sample_id}.sclust.cnvsummary.txt"
+	sclust_cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
 	mutations_exp_af_file = "${tumor_normal_sample_id}_muts_expAF.txt"
 	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
 	mutation_clusters_file = "${tumor_normal_sample_id}.sclust.mutclusters.txt"
@@ -1821,10 +1832,10 @@ process cnvCalling_sclust {
 	-vcf "${tumor_normal_sample_id}.sclust.final.vcf" \
 	-o "${tumor_normal_sample_id}"
 
-	mv "${tumor_normal_sample_id}_allelic_states.txt" "${allelic_states_file}"
-	mv "${tumor_normal_sample_id}_cn_profile.pdf" "${cnv_profile_pdf}"
-	mv "${tumor_normal_sample_id}_cn_summary.txt" "${cnv_profile_file}"
-	mv "${tumor_normal_sample_id}_iCN.seg" "${cnv_segments_file}"
+	mv "${tumor_normal_sample_id}_allelic_states.txt" "${sclust_allelic_states_file}"
+	mv "${tumor_normal_sample_id}_cn_profile.pdf" "${sclust_cnv_profile_pdf}"
+	mv "${tumor_normal_sample_id}_cn_summary.txt" "${sclust_cnv_profile_file}"
+	mv "${tumor_normal_sample_id}_iCN.seg" "${sclust_cnv_segments_file}"
 	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${sclust_subclones_file}"
 
 	Sclust cluster \
@@ -2737,7 +2748,77 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~~~~~~ SURVIVOR ~~~~~~~~~~~~~~~~ \\
+// ~~~~~~~~~~ CONSENSUS CNV BED ~~~~~~~~~~~~ \\
+// START
+
+// BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
+process mergeAndGenerateCnvCalls_bedtools {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_cnv_ratio_bed_file), path(sclust_allelic_states_file) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(consensus_cnv_bed)
+
+	when:
+	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
+
+	script:
+	ascat_somatic_cnv_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.bed"
+	ascat_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.alleles.bed"
+	control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
+	sclust_somatic_cnv_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.bed"
+	sclust_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.alleles.bed"
+	merged_cnv_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.bed"
+	merged_cnv_per_allele_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.alleles.bed"
+	consensus_cnv_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.bed"
+	"""
+	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
+	| \
+	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${ascat_somatic_cnv_bed}"
+
+	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
+	| \
+	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7-\$8"/"\$8}' > "${ascat_somatic_cnv_per_allele_bed}"
+
+	paste <(awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3}' "${control_freec_cnv_ratio_bed_file}") \
+	<(printf "%.0f\n" \$(cut -d ' ' -f 4 "${control_freec_cnv_ratio_bed_file}")) \
+	| \
+	sort -k1,1V -k2,2n > "${control_freec_somatic_cnv_bed}"
+
+	grep -v 'Sample' "${sclust_allelic_states_file}" \
+	| \
+	cut -f 2-4,6 > "${sclust_somatic_cnv_bed}"
+
+	grep -v 'Sample' "${sclust_allelic_states_file}" \
+	| \
+	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7"/"\$8}' > "${sclust_somatic_cnv_per_allele_bed}"
+
+	bedtools unionbedg \
+	-filler NA \
+	-i "${ascat_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${sclust_somatic_cnv_bed}" \
+	-header \
+	-names ascat_total_cn controlfreec_total_cn sclust_total_cn > "${merged_cnv_bed}"
+
+	bedtools unionbedg \
+	-filler NA \
+	-i "${ascat_somatic_cnv_per_allele_bed}" "${sclust_somatic_cnv_per_allele_bed}" \
+	-header \
+	-names ascat_major_minor_alleles sclust_major_minor_alleles > "${merged_cnv_per_allele_bed}"
+
+	consensus_cnv_generator.py \
+	<(grep -v 'chrom' "${merged_cnv_bed}") \
+	"${consensus_cnv_bed}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
 // START
 
 // BCFtools reheader / view ~ rename the samples within SvABA VCF and then remove normal sample from both SvABA, Manta, and DELLY VCFs
@@ -2855,16 +2936,13 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
 
-// Create a channel of both consensus SNV and indel VCFs for annotation
-final_consensus_somatic_vcfs_forAnnotation = high_quality_consensus_snv_forAnnotation.join(high_quality_consensus_indel_forAnnotation)
-
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
 	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy', pattern: '*.{vcf.gz,html}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(hq_snv_consensus_vcf), path(hq_snv_consensus_vcf_index), path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index), path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from final_consensus_somatic_vcfs_forAnnotation.combine(vep_ref_dir).combine(reference_genome_bundle_forAnnotation)
+	tuple val(tumor_normal_sample_id), path(hq_snv_consensus_vcf), path(hq_snv_consensus_vcf_index), path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index), path(cached_ref_dir_vep), path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from high_quality_consensus_snv_forAnnotation.join(high_quality_consensus_indel_forAnnotation).combine(vep_ref_dir).combine(reference_genome_bundle_forAnnotation)
 
 	output:
 	path("*.annotated.vcf.gz")
@@ -2886,7 +2964,7 @@ process annotateSomaticVcf_vep {
 			--dir "${cached_ref_dir_vep}" \
 			--assembly GRCh38 \
 			--fasta "${reference_genome_fasta_forAnnotation}" \
-			--input_file "${vcf_id}.passonly.vcf" \
+			--input_file \${vcf} \
 			--format vcf \
 			--hgvs \
 			--hgvsg \
