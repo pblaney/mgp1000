@@ -30,9 +30,9 @@ def helpMessage() {
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
 		--input_dir                    [str]  Directory that holds BAMs and associated index files
-		                                      Default: ./input
+		                                      Default: input/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
-		                                      Default: ./output
+		                                      Default: output/
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -43,10 +43,13 @@ def helpMessage() {
 		                                      Default: no
 		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
 		                                      Available: 2, 4, 8, 16, etc.
-		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
+		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
 		--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
 		                                      Available: 32.GB, 2400.MB, etc.
-		                                      Default: uniquly set for each process in ./nextflow.config to minimize resources needed
+		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+		--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
+		                                      Available: 25, 50, 100, 150, etc.
+		                                      Default: 100
 		--help                        [flag]  Prints this message
 
 	################################################
@@ -65,6 +68,7 @@ params.input_format = null
 params.skip_to_qc = "no"
 params.cpus = null
 params.memory = null
+params.queue_size = 100
 params.help = null
 
 // Print help message if requested
