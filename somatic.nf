@@ -512,7 +512,7 @@ process concordanceAndContaminationEstimation_conpair {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into bam_pileups_forConpair
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from bam_pileups_forConpair
 
 	output:
 	path concordance_file
