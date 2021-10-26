@@ -136,9 +136,6 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 
 if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
-// Print preemptive error message if cpus, memory, or queue size parameter is set to zero
-if( params.cpus == 0 || params.memory == 0 || params.queue_size) exit 1, "Pipeline process parameters cannot be 0. Please use feasible values for cpus memory, and/or queue size or leave to the default values outlined in nextflow.config file"
-
 // Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
 if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
 
