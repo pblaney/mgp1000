@@ -402,6 +402,7 @@ process identifySampleSex_allelecount {
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_index_forAlleleCount), path(sex_identification_loci) from tumor_normal_pair_forAlleleCount.combine(ref_index_and_sex_ident_loci)
 
 	output:
+	tuple val(tumor_normal_sample_id), path(sample_sex) into allelecount_output_forConsensusMetadata
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forVarscanBamReadcount
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
@@ -515,15 +516,14 @@ process concordanceAndContaminationEstimation_conpair {
 	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from bam_pileups_forConpair
 
 	output:
-	path concordance_file
-	path contamination_file
+	tuple val(tumor_normal_sample_id), path(conpair_concordance_file), path(conpair_contamination_file) into conpair_output_forConsensusMetadata
 
 	when:
 	params.conpair == "on"
 	
 	script:
-	concordance_file = "${tumor_normal_sample_id}.conpair.concordance.txt"
-	contamination_file = "${tumor_normal_sample_id}.conpair.contamination.txt"
+	conpair_concordance_file = "${tumor_normal_sample_id}.conpair.concordance.txt"
+	conpair_contamination_file = "${tumor_normal_sample_id}.conpair.contamination.txt"
 	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
 	"""
 	\${CONPAIR_DIR}/scripts/verify_concordance.py \
@@ -532,7 +532,7 @@ process concordanceAndContaminationEstimation_conpair {
 	--min_base_quality 20 \
 	--tumor_pileup "${tumor_pileup}" \
 	--normal_pileup "${normal_pileup}" \
-	--outfile "${concordance_file}" \
+	--outfile "${conpair_concordance_file}" \
 	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
 
 	\${CONPAIR_DIR}/scripts/estimate_tumor_normal_contamination.py \
@@ -540,7 +540,7 @@ process concordanceAndContaminationEstimation_conpair {
 	--min_mapping_quality 10 \
 	--tumor_pileup "${tumor_pileup}" \
 	--normal_pileup "${normal_pileup}" \
-	--outfile "${contamination_file}" \
+	--outfile "${conpair_contamination_file}" \
 	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
 	"""
 }
@@ -1153,13 +1153,13 @@ process mutect2ContaminationCalculation_gatk {
 	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from tumor_pileups_forMutectContamination.join(normal_pileups_forMutectContamination)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(contamination_file) into contamination_file_forMutectFilter
+	tuple val(tumor_normal_sample_id), path(mutect_contamination_file) into contamination_file_forMutectFilter, mutect_output_forConsensusMetadata
 
 	when:
 	params.mutect == "on"
 
 	script:
-	contamination_file = "${tumor_normal_sample_id}.mutect.contamination.txt" 
+	mutect_contamination_file = "${tumor_normal_sample_id}.mutect.contamination.txt" 
 	"""
 	gatk CalculateContamination \
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
@@ -1167,7 +1167,7 @@ process mutect2ContaminationCalculation_gatk {
 	--tmp-dir . \
 	--input "${tumor_pileup}" \
 	--matched-normal "${normal_pileup}" \
-	--output "${contamination_file}"
+	--output "${mutect_contamination_file}"
 	"""
 }
 
@@ -1185,7 +1185,7 @@ process mutect2VariantFiltration_gatk {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(merged_raw_vcf), path(merged_raw_vcf_index), path(merged_mutect_stats_file), path(contamination_file), path(reference_genome_fasta_forMutectFilter), path(reference_genome_fasta_index_forMutectFilter), path(reference_genome_fasta_dict_forMutectFilter) from input_vcf_stats_and_contamination_forMutectFilter.combine(reference_genome_bundle_forMutectFilter)
+	tuple val(tumor_normal_sample_id), path(merged_raw_vcf), path(merged_raw_vcf_index), path(merged_mutect_stats_file), path(mutect_contamination_file), path(reference_genome_fasta_forMutectFilter), path(reference_genome_fasta_index_forMutectFilter), path(reference_genome_fasta_dict_forMutectFilter) from input_vcf_stats_and_contamination_forMutectFilter.combine(reference_genome_bundle_forMutectFilter)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_vcf), path(filtered_vcf_index) into filtered_vcf_forMutectBcftools
@@ -1207,7 +1207,7 @@ process mutect2VariantFiltration_gatk {
 	--reference "${reference_genome_fasta_forMutectFilter}" \
 	--stats "${merged_mutect_stats_file}" \
 	--variant "${merged_raw_vcf}" \
-	--contamination-table "${contamination_file}" \
+	--contamination-table "${mutect_contamination_file}" \
 	--output "${filtered_vcf}" \
 	--filtering-stats "${filter_stats_file}"
 	"""
@@ -1326,10 +1326,11 @@ process cnvCalling_ascatngs {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) into final_ascat_cnv_profile_forConsensus
-	tuple path(ascat_cnv_profile_vcf), path(ascat_cnv_profile_vcf_index)
+	tuple val(tumor_normal_sample_id), path(ascat_run_statistics) into ascat_output_forConsensusMetadata
+	path ascat_cnv_profile_vcf
+	path ascat_cnv_profile_vcf_index
 	path ascat_profile_png
 	path ascat_raw_profile_png
-	path ascat_run_statistics
 	path sunrise_png
 	path aspcf_png
 	path germline_png
@@ -1497,7 +1498,7 @@ process cnvCalling_controlfreec {
 	output:
 	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) into cnv_calling_files_forControlFreecPostProcessing
 	path control_freec_config_file
-	path subclones_file
+	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file) into control_freec_subclones_forConsensusSubclones
 
 	when:
 	params.controlfreec == "on"
@@ -1506,7 +1507,7 @@ process cnvCalling_controlfreec {
 	control_freec_config_file = "${tumor_normal_sample_id}.controlfreec.config.txt"
 	cnv_profile_raw = "${tumor_normal_sample_id}.controlfreec.raw.cnv"
 	cnv_ratio_file = "${tumor_normal_sample_id}.controlfreec.ratio.txt"
-	subclones_file = "${tumor_normal_sample_id}.controlfreec.subclones.txt"
+	control_freec_subclones_file = "${tumor_normal_sample_id}.controlfreec.subclones.txt"
 	baf_file = "${tumor_normal_sample_id}.controlfreec.baf.txt"
 	"""
 	unzip -q "${mappability_track_zip}"
@@ -1519,7 +1520,7 @@ process cnvCalling_controlfreec {
 	echo "gemMappabilityFile = \${PWD}/out100m2_hg38.gem" >> "${control_freec_config_file}"
 	echo "minimalSubclonePresence = 20" >> "${control_freec_config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${control_freec_config_file}"
-	echo "ploidy = 2" "${control_freec_config_file}"
+	echo "ploidy = 2,3,4" "${control_freec_config_file}"
 	echo "sex = \${sex}" >> "${control_freec_config_file}"
 	echo "window = 50000" >> "${control_freec_config_file}"
 	echo "" >> "${control_freec_config_file}"
@@ -1544,7 +1545,7 @@ process cnvCalling_controlfreec {
 
 	mv "${tumor_pileup}_CNVs" "${cnv_profile_raw}"
 	mv "${tumor_pileup}_ratio.txt" "${cnv_ratio_file}"
-	mv "${tumor_pileup}_subclones.txt" "${subclones_file}"
+	mv "${tumor_pileup}_subclones.txt" "${control_freec_subclones_file}"
 	mv "${tumor_pileup}_BAF.txt" "${baf_file}"
 	"""
 }
@@ -1779,11 +1780,11 @@ process cnvCalling_sclust {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file) into final_sclust_cnv_profile_forConsensus
+	tuple val(tumor_normal_sample_id), path(sclust_subclones_file) into sclust_subclones_forConsensusSubclones
+	tuple val(tumor_normal_sample_id), path(sclust_cnv_summary_file) into sclust_output_forConsensusMetadata
 	path mutations_exp_af_file
 	path sclust_cnv_profile_pdf
-	path sclust_cnv_profile_file
 	path sclust_cnv_segments_file
-	path sclust_subclones_file
 	path mutation_clusters_file
 	path mutation_clusters_pdf
 	path cluster_assignment_file
@@ -1794,7 +1795,7 @@ process cnvCalling_sclust {
 	script:
 	sclust_allelic_states_file = "${tumor_normal_sample_id}.sclust.allelicstates.txt"
 	sclust_cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
-	sclust_cnv_profile_file = "${tumor_normal_sample_id}.sclust.cnvsummary.txt"
+	sclust_cnv_summary_file = "${tumor_normal_sample_id}.sclust.cnvsummary.txt"
 	sclust_cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
 	mutations_exp_af_file = "${tumor_normal_sample_id}_muts_expAF.txt"
 	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
@@ -1813,7 +1814,7 @@ process cnvCalling_sclust {
 
 	mv "${tumor_normal_sample_id}_allelic_states.txt" "${sclust_allelic_states_file}"
 	mv "${tumor_normal_sample_id}_cn_profile.pdf" "${sclust_cnv_profile_pdf}"
-	mv "${tumor_normal_sample_id}_cn_summary.txt" "${sclust_cnv_profile_file}"
+	mv "${tumor_normal_sample_id}_cn_summary.txt" "${sclust_cnv_summary_file}"
 	mv "${tumor_normal_sample_id}_iCN.seg" "${sclust_cnv_segments_file}"
 	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${sclust_subclones_file}"
 
@@ -2789,6 +2790,36 @@ process mergeAndGenerateCnvCalls_bedtools {
 	"""
 }
 
+// Merge subclonal CNV segment calls, simple concatenation of per tool output
+process mergeSubclonalCnvCalls {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file), path(sclust_subclones_file) from control_freec_subclones_forConsensusSubclones.join(sclust_subclones_forConsensusSubclones)
+
+	output:
+	path consensus_subclonal_cnv_file
+
+	when:
+	params.controlfreec == "on" && params.sclust == "on"
+
+	script:
+	consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
+	"""
+	touch "${consensus_subclonal_cnv_file}"
+
+	echo "### Control-FREEC ###" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	cat "${control_freec_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+
+	echo "### Sclust ###" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	cut -f 2-11 "${sclust_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	"""
+}
+
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
@@ -2865,6 +2896,65 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	0 \
 	51 \
 	"${consensus_somatic_sv_vcf}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~ CONSENSUS METADATA ~~~~~~~~~~~~ \\
+// START
+
+// Merge various metadata output, simple concatenation of per tool output
+process mergeMetadataOutput {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(sample_sex), path(conpair_concordance_file), path(conpair_contamination_file), path(mutect_contamination_file), path(ascat_run_statistics), path(sclust_cnv_summary_file) from allelecount_output_forConsensusMetadata.join(conpair_output_forConsensusMetadata).join(mutect_output_forConsensusMetadata).join(ascat_output_forConsensusMetadata).join(sclust_output_forConsensusMetadata)
+
+	output:
+	path consensus_metadata_file
+
+	when:
+	params.conpair == "on" && params.mutect == "on" && params.ascatngs == "on" && params.sclust == "on"
+
+	script:
+	consensus_metadata_file = "${tumor_normal_sample_id}.consensus.somatic.metadata.txt"
+	"""
+	touch "${consensus_metadata_file}"
+
+	echo "### alleleCount ###" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+	echo "sample_sex" >> "${consensus_metadata_file}"
+	cat "${sample_sex}" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+
+	echo "### Conpair ###" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+	cat "${conpair_concordance_file}" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+	echo "cross-sample"
+	cat "${conpair-contamination_file}" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+
+	echo "### MuTect2 ###" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+	echo "cross-sample"
+	cut -f 2,3 "${mutect_contamination_file}" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+
+	echo "### ascatNGS ###" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+	grep 'NormalContamination' "${ascat_run_statistics}" >> "${consensus_metadata_file}"
+	grep 'Ploidy' "${ascat_run_statistics}" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+
+	echo "### Sclust ###" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+	cut -f 2,3,5 "${sclust_cnv_summary_file}" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
 	"""
 }
 
