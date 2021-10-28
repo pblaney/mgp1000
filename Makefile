@@ -38,7 +38,6 @@ preprocessing-completion:
 	mv nextflow_report.*.html logs/preprocessing
 	mv timeline_report.*.html logs/preprocessing
 	mv trace.*.txt logs/preprocessing
-	mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
 
 germline-completion:
 	mkdir -p logs/germline
@@ -54,22 +53,6 @@ somatic-completion:
 
 ###############################################################################
 
-# Test Preprocessing step locally with Docker and BAM or FASTQ input files
-dev-preprocessing-bam:
-	nextflow run preprocessing.nf -resume --run_id preprocessing_bam_test --input_format bam --skip_to_qc no -profile dev_preprocessing
-
-dev-preprocessing-fastq:
-	nextflow run preprocessing.nf -resume --run_id preprocessing_fastq_test --input_format fastq --skip_to_qc no -profile dev_preprocessing
-
-dev-preprocessing-bigbam:
-	nextflow run preprocessing.nf -resume --run_id preprocessing_bigbam_test --input_format bam --skip_to_qc yes -profile dev_preprocessing
-
-# Test Germline step locally with Docker
-dev-germline:
-	nextflow run germline.nf -resume --run_id germline_test --sample_sheet testSamples/samplesheet.csv --cohort_name test --vep_ref_cached yes --ref_vcf_concatenated yes -profile dev_germline
-
-###############################################################################
-
 # Remove logs/pid/reports/trace files
 quick-clean:
 	rm -f .nextflow.log*
@@ -78,7 +61,11 @@ quick-clean:
 	rm -f nextflow_report.*.html*
 	rm -f trace.*.txt*
 
-# Completely scrub pipeline output files
+# Clean up the pipeline directory after a successful run to prep for new run
+clean-postrun: quick-clean
+	rm -rf work/*
+
+# Completely scrub the pipeline directory
 clean-all:
 	rm -rf work
 	rm -rf output
@@ -87,35 +74,5 @@ clean-all:
 	rm -f timeline_report.*.html*
 	rm -f nextflow_report.*.html*
 	rm -f trace.*.txt*
-
-# Scrub Preprocessing step output files
-clean-preprocessing:
-	rm -rf work/*
-	rm -rf output/preprocessing/*
-	rm -f .nextflow.log*
-	rm -f .nextflow.pid*
-	rm -f timeline_report.*.html*
-	rm -f nextflow_report.*.html*
-	rm -f trace.*.txt*
-
-# Scrub Germline step output files
-clean-germline:
-	rm -rf work/*
-	rm -rf output/germline/*
-	rm -f .nextflow.log*
-	rm -f .nextflow.pid*
-	rm -f timeline_report.*.html*
-	rm -f nextflow_report.*.html*
-	rm -f trace.*.txt*
-
-# Scrub Somatic step output files
-clean-somatic:
-	rm -rf work/*
-	rm -rf output/somatic/*
-	rm -f .nextflow.log*
-	rm -f .nextflow.pid*
-	rm -f timeline_report.*.html*
-	rm -f nextflow_report.*.html*
-	rm -f trace.*.txt*	
 
 ###############################################################################

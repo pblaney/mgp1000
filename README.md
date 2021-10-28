@@ -14,12 +14,13 @@ The pipeline was developed to be run on various HPCs without concern of environm
 * Git
 * GNU Utilities
 * Java 8 (or later)
-* Singularity (validated on v3.1, v3.5.2, other versions will be tested)
+* Singularity (validated on v3.1, v3.5.2, v3.7.1 other versions will be tested)
 
 ## Installing Git LFS
 In an effort to containerize the pipeline further, all the necessary reference files and Singularity container images are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
+**NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
 ```
-# Example of installation of Linux AMD64 binary executible git-lfs file, (other binary files: https://github.com/git-lfs/git-lfs/releases)
+# Example of installation of Linux AMD64 binary executible git-lfs file, other binary files available here: https://github.com/git-lfs/git-lfs/releases
 cd $HOME/bin
 
 wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linux-amd64-v2.11.0.tar.gz && \
@@ -41,8 +42,15 @@ The first step in the deployment process is to clone the MGP1000 GitHub reposito
 git clone https://github.com/pblaney/mgp1000.git
 ```
 
+### Reference Data
+To facilitate ease of use, reproducibility, and consistency between all users of the pipeline, all required reference data has been provided within the `references/hg38/` directory. For detailed provenance of each file per tool is included in the pipline Wiki for full traceability.
+
+### Containers
+For the same reasons as with the reference data, the Singularity image files needed for each tool's container is provided within the `containers/` directory. All containers were originally developed with Docker and all tags can be found on the associated [DockerHub](https://hub.docker.com/r/patrickblaneynyu/mgp1000)
+
 ## Install Nextflow
 This series of `make` commands will install Nextflow, and, optionally, test or update the current Nextflow installation. First, check for what current version of Java is available to the current environment.
+**NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
 ```
 java -version
 
@@ -77,7 +85,7 @@ mv nextflow $HOME/bin
 ```
 
 ## Prepare the Pipeline for Usage
-Due to size, certain reference genome files are GNU zipped so these `make` commands will unzip them for use in the pipeline. Additionally, an `input` directory is created for staging all input BAM or FASTQ files, `preprocessedBams` subdirectory for BAMs that have undergone preprocessing and are ready for Germline/Somatic Variant Analysis steps, and a `logs` directory to store Nextflow output log files for each run.
+Due to size, certain reference files are GNU zipped so the `make prep-pipeline` command must be run to prepare them for use in the pipeline. Additionally, an `input` directory is created for staging all input BAM or FASTQ files, `preprocessedBams` subdirectory for BAMs that have undergone preprocessing and are ready for Germline/Somatic Variant Analysis steps, and a `logs` directory to store Nextflow output log files for each run.
 ```
 make prep-pipeline
 
@@ -92,14 +100,16 @@ make prep-pipeline
 ```
 
 ## Stage Input BAM or FASTQ Files
-For the Preprocessing step of the pipeline, all input files are handled out of `input` directory that was created. Given the size of the input data, the samples will have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs. A key assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files. Check the `testSample` directory to see examples of FASTQ naming conventions that are accepted. It is recommended that these be used as a sanity check of the pipeline if deploying for the first time.
+By default, all input files are handled out of the `input` and `input/preprocessedBams` directories for the Preprocessing and Germline/Somatic Variant Analysis steps, respectively. However, each step in the pipeline includes an option (`--input_dir`) for the user to define the input directory. Additionally, the pipeline will follow symbolic links for input files so there is no need to move files for staging. Given the possible size of the input data, the samples may have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs.
+**NOTE: A key assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files. Check the `testSample` directory to see examples of FASTQ naming conventions that are accepted. It is recommended that these be used as a sanity check of the pipeline if deploying for the first time.**
 ```
-# Example of staging input data files
-cp /normal/samples/directory/*.fastq.gz input/
+# Example of staging input data files with symbolic link
+ln -s /absolute/path/to/unprocessed/samples/directory/*.fastq.gz input/
 ```
 
 ## Run the Preprocessing Step of the Pipeline
 The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
+**NOTE: The pipeline is currently configured to run with SLURM as the executor. If the user's HPC uses an alternative scheduler please reach out for assistance with adjustments to the configuration to accommodate this, contact information at end of README.**
 ```
 $ nextflow run preprocessing.nf --help
 ...
@@ -109,7 +119,7 @@ $ nextflow run preprocessing.nf --help
 
 Usage Example:
 
-	nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com --skip_to_qc no -profile preprocessing 
+	nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
 
 Mandatory Arguments:
 	--run_id                       [str]  Unique identifier for pipeline run
@@ -124,6 +134,10 @@ Main Options:
 	                                      environment
 	-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 	                                      previously completed tasks are skipped while maintaining their output
+	--input_dir                    [str]  Directory that holds BAMs and associated index files
+	                                      Default: input/
+	--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+	                                      Default: output/
 	--email                        [str]  Email address to send workflow completion/stoppage notification
 	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 	                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -132,13 +146,22 @@ Main Options:
 	                                      reference genome and have adequate provenance to reflect this
 	                                      Available: yes, no
 	                                      Default: no
+	--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
+	                                      Available: 2, 4, 8, 16, etc.
+	                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+	--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
+	                                      Available: 32.GB, 2400.MB, etc.
+	                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+	--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
+	                                      Available: 25, 50, 100, 150, etc.
+	                                      Default: 100
 	--help                        [flag]  Prints this message
 
 ################################################
 ```
 
 ### Collect Preprocessing Output
-Upon completion of the Preprocessing step, Nextflow will ensure each relevent output files will be copied into a process-specific directory within the `output/preprocessing` folder. However, there are some additional steps such as saving the current run's Nextflow log files and preping the input for the Germline Variant Analysis step. This can be done with the following `make` command.
+By default, all output files are stored in the will be copied into a process-specific subdirectory within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory. Additionally, there is a `make preprocessing-completeion` command that is useful for collecting the run-related output of the Preprocessing step. 
 ```
 make preprocessing-completion
 
@@ -147,11 +170,10 @@ make preprocessing-completion
 # mv nextflow_report.*.html logs/preprocessing
 # mv timeline_report.*.html logs/preprocessing
 # mv trace.*.txt logs/preprocessing
-# mv output/preprocessing/finalPreprocessedBams/* input/preprocessedBams
 ```
 
 ## Run the Germline Variant Analysis Step of the Pipeline
-Next, the Germline Variant Analysis step of the pipeline can be started. The most important component of this step of the pipeline is the user-provided sample sheet CSV. This file includes two comma-separated columns: filename of normal sample BAMs and filename of corresponding paired tumor sample BAMs. An example of this is provided in `samplesheet.csv` within the `testSamples` directory. The sample sheet file should typically be within the main `mgp1000` directory.
+The most important component of this step of the pipeline is the user-provided sample sheet CSV. This file includes two comma-separated columns: filename of normal sample BAMs and filename of corresponding paired tumor sample BAMs. An example of this is provided in `samplesheet.csv` within the `testSamples` directory. The sample sheet file should typically be within the main `mgp1000` directory.
 
 ### Note on Parameters
 There are two parameters that will prepare necessary reference files as part of this step of the pipeline, `--vep_ref_cached` and `--ref_vcf_concatenated`. These parameters must be be set to `no` for the first run of the Germline Variant Analysis step of the pipeline.  
@@ -183,6 +205,10 @@ Main Options:
 	-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 	                                      previously completed tasks are skipped while maintaining their output
 	--email                        [str]  Email address to send workflow completion/stoppage notification
+	--input_dir                    [str]  Directory that holds BAMs and associated index files
+	                                      Default: input/preprocessedBams/
+	--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+	                                      Default: output/
 	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 	                                      this option is not needed if Singularity is natively installed on the deployment environment
 	--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
@@ -195,13 +221,22 @@ Main Options:
 	                                      need to be done for every separate run after the first
 	                                      Available: yes, no
 	                                      Default: yes
+	--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
+	                                      Available: 2, 4, 8, 16, etc.
+	                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+	--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
+	                                      Available: 32.GB, 2400.MB, etc.
+	                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+	--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
+	                                      Available: 25, 50, 100, 150, etc.
+	                                      Default: 100
 	--help                        [flag]  Prints this message
 
 ################################################
 ```
 
 ### Collect Germline Variant Analysis Output
-Upon completion of the Germline Variant Analysis step, a `make` command will again handle the collection of the current run's log files.
+There is also a `make germline-completeion` command that is useful for collecting the run-related output of the Germline Variant Analysis step. 
 ```
 make germline-completion
 
@@ -213,10 +248,10 @@ make germline-completion
 ```
 
 ## Run the Somatic Variant Analysis Step of the Pipeline
-Finally, the Somatic Variant Analaysis step of the pipeline is executed. This step uses the same user-provided sample sheet CSV as the Germline Variant Analysis step.
+This step uses the same user-provided sample sheet CSV as the Germline Variant Analysis step.
 
 ### Note on Parameters
-There are two parameters that will prepare necessary reference files as part of this step of the pipeline, `--vep_ref_cached` and `--mutect_ref_vcf_concatenated`. These parameters must be be set to `no` for the first run of the Somatic Variant Analysis step of the pipeline. Each tool used in the pipeline can be actively turned on or off using the command line. However, CaVEMan and Sclust are dependent on output from other tools, ascatNGS and MuTect2, respectively.
+There are two parameters that will prepare necessary reference files as part of this step of the pipeline, `--vep_ref_cached` and `--mutect_ref_vcf_concatenated`. These parameters must be be set to `no` for the first run of the Somatic Variant Analysis step of the pipeline. By default, all tools in this step will be used with the standard command in the usage example. The consensus output per variant type expects all tools to be included in the run for consensus processes to be run.
 ```
 nextflow run somatic.nf --help
 ...
@@ -242,6 +277,10 @@ Main Options:
 	                                      environment
 	-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 	                                      previously completed tasks are skipped while maintaining their output
+	--input_dir                    [str]  Directory that holds BAMs and associated index files
+	                                      Default: input/preprocessedBams/
+	--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+	                                      Default: output/
 	--email                        [str]  Email address to send workflow completion/stoppage notification
 	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 	                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -255,6 +294,15 @@ Main Options:
 	                                      done for every separate run after the first
 	                                      Available: yes, no
 	                                      Default: yes
+	--cpus                         [int]  Globally set the number of cpus to be allocated for all processes that allow for multithreading
+	                                      Available: 2, 4, 8, 16, etc.
+	                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+	--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
+	                                      Available: 32.GB, 2400.MB, etc.
+	                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
+	--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
+	                                      Available: 25, 50, 100, 150, etc.
+	                                      Default: 100
 	--help                        [flag]  Prints this message
 
 Toolbox Switches:
@@ -270,7 +318,7 @@ Toolbox Switches:
 	--mutect                       [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
-	--caveman                      [str]  Indicates whether or not to use this tool
+	--strelka                      [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
 	--ascatngs                     [str]  Indicates whether or not to use this tool
@@ -288,7 +336,7 @@ Toolbox Switches:
 	--svaba                        [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
-	--gridss                       [str]  Indicates whether or not to use this tool
+	--delly                        [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
 
@@ -296,7 +344,7 @@ Toolbox Switches:
 ```
 
 ### Collect Somatic Variant Analysis Output
-Upon completion of the Somatic Variant Analysis step, a `make` command will again handle the collection of the current run's log files.
+There is also a `make somatic-completeion` command that is useful for collecting the run-related output of the Somatic Variant Analysis step. 
 ```
 make somatic-completion:
 
