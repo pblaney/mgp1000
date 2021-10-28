@@ -2936,7 +2936,7 @@ process mergeMetadataOutput {
 	cat "${conpair_concordance_file}" >> "${consensus_metadata_file}"
 	echo "" >> "${consensus_metadata_file}"
 	echo "cross-sample"
-	cat "${conpair-contamination_file}" >> "${consensus_metadata_file}"
+	cat "${conpair_contamination_file}" >> "${consensus_metadata_file}"
 	echo "" >> "${consensus_metadata_file}"
 
 	echo "### MuTect2 ###" >> "${consensus_metadata_file}"
