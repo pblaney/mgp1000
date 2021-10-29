@@ -193,7 +193,6 @@ if( params.input_format == "fastq" ) {
 
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
 process revertMappedBam_gatk {
-	publishDir "${params.output_dir}/preprocessing/revertedBams", mode: 'symlink'
 	tag "${bam_mapped.baseName}"
 
 	input:
@@ -226,7 +225,6 @@ process revertMappedBam_gatk {
 
 // biobambam bamtofastq ~ convert unmapped BAM files to paired FASTQ files
 process bamToFastq_biobambam {
-	publishDir "${params.output_dir}/preprocessing/bamToFastq", mode: 'symlink'
 	tag "${sample_id}"
 
 	input:
@@ -262,8 +260,6 @@ else {
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process fastqTrimming_trimmomatic {
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R1_trimmed}"	
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimmedFastqs", mode: 'symlink', pattern: "*${fastq_R2_trimmed}"
 	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'copy', pattern: "*${fastq_trim_log}"
 	tag "${sample_id}"
 
@@ -325,7 +321,6 @@ process fastqQualityControlMetrics_fastqc {
 
 // BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
-	publishDir "${params.output_dir}/preprocessing/alignment/rawBams", mode: 'symlink', pattern: "*${bam_aligned}"
 	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'copy', pattern: "*${bam_flagstat_log}"
 	tag "${sample_id}"
 
@@ -375,7 +370,6 @@ process alignment_bwa {
 
 // GATK FixMateInformation / SortSam ~ veryify/fix mate-pair information and sort output BAM by coordinate
 process fixMateInformationAndSort_gatk {
-	publishDir "${params.output_dir}/preprocessing/fixMateBams", mode: 'symlink'
 	tag "${bam_aligned.baseName}"
 
 	input:
@@ -414,7 +408,6 @@ process fixMateInformationAndSort_gatk {
 
 // Sambamba markdup ~ mark duplicate alignments, remove them, and create BAM index
 process markDuplicatesAndIndex_sambamba {
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/bamsWithIndcies", mode: 'symlink'
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${bam_markdup_flagstat_log}"
 	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${markdup_output_log}"
 	tag "${sample_id}"
@@ -458,7 +451,6 @@ process markDuplicatesAndIndex_sambamba {
 
 // GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
 process downsampleBam_gatk {
-	publishDir  "${params.output_dir}/preprocessing/downsampleBams", mode: 'symlink'
 	tag "${sample_id}"
 
 	input:
@@ -508,7 +500,6 @@ downsampled_makred_dup_bams.combine( reference_genome_bundle_forBaseRecalibrator
 
 // GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
-	publishDir "${params.output_dir}/preprocessing/baseRecalibration", mode: 'symlink'
 	tag "${sample_id}"
 
 	input:

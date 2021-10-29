@@ -298,7 +298,6 @@ input_preprocessed_bams_forHaplotypeCaller.combine( reference_genome_bundle_forH
 
 // GATK HaplotypeCaller ~ call germline SNPs and indels via local re-assembly
 process haplotypeCaller_gatk {
-	publishDir "${params.output_dir}/germline/haplotypecallerRawVcf", mode: 'symlink'
 	tag "${sample_id}.${interval_id}"
 
 	input:
@@ -329,7 +328,6 @@ process haplotypeCaller_gatk {
 
 // GATK SortVcfs ~ merge all GVCF files for each sample and sort them
 process mergeAndSortGvcfs_gatk {
-	publishDir "${params.output_dir}/germline/mergedAndSortedGvcfs", mode: 'symlink'
 	tag "${sample_id}"
 	
 	input:
@@ -360,7 +358,6 @@ reference_genome_fasta_forCombineGvcfs.combine( reference_genome_fasta_index_for
 
 // GATK CombineGVFCs ~ combine per-sample GVCF files into a multi-sample GVCF for joint-genotyping
 process combineAllGvcfs_gatk {
-	publishDir "${params.output_dir}/germline/combinedGvcf", mode: 'symlink'
 	tag "${params.cohort_name}"
 
 	input:
@@ -395,7 +392,6 @@ reference_genome_fasta_forJointGenotyping.combine( reference_genome_fasta_index_
 
 // GATK GenotypeGVCFs ~ perform joint genotyping
 process jointGenotyping_gatk {
-	publishDir "${params.output_dir}/germline/jointGenotypedVcf", mode: 'symlink'
 	tag "${params.cohort_name}"
 
 	input:
@@ -428,7 +424,6 @@ process jointGenotyping_gatk {
 // ExcessHet is a phred-scaled p-value. We want a cutoff of anything more extreme
 // than a z-score of -4.5 which is a p-value of 3.4e-06, which phred-scaled is 54.69
 process excessHeterozygosityHardFilter_gatk {
-	publishDir "${params.output_dir}/germline/excessHetHardFilter", mode: 'symlink'
 	tag "${params.cohort_name}"
 
 	input:
@@ -475,7 +470,6 @@ reference_genome_fasta_forIndelVariantRecalibration.combine( reference_genome_fa
 
 // GATK VariantRecalibrator (Indels) ~ build recalibration model to score indel variant quality for filtering
 process indelVariantRecalibration_gatk {
-	publishDir "${params.output_dir}/germline/indelVariantRecal", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -525,7 +519,6 @@ reference_genome_fasta_forSnpVariantRecalibration.combine( reference_genome_fast
 
 // GATK VariantRecalibrator (SNPs) ~ build recalibration model to score SNP variant quality for filtering
 process snpVariantRecalibration_gatk {
-	publishDir "${params.output_dir}/germline/snpVariantRecal", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -562,7 +555,6 @@ process snpVariantRecalibration_gatk {
 
 // GATK ApplyVQSR ~ apply variant quality score recalibration for Indels and SNPs
 process applyIndelAndSnpVqsr_gatk {
-	publishDir "${params.output_dir}/germline/vqsrVcfs", mode: 'symlink'
 	tag "${params.cohort_name}"
 
 	input:
@@ -613,7 +605,7 @@ reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_for
 
 // BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeVcf_bcftools {
-	publishDir "${params.output_dir}/germline/finalUnannotatedGermlineVcfs", mode: 'copy'
+	publishDir "${params.output_dir}/germline/unannotatedGermlineVcf", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -688,7 +680,7 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 
 // VEP ~ annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateGermlineVcf_vep {
-	publishDir "${params.output_dir}/germline/finalVepAnnotatedGermlineVcfs", mode: 'copy'
+	publishDir "${params.output_dir}/germline/finalVepAnnotatedGermlineVcf", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -780,7 +772,6 @@ else {
 // BCFtools Annotate/Merge ~ preprocessing of VCF to remove all FORMAT fields except genotype needed for merging with reference VCF
 // and merge cohort VCF with 1000G ref VCF for supervised projection analysis, output no new multiallelic records
 process mergeCohortAndReferenceVcf_bcftools {
-	publishDir "${params.output_dir}/germline/cohortAndRefMergedVcf", mode: 'symlink'
 	tag "${params.cohort_name}"
 
 	input:
