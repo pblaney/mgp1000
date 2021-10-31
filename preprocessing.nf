@@ -260,7 +260,7 @@ else {
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process fastqTrimming_trimmomatic {
-	publishDir "${params.output_dir}/preprocessing/trimmomatic/trimLogs", mode: 'copy', pattern: "*${fastq_trim_log}"
+	publishDir "${params.output_dir}/preprocessing/trimmomatic", mode: 'copy', pattern: "*${fastq_trim_log}"
 	tag "${sample_id}"
 
 	input:
@@ -321,7 +321,7 @@ process fastqQualityControlMetrics_fastqc {
 
 // BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
-	publishDir "${params.output_dir}/preprocessing/alignment/flagstatLogs", mode: 'copy', pattern: "*${bam_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/alignment", mode: 'copy', pattern: "*${bam_flagstat_log}"
 	tag "${sample_id}"
 
 	input:
@@ -408,8 +408,8 @@ process fixMateInformationAndSort_gatk {
 
 // Sambamba markdup ~ mark duplicate alignments, remove them, and create BAM index
 process markDuplicatesAndIndex_sambamba {
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${bam_markdup_flagstat_log}"
-	publishDir "${params.output_dir}/preprocessing/markedDuplicates/flagstatLogs", mode: 'copy', pattern: "*${markdup_output_log}"
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates", mode: 'copy', pattern: "*${bam_markdup_flagstat_log}"
+	publishDir "${params.output_dir}/preprocessing/markedDuplicates", mode: 'copy', pattern: "*${markdup_output_log}"
 	tag "${sample_id}"
 
 	input:
