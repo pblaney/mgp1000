@@ -1559,8 +1559,7 @@ process cnvPredictionPostProcessing_controlfreec {
 	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) from cnv_calling_files_forControlFreecPostProcessing
 
 	output:
-	tuple val(tumor_normal_sample_id), path(control_freec_cnv_ratio_bed_file) into final_control_freec_cnv_profile_forConsensus
-	path control_freec_cnv_profile_final
+	tuple val(tumor_normal_sample_id), path(control_freec_cnv_ratio_bed_file), path(control_freec_cnv_profile_final) into final_control_freec_cnv_profile_forConsensus
 	path ratio_graph_png
 	path ratio_log2_graph_png
 	path baf_graph_png
@@ -2733,7 +2732,7 @@ process mergeAndGenerateCnvCalls_bedtools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_cnv_ratio_bed_file), path(sclust_allelic_states_file) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus)
+	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_cnv_ratio_bed_file), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_cnv_bed)
@@ -2745,6 +2744,7 @@ process mergeAndGenerateCnvCalls_bedtools {
 	ascat_somatic_cnv_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.bed"
 	ascat_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.alleles.bed"
 	control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
+	control_freec_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.alleles.bed"
 	sclust_somatic_cnv_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.bed"
 	sclust_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.alleles.bed"
 	merged_cnv_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.bed"
@@ -2764,6 +2764,12 @@ process mergeAndGenerateCnvCalls_bedtools {
 	| \
 	sort -k1,1V -k2,2n > "${control_freec_somatic_cnv_bed}"
 
+	grep -v 'chr' "${control_freec_cnv_profile_final}" \
+	| \
+	awk 'BEGIN {OFS="\t"} {print "chr"\$1,\$2,\$3,\$6}' \
+	| \
+	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.controlfreec.allele.genotypes.bed"
+
 	grep -v 'Sample' "${sclust_allelic_states_file}" \
 	| \
 	cut -f 2-4,6 > "${sclust_somatic_cnv_bed}"
@@ -2778,15 +2784,25 @@ process mergeAndGenerateCnvCalls_bedtools {
 	-header \
 	-names ascat_total_cn controlfreec_total_cn sclust_total_cn > "${merged_cnv_bed}"
 
-	bedtools unionbedg \
-	-filler NA \
-	-i "${ascat_somatic_cnv_per_allele_bed}" "${sclust_somatic_cnv_per_allele_bed}" \
-	-header \
-	-names ascat_major_minor_alleles sclust_major_minor_alleles > "${merged_cnv_per_allele_bed}"
-
 	consensus_cnv_generator.py \
 	<(grep -v 'chrom' "${merged_cnv_bed}") \
 	"${consensus_cnv_bed}"
+
+	bedtools map \
+	-a "${control_freec_somatic_cnv_bed}" \
+	-b "${tumor_normal_sample_id}.controlfreec.allele.genotypes.bed" \
+	-c 4 \
+	-o concat > "${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed"
+
+	control_freec_allele_segmentor.py \
+	"${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed" \
+	"${control_freec_somatic_cnv_per_allele_bed}"
+
+	bedtools unionbedg \
+	-filler NA \
+	-i "${ascat_somatic_cnv_per_allele_bed}" "${sclust_somatic_cnv_per_allele_bed}" "${control_freec_somatic_cnv_per_allele_bed}" \
+	-header \
+	-names ascat_major_minor_alleles sclust_major_minor_alleles controlfreec_major_minor_alleles > "${merged_cnv_per_allele_bed}"
 	"""
 }
 
