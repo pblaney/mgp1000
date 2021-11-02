@@ -2727,7 +2727,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 // START
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
-process mergeAndGenerateCnvCalls_bedtools {
+process mergeAndGenerateConsensusCnvCalls_bedtools {
 	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
@@ -2800,9 +2800,9 @@ process mergeAndGenerateCnvCalls_bedtools {
 
 	bedtools unionbedg \
 	-filler NA \
-	-i "${ascat_somatic_cnv_per_allele_bed}" "${sclust_somatic_cnv_per_allele_bed}" "${control_freec_somatic_cnv_per_allele_bed}" \
+	-i "${ascat_somatic_cnv_per_allele_bed}" "${control_freec_somatic_cnv_per_allele_bed}" "${sclust_somatic_cnv_per_allele_bed}" \
 	-header \
-	-names ascat_major_minor_alleles sclust_major_minor_alleles controlfreec_major_minor_alleles > "${merged_cnv_per_allele_bed}"
+	-names ascat_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles > "${merged_cnv_per_allele_bed}"
 	"""
 }
 
