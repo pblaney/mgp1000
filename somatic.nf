@@ -2837,7 +2837,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	-names ascat_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles > "${merged_alleles_bed}"
 
 	consensus_allele_generator.py \
-	<(grep -v 'chrom' "${merged_cnv_per_allele_bed}") \
+	<(grep -v 'chrom' "${merged_alleles_bed}") \
 	"${consensus_alleles_bed}"
 
 
