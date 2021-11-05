@@ -2844,7 +2844,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	### Merge both consensus CNV and called alleles per segment ###
 	paste "${consensus_cnv_bed}" <(cut -f 4-9 "${consensus_alleles_bed}") \
 	| \
-	awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$9,$10,$5,$11,$6,$12,$7,$13,$8,$14}' > "${consensus_merged_cnv_alleles_bed}"
+	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$9,\$10,\$5,\$11,\$6,\$12,\$7,\$13,\$8,\$14}' > "${consensus_merged_cnv_alleles_bed}"
 	"""
 }
 
