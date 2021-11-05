@@ -2728,7 +2728,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
 process mergeAndGenerateConsensusCnvCalls_bedtools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', 
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy'
 	tag "${tumor_normal_sample_id}"
 
 	input:
