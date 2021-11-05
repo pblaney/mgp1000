@@ -58,3 +58,5 @@ with open(input_args[1]) as control_freec_mapped_alleles:
                 nonneutral_heterozygous_alleles = '/'.join([str(allele_segment_obj.genotype.count("A")), str(allele_segment_obj.genotype.count("B"))])
                 nonneutral_heterozygous_tuple = (allele_segment_obj.chrom, allele_segment_obj.start, allele_segment_obj.end, nonneutral_heterozygous_alleles)
                 control_freec_alleles_bed.write('{0}\n'.format(allele_segment_writer(nonneutral_heterozygous_tuple)))
+
+control_freec_alleles_bed.close()

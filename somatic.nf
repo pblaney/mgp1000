@@ -2728,56 +2728,96 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
 process mergeAndGenerateConsensusCnvCalls_bedtools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', 
 	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_cnv_ratio_bed_file), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(consensus_cnv_bed)
+	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed)
 
 	when:
 	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
 
 	script:
 	ascat_somatic_cnv_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.bed"
-	ascat_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.alleles.bed"
+	ascat_somatic_alleles_bed = "${tumor_normal_sample_id}.ascat.somatic.alleles.bed"
 	control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
-	control_freec_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.alleles.bed"
+	control_freec_somatic_alleles_bed = "${tumor_normal_sample_id}.controlfreec.somatic.alleles.bed"
 	sclust_somatic_cnv_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.bed"
-	sclust_somatic_cnv_per_allele_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.alleles.bed"
+	sclust_somatic_alleles_bed = "${tumor_normal_sample_id}.sclust.somatic.alleles.bed"
 	merged_cnv_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.bed"
-	merged_cnv_per_allele_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.alleles.bed"
+	merged_alleles_bed = "${tumor_normal_sample_id}.merged.somatic.alleles.bed"
 	consensus_cnv_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.bed"
+	consensus_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.alleles.bed"
+	consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.merged.cnv.alleles.bed"
 	"""
+	### Prep ASCAT files ###
+	# total copy number per segment
 	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
 	| \
 	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${ascat_somatic_cnv_bed}"
 
+	# major/minor alleles per segment
 	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
 	| \
-	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7-\$8"/"\$8}' > "${ascat_somatic_cnv_per_allele_bed}"
+	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7-\$8"/"\$8}' > "${ascat_somatic_alleles_bed}"
 
-	paste <(awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3}' "${control_freec_cnv_ratio_bed_file}") \
+
+	### Prep Control-FREEC files ###
+	# total copy number per segment
+	paste <(awk 'BEGIN {OFS="\t"} {print \$1,\$2-1,\$3-1}' "${control_freec_cnv_ratio_bed_file}") \
 	<(printf "%.0f\n" \$(cut -d ' ' -f 4 "${control_freec_cnv_ratio_bed_file}")) \
+	| \
+	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromratio.bed"
+
+	grep -v 'chr' "${control_freec_cnv_profile_final}" \
+	| \
+	awk 'BEGIN {OFS="\t"} {print "chr"\$1,\$2,\$3,\$4}' \
+	| \
+	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromprofile.bed"
+
+	bedtools subtract \
+	-a "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromratio.bed" \
+	-b "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromprofile.bed" \
+	| \
+	bedops --everything \
+	- "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromprofile.bed" \
 	| \
 	sort -k1,1V -k2,2n > "${control_freec_somatic_cnv_bed}"
 
+	# major/minor alleles per segment
 	grep -v 'chr' "${control_freec_cnv_profile_final}" \
 	| \
 	awk 'BEGIN {OFS="\t"} {print "chr"\$1,\$2,\$3,\$6}' \
 	| \
 	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.controlfreec.allele.genotypes.bed"
 
+	bedtools map \
+	-a "${control_freec_somatic_cnv_bed}" \
+	-b "${tumor_normal_sample_id}.controlfreec.allele.genotypes.bed" \
+	-c 4 \
+	-o distinct > "${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed"
+
+	control_freec_allele_segmentor.py \
+	"${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed" \
+	"${control_freec_somatic_alleles_bed}"
+
+
+	### Prep Sclust files ###
+	# total copy number per segment
 	grep -v 'Sample' "${sclust_allelic_states_file}" \
 	| \
 	cut -f 2-4,6 > "${sclust_somatic_cnv_bed}"
 
+	# major/minor alleles per segment
 	grep -v 'Sample' "${sclust_allelic_states_file}" \
 	| \
-	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7"/"\$8}' > "${sclust_somatic_cnv_per_allele_bed}"
+	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7"/"\$8}' > "${sclust_somatic_alleles_bed}"
 
+
+	### Create consensus total copy number file ###
 	bedtools unionbedg \
 	-filler NA \
 	-i "${ascat_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${sclust_somatic_cnv_bed}" \
@@ -2788,21 +2828,23 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	<(grep -v 'chrom' "${merged_cnv_bed}") \
 	"${consensus_cnv_bed}"
 
-	bedtools map \
-	-a "${control_freec_somatic_cnv_bed}" \
-	-b "${tumor_normal_sample_id}.controlfreec.allele.genotypes.bed" \
-	-c 4 \
-	-o concat > "${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed"
 
-	control_freec_allele_segmentor.py \
-	"${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed" \
-	"${control_freec_somatic_cnv_per_allele_bed}"
-
+	### Create consensus major and minor allele file ###
 	bedtools unionbedg \
 	-filler NA \
-	-i "${ascat_somatic_cnv_per_allele_bed}" "${control_freec_somatic_cnv_per_allele_bed}" "${sclust_somatic_cnv_per_allele_bed}" \
+	-i "${ascat_somatic_alleles_bed}" "${control_freec_somatic_alleles_bed}" "${sclust_somatic_alleles_bed}" \
 	-header \
-	-names ascat_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles > "${merged_cnv_per_allele_bed}"
+	-names ascat_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles > "${merged_alleles_bed}"
+
+	consensus_allele_generator.py \
+	<(grep -v 'chrom' "${merged_cnv_per_allele_bed}") \
+	"${consensus_alleles_bed}"
+
+
+	### Merge both consensus CNV and called alleles per segment ###
+	paste "${consensus_cnv_bed}" <(cut -f 4-9 "${consensus_alleles_bed}") \
+	| \
+	awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,$9,$10,$5,$11,$6,$12,$7,$13,$8,$14}' > "${consensus_merged_cnv_alleles_bed}"
 	"""
 }
 
