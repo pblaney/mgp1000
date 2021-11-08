@@ -1504,12 +1504,14 @@ process cnvCalling_controlfreec {
 	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) into cnv_calling_files_forControlFreecPostProcessing
 	path control_freec_config_file
 	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file) into control_freec_subclones_forConsensusSubclones
+	tuple val(tumor_normal_sample_id), path(control_freec_run_info) into control_freec_output_forConsensusMetadata
 
 	when:
 	params.controlfreec == "on"
 
 	script:
 	control_freec_config_file = "${tumor_normal_sample_id}.controlfreec.config.txt"
+	control_freec_run_info = "${tumor_normal_sample_id}.controlfreec.runinfo.txt"
 	cnv_profile_raw = "${tumor_normal_sample_id}.controlfreec.raw.cnv"
 	cnv_ratio_file = "${tumor_normal_sample_id}.controlfreec.ratio.txt"
 	control_freec_subclones_file = "${tumor_normal_sample_id}.controlfreec.subclones.txt"
@@ -1522,10 +1524,11 @@ process cnvCalling_controlfreec {
 	echo "[general]" >> "${control_freec_config_file}"
 	echo "chrFiles = \${PWD}/${autosome_sex_chromosome_fasta_dir}" >> "${control_freec_config_file}"
 	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${control_freec_config_file}"
+	echo "contaminationAdjustment = TRUE" >> "${control_freec_config_file}"
 	echo "gemMappabilityFile = \${PWD}/out100m2_hg38.gem" >> "${control_freec_config_file}"
 	echo "minimalSubclonePresence = 20" >> "${control_freec_config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${control_freec_config_file}"
-	echo "ploidy = 2,3,4" "${control_freec_config_file}"
+	echo "ploidy = 2,3,4" >> "${control_freec_config_file}"
 	echo "sex = \${sex}" >> "${control_freec_config_file}"
 	echo "window = 50000" >> "${control_freec_config_file}"
 	echo "" >> "${control_freec_config_file}"
@@ -1548,6 +1551,7 @@ process cnvCalling_controlfreec {
 
 	freec -conf "${control_freec_config_file}"
 
+	mv "${tumor_pileup}__info.txt" "${control_freec_run_info}"
 	mv "${tumor_pileup}_CNVs" "${cnv_profile_raw}"
 	mv "${tumor_pileup}_ratio.txt" "${cnv_ratio_file}"
 	mv "${tumor_pileup}_subclones.txt" "${control_freec_subclones_file}"
@@ -3028,7 +3032,7 @@ process mergeMetadataOutput {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(sample_sex), path(conpair_concordance_file), path(conpair_contamination_file), path(mutect_contamination_file), path(ascat_run_statistics), path(sclust_cnv_summary_file) from allelecount_output_forConsensusMetadata.join(conpair_output_forConsensusMetadata).join(mutect_output_forConsensusMetadata).join(ascat_output_forConsensusMetadata).join(sclust_output_forConsensusMetadata)
+	tuple val(tumor_normal_sample_id), path(sample_sex), path(conpair_concordance_file), path(conpair_contamination_file), path(mutect_contamination_file), path(ascat_run_statistics), path(control_freec_run_info), path(sclust_cnv_summary_file) from allelecount_output_forConsensusMetadata.join(conpair_output_forConsensusMetadata).join(mutect_output_forConsensusMetadata).join(ascat_output_forConsensusMetadata).join(control_freec_output_forConsensusMetadata).join(sclust_output_forConsensusMetadata)
 
 	output:
 	path consensus_metadata_file
@@ -3065,6 +3069,12 @@ process mergeMetadataOutput {
 	echo "" >> "${consensus_metadata_file}"
 	grep 'NormalContamination' "${ascat_run_statistics}" >> "${consensus_metadata_file}"
 	grep 'Ploidy' "${ascat_run_statistics}" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+
+	echo "### Control-FREEC ###" >> "${consensus_metadata_file}"
+	echo "" >> "${consensus_metadata_file}"
+	grep 'Sample_Purity' "${control_freec_run_info}" >> "${consensus_metadata_file}"
+	grep 'Output_Ploidy' "${control_freec_run_info}" >> "${consensus_metadata_file}"
 	echo "" >> "${consensus_metadata_file}"
 
 	echo "### Sclust ###" >> "${consensus_metadata_file}"
