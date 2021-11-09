@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 # This script accepts a text file containing per variant REF and ALT supporting
 # reads on the forward and reverse strands to perform a Fisher's Exact Test.
 # It then produces a BED file with each variant's coordinates that fail the test
