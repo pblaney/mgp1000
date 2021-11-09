@@ -3163,7 +3163,7 @@ process annotateSomaticVcf_vep {
 			--polyphen b \
 			--biotype \
 			--symbol \
-			--nearest symbol 
+			--nearest symbol \
 			--check_existing \
 			--max_af \
 			--gencode_basic \
