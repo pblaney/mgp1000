@@ -2955,7 +2955,7 @@ process prepSvVcfsForSurvivor_bcftools {
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(sample_renaming_file), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) from manta_sv_vcf_forSurvivorPrep.join(svaba_sv_vcf_forSurvivorPrep, by: [0,1]).join(delly_sv_vcf_forSurvivorPrep, by: [0,1])
 
 	output:
-	tuple val(tumor_normal_sample_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) into sv_vcfs_forSurvivor
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) into sv_vcfs_forSurvivor
 
 	when:
 	params.manta == "on" && params.svaba == "on" && params.delly == "on"
@@ -2994,7 +2994,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	tag	"${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) from sv_vcfs_forSurvivor
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) from sv_vcfs_forSurvivor
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf)
@@ -3009,13 +3009,15 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 
 	SURVIVOR merge \
 	input_vcf_list.txt \
-	300 \
+	1000 \
 	2 \
 	0 \
 	1 \
 	0 \
 	51 \
-	"${consensus_somatic_sv_vcf}"
+	"${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
+
+	#sed 's|"${tumor_id}\t${tumor_id}_1\t${tumor_id}_2"|"${tumor_id}_manta\t${tumor_id}_svaba\t${tumor_id}_delly"|'
 	"""
 }
 
@@ -3144,10 +3146,10 @@ process annotateSomaticVcf_vep {
 
 	script:
 	"""
-	for vcf in `ls *.vcf.gz`;
+	for vcf in `ls *.vcf`;
 		do
-			output_vcf=\$(echo \${vcf} | sed 's|.vcf.gz|.annotated.vcf.gz|')
-			output_stats=\$(echo \${vcf} | sed 's|.vcf.gz|.vep.summary.html|')
+			output_vcf=\$(echo \${vcf} | sed 's|.vcf|.annotated.vcf.gz|')
+			output_stats=\$(echo \${vcf} | sed 's|.vcf|.vep.summary.html|')
 
 			vep \
 			--offline \
