@@ -1551,7 +1551,7 @@ process cnvCalling_controlfreec {
 
 	freec -conf "${control_freec_config_file}"
 
-	mv "${tumor_pileup}__info.txt" "${control_freec_run_info}"
+	mv "${tumor_pileup}_info.txt" "${control_freec_run_info}"
 	mv "${tumor_pileup}_CNVs" "${cnv_profile_raw}"
 	mv "${tumor_pileup}_ratio.txt" "${cnv_ratio_file}"
 	mv "${tumor_pileup}_subclones.txt" "${control_freec_subclones_file}"
@@ -2519,8 +2519,8 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	"""
 }
 
-// VCFtools ~ final hard filters based on simple/centromeric repeats and strand bias BED files before annotation of SNVs
-process repeatsAndStrandBiasFilter_vcftools {
+// VCFtools ~ final hard filters of SNVs based on simple/centromeric repeats and strand bias BED files before annotation of SNVs
+process repeatsAndStrandBiasFilterSnvs_vcftools {
 	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
@@ -2601,7 +2601,7 @@ process consensusIndelMpileup_bcftools {
 	"""
 	bcftools mpileup \
 	--no-BAQ \
-	--min-MQ 35 \
+	--min-MQ 45 \
 	--min-BQ 30 \
 	--max-depth 5000 \
 	--threads ${task.cpus} \
@@ -2700,23 +2700,23 @@ process addSamplesToConsensusIndelVcf_vatools {
 
 // BCFtools annotate ~ modify VCF INFO/FORMAT columns to include better information and final filtering
 process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_indel_noformat_vcf), path(indel_mpileup_info_dp_metrics), path(indel_mpileup_normal_format_metrics), path(indel_mpileup_normal_format_metrics_index), path(indel_mpileup_tumor_format_metrics), path(indel_mpileup_tumor_format_metrics_index) from consensus_indel_vcf_forAddFormat.join(consensus_indel_mpileup_metrics_forAddFormat)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index) into high_quality_consensus_indel_forAnnotation
+	tuple val(tumor_normal_sample_id), path(indel_consensus_vcf), path(indel_consensus_vcf_index), path(indel_strand_metrics) into consensus_indel_forBedFilters
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
 	script:
-	hq_indel_consensus_vcf_info_header = "hq_indel_consensus_vcf_info_header.txt"
-	hq_indel_consensus_vcf_format_headers = "hq_indel_consensus_vcf_format_header.txt"
-	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
-	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
+	indel_consensus_vcf_info_header = "indel_consensus_vcf_info_header.txt"
+	indel_consensus_vcf_format_headers = "indel_consensus_vcf_format_header.txt"
+	indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
+	indel_consensus_vcf_index = "${indel_consensus_vcf}.tbi"
+	indel_strand_metrics = "${tumor_normal_sample_id}.indel.strand.mertrics.txt"
 	"""
 	cat "${indel_mpileup_info_dp_metrics}" \
 	| \
@@ -2731,30 +2731,30 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	bgzip > "${tumor_normal_sample_id}.indel.mpileup.info.metrics.txt.gz"
 	tabix -s1 -b2 -e2 "${tumor_normal_sample_id}.indel.mpileup.info.metrics.txt.gz"
 
-	touch "${hq_indel_consensus_vcf_info_header}"
-	echo '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth across samples (normal sample DP + tumor sample DP)">' >> "${hq_indel_consensus_vcf_info_header}"
-	echo '##INFO=<ID=AC,Number=1,Type=Integer,Description="Count of ALT allele reads in tumor sample">' >> "${hq_indel_consensus_vcf_info_header}"
-	echo '##INFO=<ID=VAF,Number=1,Type=Float,Description="Variant allele frequency, expressed as fraction of ALT allele reads in total read depth in tumor sample (tumor sample ALT AC / tumor sample DP)">' >> "${hq_indel_consensus_vcf_info_header}"
+	touch "${indel_consensus_vcf_info_header}"
+	echo '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth across samples (normal sample DP + tumor sample DP)">' >> "${indel_consensus_vcf_info_header}"
+	echo '##INFO=<ID=AC,Number=1,Type=Integer,Description="Count of ALT allele reads in tumor sample">' >> "${indel_consensus_vcf_info_header}"
+	echo '##INFO=<ID=VAF,Number=1,Type=Float,Description="Variant allele frequency, expressed as fraction of ALT allele reads in total read depth in tumor sample (tumor sample ALT AC / tumor sample DP)">' >> "${indel_consensus_vcf_info_header}"
 
 	bcftools annotate \
 	--output-type z \
 	--annotations "${tumor_normal_sample_id}.indel.mpileup.info.metrics.txt.gz" \
-	--header-lines "${hq_indel_consensus_vcf_info_header}" \
+	--header-lines "${ndel_consensus_vcf_info_header}" \
 	--columns CHROM,POS,REF,ALT,INFO/DP,INFO/AC,INFO/VAF \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.noformat.vcf.gz" \
 	"${mpileup_supported_consensus_somatic_indel_noformat_vcf}"
 
-	touch "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=DPS,Number=1,Type=Integer,Description="Total read depth in sample">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=ACS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads in sample">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=ACFS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads on forward(+) strand in sample">' >> "${hq_indel_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=ACRS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads on reverse(-) strand in sample">' >> "${hq_indel_consensus_vcf_format_headers}"
+	touch "${indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=DPS,Number=1,Type=Integer,Description="Total read depth in sample">' >> "${indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=ACS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads in sample">' >> "${indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=ACFS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads on forward(+) strand in sample">' >> "${indel_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=ACRS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads on reverse(-) strand in sample">' >> "${indel_consensus_vcf_format_headers}"
 
 	bcftools annotate \
 	--output-type z \
 	--samples "${normal_id}" \
 	--annotations "${indel_mpileup_normal_format_metrics}" \
-	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
+	--header-lines "${indel_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.halfformat.vcf.gz" \
 	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.noformat.vcf.gz"
@@ -2763,7 +2763,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	--output-type z \
 	--samples "${tumor_id}" \
 	--annotations "${indel_mpileup_tumor_format_metrics}" \
-	--header-lines "${hq_indel_consensus_vcf_format_headers}" \
+	--header-lines "${indel_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
 	--remove FORMAT/GT \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.format.vcf.gz" \
@@ -2771,12 +2771,65 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 
 	bcftools filter \
 	--output-type v \
-	--exclude 'INFO/AC<2 | INFO/VAF<0.01' \
+	--exclude 'INFO/AC<3 | INFO/VAF<0.01' \
 	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.format.vcf.gz" \
+	| \
+	bcftools filter \
+	--output-type v \
+	--exclude 'FILTER="LOWSUPPORT"' - \
 	| \
 	grep -v '##bcftools_annotate' \
 	| \
+	bgzip > "${indel_consensus_vcf}"
+	tabix "${indel_consensus_vcf}"
+
+	bcftools query \
+	--format '%CHROM\t%POS\t[%ACFS]\t[%ACRS]\n' \
+	--samples "${tumor_id}" \
+	--output "${indel_strand_metrics}" \
+	"${indel_consensus_vcf}"
+	"""
+}
+
+// VCFtools ~ final hard filters of InDels based on simple/centromeric repeats and strand bias BED files before annotation of SNVs
+process repeatsAndStrandBiasFilterIndels_vcftools {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(indel_consensus_vcf), path(indel_consensus_vcf_index), path(indel_strand_metrics), path(simple_and_centromeric_repeats_bed) from consensus_indel_forBedFilters.combine(simple_and_centromeric_repeats_bed_forIndelBedFilter)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(hq_indel_consensus_vcf), path(hq_indel_consensus_vcf_index) into high_quality_consensus_indel_forAnnotation
+
+	when:
+	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
+
+	script:
+	strand_bias_filter_bed = "${tumor_normal_sample_id}.indel.strandbias.bed"
+	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
+	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
+	"""
+	strand_bias_fisher_tester.R \
+	"${indel_strand_metrics}" \
+	"${strand_bias_filter_bed}"
+
+	vcftools \
+	--gzvcf "${indel_consensus_vcf}" \
+	--exclude-bed "${strand_bias_filter_bed}" \
+	--recode \
+	--recode-INFO-all \
+	--stdout \
+	| \
+	vcftools \
+	--vcf - \
+	--exclude-bed "${simple_and_centromeric_repeats_bed}" \
+	--recode \
+	--recode-INFO-all \
+	--stdout \
+	| \
 	bgzip > "${hq_indel_consensus_vcf}"
+
 	tabix "${hq_indel_consensus_vcf}"
 	"""
 }
@@ -2997,7 +3050,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) from sv_vcfs_forSurvivor
 
 	output:
-	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf)
+	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConversion
 
 	when:
 	params.manta == "on" && params.svaba == "on" && params.delly == "on"
