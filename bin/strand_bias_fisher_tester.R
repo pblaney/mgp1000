@@ -60,15 +60,24 @@ strand_bias_fisher_tester <- function(strand_metrics_file, output_bed_filename) 
   
   # Write out BED line for variant to be filtered out based on  p-value < 0.10
   print("Printing output BED file for filtering.....")
-  strand_bias_filter_bed_file %>%
-    filter(p_value < 0.1) %>%
-    write_delim(file = output_bed_filename,
-                delim = "\t",
-                col_names = T)
+  output_file <- strand_bias_filter_bed_file %>%
+    filter(p_value < 0.1)
+
+  return(output_file)
 }
 
 # Accept command line arguments as input
 input_args <- commandArgs(trailingOnly = T)
 
 # Execute function
-strand_bias_fisher_tester(input_args[1], input_args[2])
+
+# Execute function
+output_bed <- strand_bias_fisher_tester(input_args[1])
+output_bed_filename <- input_args[2]
+
+write.table(x = output_bed,
+            file = output_bed_filename,
+            sep = "\t",
+            col.names = TRUE,
+            quote = FALSE,
+            row.names = FALSE)
