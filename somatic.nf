@@ -2714,7 +2714,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	script:
 	indel_consensus_vcf_info_header = "indel_consensus_vcf_info_header.txt"
 	indel_consensus_vcf_format_headers = "indel_consensus_vcf_format_header.txt"
-	indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
+	indel_consensus_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.vcf.gz"
 	indel_consensus_vcf_index = "${indel_consensus_vcf}.tbi"
 	indel_strand_metrics = "${tumor_normal_sample_id}.indel.strand.mertrics.txt"
 	"""
@@ -2843,7 +2843,7 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
 process mergeAndGenerateConsensusCnvCalls_bedtools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy'
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{cnv.alleles.bed}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
