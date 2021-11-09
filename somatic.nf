@@ -3074,6 +3074,43 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	"""
 }
 
+// svtools vcftobedpe ~ convert the consensus SV VCF to a more convenient BEDPE file
+process convertSvVcfToBedpe_svtools {
+	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{sv.bedpe}'
+	tag	"${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) from consensus_sv_vcf_forConversion
+
+	output:
+	tuple val(tumor_normal_sample_id), path(consensus_sv_bedpe)
+
+	when:
+	params.manta == "on" && params.svaba == "on" && params.delly == "on"
+
+	script:
+	consensus_sv_bedpe = "${tumor_normal_sample_id}.consensus.somatic.sv.bedpe"
+	"""
+	svtools vcftobedpe \
+	--input "${consensus_somatic_sv_vcf}" \
+	--output "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
+	--tempdir .
+
+	touch "${consensus_sv_bedpe}"
+	grep -E '^#' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
+	| \
+	grep -vE '^##contig|#CHROM_A' >> "${consensus_sv_bedpe}"
+
+	grep '#CHROM' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
+	| \
+	cut -f 1-6,9-11,19,21-24 >> "${consensus_sv_bedpe}"
+
+	grep -vE '^#' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
+	| \
+	cut -f 1-6,9-11,19,21-24 >> "${consensus_sv_bedpe}"
+	"""
+}
+
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
