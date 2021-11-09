@@ -3017,7 +3017,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	51 \
 	"${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
 
-	#sed 's|"${tumor_id}\t${tumor_id}_1\t${tumor_id}_2"|"${tumor_id}_manta\t${tumor_id}_svaba\t${tumor_id}_delly"|'
+	sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_manta\t${tumor_id}_svaba\t${tumor_id}_delly|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" > "${consensus_somatic_sv_vcf}"
 	"""
 }
 
