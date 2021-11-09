@@ -2866,7 +2866,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	merged_alleles_bed = "${tumor_normal_sample_id}.merged.somatic.alleles.bed"
 	consensus_cnv_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.bed"
 	consensus_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.alleles.bed"
-	consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.merged.cnv.alleles.bed"
+	consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.alleles.merged.bed"
 	"""
 	### Prep ASCAT files ###
 	# total copy number per segment
