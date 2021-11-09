@@ -3070,7 +3070,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	51 \
 	"${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
 
-	sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_manta\t${tumor_id}_svaba\t${tumor_id}_delly|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" > "${consensus_somatic_sv_vcf}"
+	sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" > "${consensus_somatic_sv_vcf}"
 	"""
 }
 
@@ -3097,17 +3097,29 @@ process convertSvVcfToBedpe_svtools {
 	--tempdir .
 
 	touch "${consensus_sv_bedpe}"
-	grep -E '^#' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
-	| \
-	grep -vE '^##contig|#CHROM_A' >> "${consensus_sv_bedpe}"
+	grep '##fileformat' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" >> "${consensus_sv_bedpe}"
+	grep '##source' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" >> "${consensus_sv_bedpe}"
+	grep '##fileDate' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" >> "${consensus_sv_bedpe}"
 
 	grep '#CHROM' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
 	| \
-	cut -f 1-6,9-11,19,21-24 >> "${consensus_sv_bedpe}"
+	cut -f 1-6,9-11,19 \
+	| \
+	sed 's|INFO_A|CALLER_AGREEMENT|' >> "${consensus_sv_bedpe}"
 
 	grep -vE '^#' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
 	| \
-	cut -f 1-6,9-11,19,21-24 >> "${consensus_sv_bedpe}"
+	cut -f 1-6,9-11,19 \
+	| \
+	sed -E 's|CIEND.*SUPP_VEC=111.*|delly,manta,svaba|' \
+	| \
+	sed -E 's|CIEND.*SUPP_VEC=110.*|delly,manta|' \
+	| \
+	sed -E 's|CIEND.*SUPP_VEC=101.*|delly,svaba|' \
+	| \
+	sed -E 's|CIEND.*SUPP_VEC=011.*|manta,svaba|' \
+	| \
+	sort -k1,1V -k2,2n >> "${consensus_sv_bedpe}"
 	"""
 }
 
