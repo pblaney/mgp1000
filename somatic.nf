@@ -2739,7 +2739,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	bcftools annotate \
 	--output-type z \
 	--annotations "${tumor_normal_sample_id}.indel.mpileup.info.metrics.txt.gz" \
-	--header-lines "${ndel_consensus_vcf_info_header}" \
+	--header-lines "${indel_consensus_vcf_info_header}" \
 	--columns CHROM,POS,REF,ALT,INFO/DP,INFO/AC,INFO/VAF \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.noformat.vcf.gz" \
 	"${mpileup_supported_consensus_somatic_indel_noformat_vcf}"
