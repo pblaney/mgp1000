@@ -3167,7 +3167,7 @@ process annotateSomaticVcf_vep {
 			--check_existing \
 			--max_af \
 			--gencode_basic \
-			--pick 
+			--pick \
 			--stats_file \${output_stats} \
 			--output_file \${output_vcf} \
 			--compress_output bgzip \
