@@ -3146,10 +3146,10 @@ process annotateSomaticVcf_vep {
 
 	script:
 	"""
-	for vcf in `ls *.vcf`;
+	for vcf in `ls *.vcf.gz`;
 		do
-			output_vcf=\$(echo \${vcf} | sed 's|.vcf|.annotated.vcf.gz|')
-			output_stats=\$(echo \${vcf} | sed 's|.vcf|.vep.summary.html|')
+			output_vcf=\$(echo \${vcf} | sed 's|.vcf.gz|.annotated.vcf.gz|')
+			output_stats=\$(echo \${vcf} | sed 's|.vcf.gz|.vep.summary.html|')
 
 			vep \
 			--offline \
