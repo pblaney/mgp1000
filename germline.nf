@@ -58,9 +58,9 @@ def helpMessage() {
 		                                      Available: 25, 50, 100, 150, etc.
 		                                      Default: 100
 		--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
-											  and supervises their execution
-											  Available: local, slurm
-											  Default: slurm
+		                                      and supervises their execution
+		                                      Available: local, slurm
+		                                      Default: slurm
 		--help                        [flag]  Prints this message
 
 	################################################
