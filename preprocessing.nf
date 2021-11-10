@@ -33,6 +33,8 @@ def helpMessage() {
 		                                      Default: input/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 		                                      Default: output/
+		--container_dir                [str]  Directory that holds the Singularity .simg files for all process container images
+											  Default: containers/
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -50,6 +52,10 @@ def helpMessage() {
 		--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
 		                                      Available: 25, 50, 100, 150, etc.
 		                                      Default: 100
+		--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
+											  and supervises their execution
+											  Available: local, slurm
+											  Default: slurm
 		--help                        [flag]  Prints this message
 
 	################################################
@@ -63,12 +69,14 @@ def helpMessage() {
 // Declare the defaults for all pipeline parameters
 params.input_dir = "${workflow.projectDir}/input"
 params.output_dir = "${workflow.projectDir}/output"
+params.container_dir = "${workflow.projectDir}/containers"
 params.run_id = null
 params.input_format = null
 params.skip_to_qc = "no"
 params.cpus = null
 params.memory = null
 params.queue_size = 100
+params.executor = 'slurm'
 params.help = null
 
 // Print help message if requested

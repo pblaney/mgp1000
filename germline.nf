@@ -36,6 +36,8 @@ def helpMessage() {
 		                                      Default: input/preprocessedBams/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 		                                      Default: output/
+		--container_dir                [str]  Directory that holds the Singularity .simg files for all process container images
+											  Default: containers/
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
@@ -57,6 +59,10 @@ def helpMessage() {
 		--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
 		                                      Available: 25, 50, 100, 150, etc.
 		                                      Default: 100
+		--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
+											  and supervises their execution
+											  Available: local, slurm
+											  Default: slurm
 		--help                        [flag]  Prints this message
 
 	################################################
@@ -70,6 +76,7 @@ def helpMessage() {
 // Declare the defaults for all pipeline parameters
 params.input_dir = "${workflow.projectDir}/input/preprocessedBams"
 params.output_dir = "${workflow.projectDir}/output"
+params.container_dir = "${workflow.projectDir}/containers"
 params.run_id = null
 params.sample_sheet = null
 params.cohort_name = null
@@ -78,6 +85,7 @@ params.ref_vcf_concatenated = "yes"
 params.cpus = null
 params.memory = null
 params.queue_size = 100
+params.executor = 'slurm'
 params.help = null
 
 // Print help message if requested
