@@ -33,8 +33,6 @@ def helpMessage() {
 		                                      Default: input/preprocessedBams/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 		                                      Default: output/
-		--container_dir                [str]  Directory that holds the Singularity .simg files for all process container images
-											  Default: containers/
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
@@ -109,7 +107,6 @@ def helpMessage() {
 // Declare the defaults for all pipeline parameters
 params.input_dir = "${workflow.projectDir}/input/preprocessedBams"
 params.output_dir = "${workflow.projectDir}/output"
-params.container_dir = "${workflow.projectDir}/containers"
 params.run_id = null
 params.sample_sheet = null
 params.mutect_ref_vcf_concatenated = "yes"
