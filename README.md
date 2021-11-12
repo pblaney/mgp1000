@@ -148,11 +148,11 @@ Here is a snapshot of the expected subdirectories within the `output/preprocessi
 | --- | --- | --- |
 | `trimmomatic` | `*.trim.log` | number of reads before and after trimming for quality |
 | `fastqc` | `*_fastqc.[html / zip]` | in-depth quality evaluation on a per base and per sequence manner | 
-| `alignment` | `*alignment.flagstat.log` | initial number of reads of various alignment designation |
-| `markedDuplicates` | `*.markdup.[log / flagstat.log]` | number of detected duplicate reads, number of reads after deduplication |
-| `finalPreprocessedBams` | `*.final.[bam / bai]` | final preprocessed BAM and index for downstream analysis |
+| `alignment` | `*.alignment.flagstat.log` | initial number of reads of various alignment designation |
+| `markedDuplicates` | `*.markdup.[log/flagstat.log]` | number of detected duplicate reads, number of reads after deduplication |
+| `finalPreprocessedBams` | `*.final.[bam/bai]` | final preprocessed BAM and index for downstream analysis |
 | `coverageMetrics` | `*.coverage.metrics.txt` | genome-wide coverage metrics of final BAM |
-| `gcBiasMetrics` | `*.gcbias.[metrics.txt / metrics.pdf / summary.txt]` | genome-wide GC bias metrics of final BAM |
+| `gcBiasMetrics` | `*.gcbias.[metrics.txt/metrics.pdf/summary.txt]` | genome-wide GC bias metrics of final BAM |
 
 Upon completion of the Preprocessing run, there is a `make preprocessing-completeion` command that is useful for collecting the run-related logs.
 ```
