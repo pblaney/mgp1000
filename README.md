@@ -10,7 +10,7 @@ This compartmentalizes the workflow and provides significant completion checkpoi
 <img src="https://github.com/pblaney/mgp1000/blob/master/MGP1000Pipeline.png" width="800">
 
 ## Deploying the Pipeline
-The pipeline was developed to be run on various HPCs without concern of environment incompatabilities, version issues, or missing dependencies. None of the commands require admin access or `sudo`  to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available on nearly all HPC systems.
+The pipeline was developed to be run on various HPCs without concern of environment incompatibilities, version issues, or missing dependencies. None of the commands require admin access or `sudo`  to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available on nearly all HPC systems.
 * Git
 * GNU Utilities
 * Java 8 (or later)
