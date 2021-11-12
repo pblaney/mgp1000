@@ -228,16 +228,21 @@ Main Options:
 ```
 
 ### Germline Variant Analysis Output Description
-This step of the pipeline generates a per-cohort joint genotyped VCF and ADMIXTURE estimation of individual ancestries in the context of the 26 populations outlined in the 1000 Genomes Project. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
+This step of the pipeline generates a per-cohort joint genotyped VCF and ADMIXTURE estimation of individual ancestries in the context of the 26 populations outlined in the 1000 Genomes Project. By default, all output files are stored into a subdirectory which is named based on the user-defined `--cohort_name` parameter within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
 
-Here is a snapshot of the expected subdirectories within the `output/germline` base directory after a successful run of the Germline Variant Analysis step:
+Here is a snapshot of the expected subdirectories within the `output/germline/[cohort_name]` base directory after a successful run of the Germline Variant Analysis step:
 
-| Subdirectory | Output Files | Description of Files |
-| --- | --- | --- |
-| `finalAnnotatedGermlineVcf` | `*.annotated.germline.vcf.gz` / `*.vep.summary.html` | VEP annotated cohort germline VCF and annotation summary |
-| `hardFilteredMergedVcfPlinkFiles` | `*.hardfiltered.refmerged.stats.txt` | number of sites filtered out before use in ADMIXTURE analysis |
-| `mafGenotypeAndLinkeageDiseqFilteredPlinkFiles` | `*.[maf.gt / pruned.maf.gt].filtered.refmerged.stats.txt` | number of sites filtered based on MAF, missing genotype, and LD |
-| `admixutreAncestryEstimation` | `*.[pop / 26.Q / 26.P / 26.Q_se]` | population file used for supervised analysis, ADMIXTURE ancestry fractions, population allele frequencies, and standard error |
+| Germline Output File | Description of File |
+| --- | --- |
+| `*.germline.annotated.vcf.gz` | filtered and annotated germline SNP VCF |
+| `*.germline.vep.summary.html` | annotation summary HTML file for SNPs |
+| `*.hardfiltered.refmerged.stats.txt` | number of SNP sites filtered out before use in ADMIXTURE analysis |
+| `*.maf.gt.filtered.refmerged.stats.txt` | number of SNP sites filtered out based on MAF > 0.05 and missing genotypes |
+| `*.pruned.maf.gt.filtered.refmerged.stats.txt` | number of SNP sites filtered out based on linkage disequilibrium |
+| `*.pruned.maf.gt.filtered.refmerged.pop` | population file used for supervised analysis |
+| `*.pruned.maf.gt.filtered.refmerged.26.Q` | ADMIXTURE ancestry fractions |
+| `*.pruned.maf.gt.filtered.refmerged.26.P` | ADMIXTURE population allele frequencies |
+| `*.pruned.maf.gt.filtered.refmerged.26.Q_se` | standard error of ADMIXTURE ancestry fractions |
 
 Upon completion of the Germline Variant Analysis, there is a `make germline-completeion` command that is useful for collecting the run-related logs.
 ```
@@ -346,11 +351,11 @@ Toolbox Switches:
 ```
 
 ### Somatic Variant Analysis Output Description
-This step of the pipeline generates per-tumor-normal-pair consensus calls for SNVs, InDels, CNVs, and SVs, capture telomere length and composition, and aggregate metadata information on tumor-normal concordance, contamination, purity, ploidy, and subclonal populations. Each tool used has its native output kept within a self-named subdirectory while the final consensus output files are funneled into the `consensus` subdirectory. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
+This step of the pipeline generates per tumor-normal pair consensus calls for SNVs, InDels, CNVs, and SVs, capture telomere length and composition, and aggregate metadata information on tumor-normal concordance, contamination, purity, ploidy, and subclonal populations. Each tool used has its native output kept within a self-named subdirectory while the final consensus output files per tumor-normal pair are funneled into the `consensus` subdirectory. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
 
-Here is a snapshot of the final `output/somatic/consensus` directory after a successful run of the Somatic Variant Analysis step:
+Here is a snapshot of the final `output/somatic/consensus/[tumor_normal_id]` directory after a successful run of the Somatic Variant Analysis step:
 
-| Consensus Output File | Description of File |
+| Somatic Consensus Output File | Description of File |
 | --- | --- |
 | `*.hq.consensus.somatic.snv.annotated.vcf.gz` | filtered and annotated consensus SNV VCF |
 | `*.hq.consensus.somatic.snv.vep.summary.html` | annotation summary HTML file for SNVs |

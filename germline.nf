@@ -684,7 +684,7 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 
 // VEP ~ annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateGermlineVcf_vep {
-	publishDir "${params.output_dir}/germline/finalAnnotatedGermlineVcf", mode: 'copy'
+	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -697,8 +697,8 @@ process annotateGermlineVcf_vep {
 	path annotation_summary
 
 	script:
-	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.germline\.vcf\.gz/, ".annotated.germline.vcf.gz")
-	annotation_summary = "${params.cohort_name}.vep.summary.html"
+	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".annotated.vcf.gz")
+	annotation_summary = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
 	"""
 	vep \
 	--offline \
@@ -810,7 +810,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 
 // VCFtools ~ hard filter the merged VCF to only contain biallelic, non-singleton SNP sites that are a minimum of 2kb apart from each other
 process hardFilterCohortReferenceMergedVcf_vcftools {
-	publishDir "${params.output_dir}/germline/hardFilteredMergedVcfPlinkFiles", mode: 'copy'
+	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy', pattern: '*.{stats.txt}'
 	tag "${params.cohort_name}"
 
 	input:
@@ -843,7 +843,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 // prune the markers for linkage disequilibrium (remove SNPs that have an R-squared value of greater than 0.5 with any
 // other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
 process filterPlinkFilesForAdmixture_plink {
-	publishDir "${params.output_dir}/germline/mafGenotypeAndLinkeageDiseqFilteredPlinkFiles", mode: 'copy', pattern: '*.{txt}'
+	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy', pattern: '*.{txt}'
 	tag "${params.cohort_name}"
 
 	input:
@@ -887,7 +887,7 @@ process filterPlinkFilesForAdmixture_plink {
 
 // ADMIXTURE ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised and haploid aware fashion 
 process ancestryEstimation_admixture {
-	publishDir "${params.output_dir}/germline/admixutreAncestryEstimation", mode: 'copy'
+	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
