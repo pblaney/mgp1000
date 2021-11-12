@@ -16,25 +16,23 @@ The pipeline was developed to be run on various HPCs without concern of environm
 * Java 8 (or later)
 * Singularity (validated on v3.1, v3.5.2, v3.7.1 other versions will be tested)
 
+
 ## Installing Git LFS
 In an effort to containerize the pipeline further, all the necessary reference files and Singularity container images are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
+
 **NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
-```
-# Example of installation of Linux AMD64 binary executible git-lfs file, other binary files available here: https://github.com/git-lfs/git-lfs/releases
-cd $HOME/bin
 
-wget https://github.com/git-lfs/git-lfs/releases/download/v2.11.0/git-lfs-linux-amd64-v2.11.0.tar.gz && \
-tar -zxvf git-lfs-linux-amd64-v2.11.0.tar.gz && \
-git lfs install
-```
+If required, a `make` command will complete the installation of Linux AMD64 binary executible git-lfs file (v3.0.2). Other binary files available [here](https://github.com/git-lfs/git-lfs/releases)
+
 
 ```
-### Note: these commands will clean the installation, leaving only the binary executible git-lfs file ###
-rm git-lfs-linux-amd64-v2.11.0.tar.gz && \
-rm install.sh && \
-rm CHANGELOG.md && \
-rm README.md
+make install-gitlfs-linuxamd64
 ```
+Move the `git-lfs` binary to a location on `$PATH`
+```
+mv git-lfs $HOME/bin
+```
+
 
 ## Clone GitHub Repository
 The first step in the deployment process is to clone the MGP1000 GitHub repository to a location on your HPC that is large enough to hold the input/output data and has access to the job scheduling software, such as SLURM or SGE.
@@ -43,73 +41,50 @@ git clone https://github.com/pblaney/mgp1000.git
 ```
 
 ### Reference Data
-To facilitate ease of use, reproducibility, and consistency between all users of the pipeline, all required reference data has been provided within the `references/hg38/` directory. For detailed provenance of each file per tool is included in the pipline Wiki for full traceability.
+To facilitate ease of use, reproducibility, and consistency between all users of the pipeline, all required reference data has been provided within the `references/hg38/` directory. Detailed provenance of each file per tool is included in the pipline [Wiki](https://github.com/pblaney/mgp1000/wiki) for full traceability.
 
 ### Containers
 For the same reasons as with the reference data, the Singularity image files needed for each tool's container is provided within the `containers/` directory. All containers were originally developed with Docker and all tags can be found on the associated [DockerHub](https://hub.docker.com/r/patrickblaneynyu/mgp1000)
 
 ## Install Nextflow
-This series of `make` commands will install Nextflow, and, optionally, test or update the current Nextflow installation. First, check for what current version of Java is available to the current environment.
+This series of commands will first check if Java is available to the base pipeline environment and then install Nextflow.
+
 **NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
 ```
 java -version
-
-### Example output ###
-# openjdk version "1.8.0_131"
-# OpenJDK Runtime Environment (build 1.8.0_131-b12)
-# OpenJDK 64-Bit Server VM (build 25.131-b12, mixed mode)
 ```
-
 ```
 make install-nextflow
-
-### Example output ###
-# curl -fsSL get.nextflow.io | bash
-# CAPSULE: Downloading dependency .....
-# ....
-# ....
-# 	  N E X T F L O W
-#     version 20.04.1 build 5335
-#     created 03-05-2020 19:37 UTC (15:37 EDT)
-#     cite doi:10.1038/nbt.3820
-#     http://nextflow.io
-#
-# Nextflow installation completed. Please note:
-# - the executable file `nextflow` has been created in the folder: <installation_dir>
-# - you may complete the installation by moving it to a directory in your $PATH
 ```
-
+For ease of use, ove the binary executible `nextflow` file to same directory as git-lfs
 ```
-# Move the binary executible nextflow file to same directory as git-lfs
 mv nextflow $HOME/bin
 ```
+
 
 ## Prepare the Pipeline for Usage
 Due to size, certain reference files are GNU zipped so the `make prep-pipeline` command must be run to prepare them for use in the pipeline. Additionally, an `input` directory is created for staging all input BAM or FASTQ files, `preprocessedBams` subdirectory for BAMs that have undergone preprocessing and are ready for Germline/Somatic Variant Analysis steps, and a `logs` directory to store Nextflow output log files for each run.
 ```
 make prep-pipeline
-
-### Example output ###
-# gunzip -q references/hg38/Homo_sapiens_assembly38.fasta.gz
-# gunzip -q references/hg38/Homo_sapiens_assembly38.fasta.64.bwt.gz
-# gunzip -q references/hg38/Homo_sapiens_assembly38.fasta.64.sa.gz
-# gunzip -q references/hg38/Homo_sapiens_assembly38_autosome_sex_chroms/*.fa.gz
-# mkdir -p input
-# mkdir -p input/preprocessedBams
-# mkdir -p logs
 ```
+
 
 ## Stage Input BAM or FASTQ Files
 By default, all input files are handled out of the `input` and `input/preprocessedBams` directories for the Preprocessing and Germline/Somatic Variant Analysis steps, respectively. However, each step in the pipeline includes an option (`--input_dir`) for the user to define the input directory. Additionally, the pipeline will follow symbolic links for input files so there is no need to move files for staging. Given the possible size of the input data, the samples may have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs.
+
 **NOTE: A key assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files. Check the `testSample` directory to see examples of FASTQ naming conventions that are accepted. It is recommended that these be used as a sanity check of the pipeline if deploying for the first time.**
+
+Example of staging input data files with symbolic link
 ```
-# Example of staging input data files with symbolic link
 ln -s /absolute/path/to/unprocessed/samples/directory/*.fastq.gz input/
 ```
 
+
 ## Run the Preprocessing Step of the Pipeline
 The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
+
 **NOTE: The pipeline is currently configured to run with SLURM as the executor. If the user's HPC uses an alternative scheduler please reach out for assistance with adjustments to the configuration to accommodate this, contact information at end of README.**
+
 ```
 $ nextflow run preprocessing.nf --help
 ...
@@ -155,22 +130,35 @@ Main Options:
 	--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
 	                                      Available: 25, 50, 100, 150, etc.
 	                                      Default: 100
+	--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
+	                                      and supervises their execution
+	                                      Available: local, slurm
+	                                      Default: slurm
 	--help                        [flag]  Prints this message
 
 ################################################
 ```
 
-### Collect Preprocessing Output
-By default, all output files are stored in the will be copied into a process-specific subdirectory within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory. Additionally, there is a `make preprocessing-completeion` command that is useful for collecting the run-related output of the Preprocessing step. 
+### Preprocessing Output Description
+This step of the pipeline generates various per tool QC metrics that are useful in determining samples for best use in downstream analyses. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
+
+Here is a snapshot of the expected subdirectories within the `output/preprocessing` base directory after a successful run of the Preprocessing step:
+
+| Subdirectory | Output Files | Description of Files |
+| --- | --- | --- |
+| `trimmomatic` | `*.trim.log` | number of reads before and after trimming for quality |
+| `fastqc` | `*_fastqc.[html / zip]` | in-depth quality evaluation on a per base and per sequence manner | 
+| `alignment` | `*alignment.flagstat.log` | initial number of reads of various alignment designation |
+| `markedDuplicates` | `*.markdup.[log / flagstat.log]` | number of detected duplicate reads, number of reads after deduplication |
+| `finalPreprocessedBams` | `*.final.[bam / bai]` | final preprocessed BAM and index for downstream analysis |
+| `coverageMetrics` | `*.coverage.metrics.txt` | genome-wide coverage metrics of final BAM |
+| `gcBiasMetrics` | `*.gcbias.[metrics.txt / metrics.pdf / summary.txt]` | genome-wide GC bias metrics of final BAM |
+
+Upon completion of the Preprocessing run, there is a `make preprocessing-completeion` command that is useful for collecting the run-related logs.
 ```
 make preprocessing-completion
-
-### Example output ###
-# mkdir -p logs/preprocessing
-# mv nextflow_report.*.html logs/preprocessing
-# mv timeline_report.*.html logs/preprocessing
-# mv trace.*.txt logs/preprocessing
 ```
+
 
 ## Run the Germline Variant Analysis Step of the Pipeline
 The most important component of this step of the pipeline is the user-provided sample sheet CSV. This file includes two comma-separated columns: filename of normal sample BAMs and filename of corresponding paired tumor sample BAMs. An example of this is provided in `samplesheet.csv` within the `testSamples` directory. The sample sheet file should typically be within the main `mgp1000` directory.
@@ -230,22 +218,32 @@ Main Options:
 	--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
 	                                      Available: 25, 50, 100, 150, etc.
 	                                      Default: 100
+	--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
+	                                      and supervises their execution
+	                                      Available: local, slurm
+	                                      Default: slurm
 	--help                        [flag]  Prints this message
 
 ################################################
 ```
 
-### Collect Germline Variant Analysis Output
-There is also a `make germline-completeion` command that is useful for collecting the run-related output of the Germline Variant Analysis step. 
+### Germline Variant Analysis Output Description
+This step of the pipeline generates a per-cohort joint genotyped VCF and ADMIXTURE estimation of individual ancestries in the context of the 26 populations outlined in the 1000 Genomes Project. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
+
+Here is a snapshot of the expected subdirectories within the `output/germline` base directory after a successful run of the Germline Variant Analysis step:
+
+| Subdirectory | Output Files | Description of Files |
+| --- | --- | --- |
+| `finalAnnotatedGermlineVcf` | `*.annotated.germline.vcf.gz` / `*.vep.summary.html` | VEP annotated cohort germline VCF and annotation summary |
+| `hardFilteredMergedVcfPlinkFiles` | `*.hardfiltered.refmerged.stats.txt` | number of sites filtered out before use in ADMIXTURE analysis |
+| `mafGenotypeAndLinkeageDiseqFilteredPlinkFiles` | `*.[maf.gt / pruned.maf.gt].filtered.refmerged.stats.txt` | number of sites filtered based on MAF, missing genotype, and LD |
+| `admixutreAncestryEstimation` | `*.[pop / 26.Q / 26.P / 26.Q_se]` | population file used for supervised analysis, ADMIXTURE ancestry fractions, population allele frequencies, and standard error |
+
+Upon completion of the Germline Variant Analysis, there is a `make germline-completeion` command that is useful for collecting the run-related logs.
 ```
 make germline-completion
-
-### Example output ###
-# mkdir -p logs/germline
-# mv nextflow_report.*.html logs/germline
-# mv timeline_report.*.html logs/germline
-# mv trace.*.txt logs/germline
 ```
+
 
 ## Run the Somatic Variant Analysis Step of the Pipeline
 This step uses the same user-provided sample sheet CSV as the Germline Variant Analysis step.
@@ -303,6 +301,10 @@ Main Options:
 	--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
 	                                      Available: 25, 50, 100, 150, etc.
 	                                      Default: 100
+	--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
+	                                      and supervises their execution
+	                                      Available: local, slurm
+	                                      Default: slurm
 	--help                        [flag]  Prints this message
 
 Toolbox Switches:
@@ -343,14 +345,50 @@ Toolbox Switches:
 ################################################
 ```
 
-### Collect Somatic Variant Analysis Output
-There is also a `make somatic-completeion` command that is useful for collecting the run-related output of the Somatic Variant Analysis step. 
-```
-make somatic-completion:
+### Somatic Variant Analysis Output Description
+This step of the pipeline generates per-tumor-normal-pair consensus calls for SNVs, InDels, CNVs, and SVs, capture telomere length and composition, and aggregate metadata information on tumor-normal concordance, contamination, purity, ploidy, and subclonal populations. Each tool used has its native output kept within a self-named subdirectory while the final consensus output files are funneled into the `consensus` subdirectory. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
 
-### Example output ###
-# mkdir -p logs/somatic
-# mv nextflow_report.*.html logs/somatic
-# mv timeline_report.*.html logs/somatic
-# mv trace.*.txt logs/somatic
+Here is a snapshot of the final `output/somatic/consensus` directory after a successful run of the Somatic Variant Analysis step:
+
+| Consensus Output File | Description of File |
+| --- | --- |
+| `*.hq.consensus.somatic.snv.annotated.vcf.gz` | filtered and annotated consensus SNV VCF |
+| `*.hq.consensus.somatic.snv.vep.summary.html` | annotation summary HTML file for SNVs |
+| `*.hq.consensus.somatic.indel.annotated.vcf.gz` | filtered and annotated consensus InDel VCF |
+| `*.hq.consensus.somatic.indel.vep.summary.html` | annotation summary HTML file for InDels |
+| `*.consensus.somatic.cnv.alleles.merged.bed` | per segment consensus CNV BED |
+| `*.consensus.somatic.cnv.subclonal.txt` | aggregated subclonal population estimates from Control-FREEC and Sclust |
+| `*.consensus.somatic.sv.vcf` | consensus SV VCF |
+| `*.consensus.somatic.sv.bedpe` | consensus SV calls in simplified BEDPE format |
+| `*.consensus.somatic.metadata.txt` | aggregated metadata from alleleCount, Conpair, Mutect2, ascatNGS, Control-FREEC, and Sclust |
+
+Additional per-tool subdirectories included in the base `output/somatic` output directory:
+
+| Subdirectory | Description of Files |
+| --- | --- |
+| `ascatNGS` | native output of ascatNGS somatic analysis workflow |
+| `conpair` | native output of Conpair somatic analysis workflow |
+| `controlFreec` | native output of Control-FREEC somatic analysis workflow |
+| `delly` | native output of DELLY2 somatic analysis workflow |
+| `manta` | native output of Manta somatic analysis workflow |
+| `mutect` | native output of Mutect2 somatic analysis workflow |
+| `sclust` | native output of Sclust somatic analysis workflow |
+| `sexOfSamples` | sample sex estimation using alleleCount |
+| `strelka` | native output of Strelka2 somatic analysis workflow |
+| `svaba` | native output of SvABA somatic analysis workflow |
+| `telomereHunter` | native output of TelomereHunter somatic analysis workflow |
+| `varscan` | native output of VarScan2 somatic analysis workflow |
+
+Upon completion of the Somatic Variant Analysis, there is a `make somatic-completeion` command that is useful for collecting the run-related logs.
 ```
+make somatic-completion
+```
+
+## Troubleshooting
+If an error is encountered while deploying or using the pipeline, please open an [issue](https://github.com/pblaney/mgp1000/issues) so that it can be addressed and others who may have a similar issue can have a resource for potential solutions.
+
+To further facilitate this, a cataloge of common issues and their solutions will be maintained within the [Wiki](https://github.com/pblaney/mgp1000/wiki)
+
+
+## Contact
+If there are any further questions, suggestions for improvement, or wishes for collaboration please feel free to email: patrick.blaney@nyulangone.org

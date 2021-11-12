@@ -341,7 +341,7 @@ process alignment_bwa {
 
 	script:
 	bam_aligned = "${sample_id}.bam"
-	bam_flagstat_log = "${sample_id}.flagstat.log"
+	bam_flagstat_log = "${sample_id}.alignment.flagstat.log"
 	"""
 	bwa mem \
 	-M \
@@ -662,7 +662,7 @@ process collectGcBiasMetrics_gatk {
 
 // Qualimap BAM QC ~ perform quality control analysis on extreme coverage (>100x) BAMs
 process extremeBamQualityControl_qualimap {
-	publishDir "${params.output_dir}/preprocessing/qualimapBamQc", mode: 'move'
+	publishDir "${params.output_dir}/preprocessing/qualimapBamQc", mode: 'copy'
 	tag "${bam_mapped_high_coverage.baseName}"
 
 	input:

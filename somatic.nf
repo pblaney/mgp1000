@@ -144,8 +144,8 @@ if( params.sample_sheet == null ) exit 1, "The run command issued does not have 
 // Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
 if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
 
-// Print preemptive error message if Sclust is set while MuTect is not
-if( params.sclust == "on" && params.mutect == "off" ) exit 1, "Sclust requires output from MuTect to run so both must be turned on"
+// Print preemptive error message if Sclust is set while Mutect2 is not
+if( params.sclust == "on" && params.mutect == "off" ) exit 1, "Sclust requires output from Mutect2 to run so both must be turned on"
 
 // Print preemptive error message if Strelka is set while Manta is not
 if( params.strelka == "on" && params.manta == "off" ) exit 1, "Strelka requires output from Manta to run so both must be turned on"
@@ -898,10 +898,10 @@ process splitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~~~~~~~ MuTect2 ~~~~~~~~~~~~~~~~ \\
+// ~~~~~~~~~~~~~~~~ Mutect2 ~~~~~~~~~~~~~~~~ \\
 // START
 
-// BCFtools Concat ~ prepare the gnomAD allele frequency reference VCF for MuTect2 process, if needed
+// BCFtools Concat ~ prepare the gnomAD allele frequency reference VCF for Mutect2 process, if needed
 process mutect2GnomadReferenceVcfPrep_bcftools {
 	publishDir "references/hg38", mode: 'copy'
 
@@ -935,7 +935,7 @@ process mutect2GnomadReferenceVcfPrep_bcftools {
 }
 
 // Depending on whether the gnomAD allele frequency reference VCF was pre-built, set the input
-// channel for the for MuTect2 process
+// channel for the for Mutect2 process
 if( params.mutect_ref_vcf_concatenated == "yes" && params.mutect == "on") {
 	mutect_gnomad_ref_vcf = mutect_gnomad_ref_vcf_preBuilt.combine( mutect_gnomad_ref_vcf_index_preBuilt )
 }
@@ -943,7 +943,7 @@ else {
 	mutect_gnomad_ref_vcf = mutect_gnomad_ref_vcf_fromProcess
 }
 
-// Combine all reference FASTA files, WGS BED file, and resource VCFs into one channel for use in MuTect calling process
+// Combine all reference FASTA files, WGS BED file, and resource VCFs into one channel for use in Mutect2 calling process
 reference_genome_fasta_forMutectCalling.combine( reference_genome_fasta_index_forMutectCalling )
 	.combine( reference_genome_fasta_dict_forMutectCalling )
 	.combine( gatk_bundle_wgs_bed_forMutectCalling )
@@ -954,7 +954,7 @@ reference_genome_bundle_and_bed_forMutectCalling.combine( mutect_gnomad_ref_vcf 
 	.combine( panel_of_normals_1000G_index )
 	.set{ reference_genome_bed_and_vcfs_forMutectCalling } 
 
-// GATK MuTect2 ~ call somatic SNVs and indels via local assembly of haplotypes
+// GATK Mutect2 ~ call somatic SNVs and indels via local assembly of haplotypes
 process snvAndIndelCalling_gatk {
 	tag "${tumor_normal_sample_id} C=${chromosome} "
 
@@ -998,7 +998,7 @@ process snvAndIndelCalling_gatk {
 	"""
 }
 
-// GATK SortVcfs ~ merge all per chromosome MuTect2 VCFs
+// GATK SortVcfs ~ merge all per chromosome Mutect2 VCFs
 process mergeAndSortMutect2Vcfs_gatk {
 	tag "${tumor_normal_sample_id}"
 	
@@ -1025,7 +1025,7 @@ process mergeAndSortMutect2Vcfs_gatk {
 	"""
 }
 
-// GATK MergeMutectStats ~ merge the per chromosome stats output of MuTect2 variant calling
+// GATK MergeMutectStats ~ merge the per chromosome stats output of Mutect2 variant calling
 process mergeMutect2StatsForFiltering_gatk {
 	tag "${tumor_normal_sample_id}"
 
@@ -1050,7 +1050,7 @@ process mergeMutect2StatsForFiltering_gatk {
 	"""
 }
 
-// Combine WGS BED file and resource VCFs into one channel for use in MuTect pileup process
+// Combine WGS BED file and resource VCFs into one channel for use in Mutect2 pileup process
 gatk_bundle_wgs_bed_forMutectPileup.combine( exac_common_sites_ref_vcf )
 	.combine( exac_common_sites_ref_vcf_index )
 	.set{ bed_and_resources_vcfs_forMutectPileup }
@@ -1181,7 +1181,7 @@ process mutect2ContaminationCalculation_gatk {
 	"""
 }
 
-// Combine all reference FASTA files and input VCF, stats file, and contamination table into one channel for use in MuTect filtering process
+// Combine all reference FASTA files and input VCF, stats file, and contamination table into one channel for use in Mutect2 filtering process
 reference_genome_fasta_forMutectFilter.combine( reference_genome_fasta_index_forMutectFilter )
 	.combine( reference_genome_fasta_dict_forMutectFilter )
 	.set{ reference_genome_bundle_forMutectFilter }
@@ -1223,7 +1223,7 @@ process mutect2VariantFiltration_gatk {
 	"""
 }
 
-// Combine all needed reference FASTA files into one channel for use in MuTect2 / BCFtools Norm process
+// Combine all needed reference FASTA files into one channel for use in Mutect2 / BCFtools Norm process
 reference_genome_fasta_forMutectBcftools.combine( reference_genome_fasta_index_forMutectBcftools )
 	.combine( reference_genome_fasta_dict_forMutectBcftools )
 	.set{ reference_genome_bundle_forMutectBcftools }
@@ -2526,7 +2526,6 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 
 // VCFtools ~ final hard filters of SNVs based on simple/centromeric repeats and strand bias BED files before annotation of SNVs
 process repeatsAndStrandBiasFilterSnvs_vcftools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2798,7 +2797,6 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 
 // VCFtools ~ final hard filters of InDels based on simple/centromeric repeats and strand bias BED files before annotation of SNVs
 process repeatsAndStrandBiasFilterIndels_vcftools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2848,7 +2846,7 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
 process mergeAndGenerateConsensusCnvCalls_bedtools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{cnv.alleles.bed}'
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{cnv.alleles.bed}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2970,7 +2968,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 
 // Merge subclonal CNV segment calls, simple concatenation of per tool output
 process mergeSubclonalCnvCalls {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{txt}'
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -3048,7 +3046,7 @@ process prepSvVcfsForSurvivor_bcftools {
 
 // SURVIVOR ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_survivor {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{vcf}'
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf}'
 	tag	"${tumor_normal_sample_id}"
 
 	input:
@@ -3081,7 +3079,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 
 // svtools vcftobedpe ~ convert the consensus SV VCF to a more convenient BEDPE file
 process convertSvVcfToBedpe_svtools {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{sv.bedpe}'
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.bedpe}'
 	tag	"${tumor_normal_sample_id}"
 
 	input:
@@ -3137,7 +3135,7 @@ process convertSvVcfToBedpe_svtools {
 
 // Merge various metadata output, simple concatenation of per tool output
 process mergeMetadataOutput {
-	publishDir "${params.output_dir}/somatic/consensus", mode: 'copy', pattern: '*.{txt}'
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -3168,7 +3166,7 @@ process mergeMetadataOutput {
 	cat "${conpair_contamination_file}" >> "${consensus_metadata_file}"
 	echo "" >> "${consensus_metadata_file}"
 
-	echo "### MuTect2 ###" >> "${consensus_metadata_file}"
+	echo "### Mutect2 ###" >> "${consensus_metadata_file}"
 	echo "" >> "${consensus_metadata_file}"
 	echo "cross-sample"
 	cut -f 2,3 "${mutect_contamination_file}" >> "${consensus_metadata_file}"
@@ -3238,7 +3236,7 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 
 // VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateSomaticVcf_vep {
-	publishDir "${params.output_dir}/somatic/vepAnnotatedVcfs", mode: 'copy', pattern: '*.{vcf.gz,html}'
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf.gz,html}'
 	tag "${tumor_normal_sample_id}"
 
 	input:

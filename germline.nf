@@ -610,7 +610,6 @@ reference_genome_fasta_forSplitAndNorm.combine( reference_genome_fasta_index_for
 
 // BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeVcf_bcftools {
-	publishDir "${params.output_dir}/germline/unannotatedGermlineVcf", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -685,7 +684,7 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 
 // VEP ~ annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
 process annotateGermlineVcf_vep {
-	publishDir "${params.output_dir}/germline/finalVepAnnotatedGermlineVcf", mode: 'copy'
+	publishDir "${params.output_dir}/germline/finalAnnotatedGermlineVcf", mode: 'copy'
 	tag "${params.cohort_name}"
 
 	input:
@@ -844,7 +843,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 // prune the markers for linkage disequilibrium (remove SNPs that have an R-squared value of greater than 0.5 with any
 // other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
 process filterPlinkFilesForAdmixture_plink {
-	publishDir "${params.output_dir}/germline/mafGenotypeAndLinkeageDiseqFilteredPlinkFiles", mode: 'copy'
+	publishDir "${params.output_dir}/germline/mafGenotypeAndLinkeageDiseqFilteredPlinkFiles", mode: 'copy', pattern: '*.{txt}'
 	tag "${params.cohort_name}"
 
 	input:
