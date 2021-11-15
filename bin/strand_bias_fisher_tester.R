@@ -13,7 +13,8 @@ strand_bias_fisher_tester <- function(strand_metrics_file, output_bed_filename) 
   print("Reading input strand metrics file.....")
   strand_metrics <- read_delim(file = strand_metrics_file,
                                delim = "\t",
-                               col_names = c("chrom", "start", "forward_strand", "reverse_strand"))
+                               col_names = c("chrom", "start", "forward_strand", "reverse_strand"),
+                               col_types = "cicc")
   
   # Create output data frame that holds BED lines
   strand_bias_filter_bed_file <- tibble("chrom" = rep(NA, dim(strand_metrics)[1]),
