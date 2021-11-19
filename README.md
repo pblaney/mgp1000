@@ -371,7 +371,7 @@ Additional per-tool subdirectories included in the base `output/somatic` output 
 
 | Subdirectory | Description of Files |
 | --- | --- |
-| `ascatNGS` | native output of ascatNGS somatic analysis workflow |
+| `ascatNgs` | native output of ascatNGS somatic analysis workflow |
 | `conpair` | native output of Conpair somatic analysis workflow |
 | `controlFreec` | native output of Control-FREEC somatic analysis workflow |
 | `delly` | native output of DELLY2 somatic analysis workflow |
