@@ -61,7 +61,7 @@ def helpMessage() {
 		                                      Default: slurm
 		--help                        [flag]  Prints this message
 
-	Toolbox Switches:
+	Toolbox Switches and Options:
 		--telomerehunter               [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -80,12 +80,26 @@ def helpMessage() {
 		--ascatngs                     [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--ascatngs_ploidy              [int]  Manually set the ploidy value to be used for the ascatNgs algorithm, this is best used when
+		                                      re-running the analysis for specific samples with significant outlier output identified via the
+		                                      sunrise plot, setting this also requires setting --ascatngs_purity
+		                                      Available: 2, 3, 4, etc.
+		                                      Default: estimated internally by tool
+		--ascatngs_purity              [int]  Manually set the purity value to be used for the ascatNgs algorithm, this is best used when
+		                                      re-running the analysis for specific samples with significant outlier output identified via the
+		                                      sunrise plot, setting this also requires setting --ascatngs_ploidy
+		                                      Available: 0.2, 0.5, 0.8, etc.
+		                                      Default: estimated internally by tool
 		--controlfreec                 [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
 		--sclust                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--sclust_lambda                [str]  Manually set the degree of smoothing for clustering mutations, increasing the value should resolve
+		                                      issues with QP iterations related errors
+		                                      Available: 1e-6, 1e-5
+		                                      Default: 1e-7
 		--manta                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -124,6 +138,7 @@ params.svaba = "on"
 params.delly = "on"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
+params.sclust_lambda = null
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -1806,6 +1821,7 @@ process cnvCalling_sclust {
 	params.sclust == "on" && params.mutect == "on"
 
 	script:
+	sclust_lambda = params.sclust_lambda ? "-lambda ${params.sclust_lambda}" : ""
 	sclust_allelic_states_file = "${tumor_normal_sample_id}.sclust.allelicstates.txt"
 	sclust_cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
 	sclust_cnv_summary_file = "${tumor_normal_sample_id}.sclust.cnvsummary.txt"
@@ -1833,8 +1849,7 @@ process cnvCalling_sclust {
 
 	Sclust cluster \
 	-i "${tumor_normal_sample_id}" \
-	-lambda 1e-6 \
-	-indel
+	${sclust_lambda}
 
 	mv "${tumor_normal_sample_id}_mclusters.txt" "${mutation_clusters_file}"
 	mv "${tumor_normal_sample_id}_mcluster.pdf" "${mutation_clusters_pdf}"
