@@ -85,7 +85,7 @@ def helpMessage() {
 		                                      sunrise plot, setting this also requires setting --ascatngs_purity
 		                                      Available: 2, 3, 4, etc.
 		                                      Default: estimated internally by tool
-		--ascatngs_purity              [int]  Manually set the purity value to be used for the ascatNgs algorithm, this is best used when
+		--ascatngs_purity            [float]  Manually set the purity value to be used for the ascatNgs algorithm, this is best used when
 		                                      re-running the analysis for specific samples with significant outlier output identified via the
 		                                      sunrise plot, setting this also requires setting --ascatngs_ploidy
 		                                      Available: 0.2, 0.5, 0.8, etc.

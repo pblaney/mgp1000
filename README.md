@@ -312,7 +312,7 @@ Main Options:
 	                                      Default: slurm
 	--help                        [flag]  Prints this message
 
-Toolbox Switches:
+Toolbox Switches and Options:
 	--telomerehunter               [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
@@ -331,12 +331,26 @@ Toolbox Switches:
 	--ascatngs                     [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
+	--ascatngs_ploidy              [int]  Manually set the ploidy value to be used for the ascatNgs algorithm, this is best used when
+	                                      re-running the analysis for specific samples with significant outlier output identified via the
+	                                      sunrise plot, setting this also requires setting --ascatngs_purity
+	                                      Available: 2, 3, 4, etc.
+	                                      Default: estimated internally by tool
+	--ascatngs_purity            [float]  Manually set the purity value to be used for the ascatNgs algorithm, this is best used when
+	                                      re-running the analysis for specific samples with significant outlier output identified via the
+	                                      sunrise plot, setting this also requires setting --ascatngs_ploidy
+	                                      Available: 0.2, 0.5, 0.8, etc.
+	                                      Default: estimated internally by tool
 	--controlfreec                 [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
 	--sclust                       [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
+	--sclust_lambda                [str]  Manually set the degree of smoothing for clustering mutations, increasing the value should resolve
+	                                      issues with QP iterations related errors
+	                                      Available: 1e-6, 1e-5
+	                                      Default: 1e-7
 	--manta                        [str]  Indicates whether or not to use this tool
 	                                      Available: off, on
 	                                      Default: on
