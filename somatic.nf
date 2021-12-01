@@ -2349,8 +2349,6 @@ process consensusSnvMpileup_bcftools {
 	"""
 	bcftools mpileup \
 	--no-BAQ \
-	--min-MQ 45 \
-	--min-BQ 30 \
 	--max-depth 5000 \
 	--threads ${task.cpus} \
 	--fasta-ref "${reference_genome_fasta_forConsensusSnvMpileup}" \
@@ -2620,8 +2618,6 @@ process consensusIndelMpileup_bcftools {
 	"""
 	bcftools mpileup \
 	--no-BAQ \
-	--min-MQ 45 \
-	--min-BQ 30 \
 	--max-depth 5000 \
 	--threads ${task.cpus} \
 	--fasta-ref "${reference_genome_fasta_forConsensusIndelMpileup}" \
