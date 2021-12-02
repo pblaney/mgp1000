@@ -2555,7 +2555,7 @@ process repeatsAndStrandBiasFilterSnvs_vcftools {
 	hq_snv_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.snv.vcf.gz"
 	hq_snv_consensus_vcf_index = "${hq_snv_consensus_vcf}.tbi"
 	"""
-	strand_bias_fisher_tester.R \
+	strand_bias_proportion_tester.R \
 	"${snv_strand_metrics}" \
 	"${strand_bias_filter_bed}"
 
