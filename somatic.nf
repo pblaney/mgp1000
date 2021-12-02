@@ -2824,7 +2824,7 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
 	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
 	"""
-	strand_bias_fisher_tester.R \
+	strand_bias_proportion_tester.R \
 	"${indel_strand_metrics}" \
 	"${strand_bias_filter_bed}"
 
