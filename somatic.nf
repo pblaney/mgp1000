@@ -1367,6 +1367,7 @@ process cnvCalling_ascatngs {
 	script:
 	ploidy_and_purity = (params.ascatngs_ploidy && params.ascatngs_purity) ? "-ploidy ${params.ascatngs_ploidy} -purity ${params.ascatngs_purity}" : ""
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	ascat_profile_png = "${tumor_normal_sample_id}.ascat.profile.png"
 	ascat_raw_profile_png = "${tumor_normal_sample_id}.ascat.raw.profile.png"
 	sunrise_png = "${tumor_normal_sample_id}.ascat.sunrise.png"
@@ -1383,7 +1384,9 @@ process cnvCalling_ascatngs {
 	ascat.pl \
 	-outdir . \
 	-tumour "${tumor_bam}" \
+	-t_name "${tumor_id}" \
 	-normal "${normal_bam}" \
+	-n_name "${normal_id}" \
 	-reference "${reference_genome_fasta_forAscatNgs}" \
 	-snp_gc "${snp_gc_corrections}" \
 	-protocol WGS \
