@@ -843,7 +843,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 // prune the markers for linkage disequilibrium (remove SNPs that have an R-squared value of greater than 0.5 with any
 // other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
 process filterPlinkFilesForAdmixture_plink {
-	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy', pattern: '*.{txt}'
+	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy', pattern: '*.{txt,fam}'
 	tag "${params.cohort_name}"
 
 	input:
