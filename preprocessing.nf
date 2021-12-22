@@ -33,9 +33,9 @@ def helpMessage() {
 		                                      Default: input/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 		                                      Default: output/
-		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
+		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, can only be used in conjunction with bam as the input_format,
 		                                      should only be used for extreme coverage BAMs that have been previously aligned with BWA MEM to the hg38
 		                                      reference genome and have adequate provenance to reflect this
@@ -69,6 +69,8 @@ params.input_dir = "${workflow.projectDir}/input"
 params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.input_format = null
+params.singularity_module = null
+params.email = null
 params.skip_to_qc = "no"
 params.cpus = null
 params.memory = null

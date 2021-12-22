@@ -33,9 +33,9 @@ def helpMessage() {
 		                                      Default: input/preprocessedBams/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 		                                      Default: output/
-		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
 		                                      this option is not needed if Singularity is natively installed on the deployment environment
+		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--mutect_ref_vcf_concatenated  [str]  Indicates whether or not the gnomAD allele frequency reference VCF used for MuTect2 processes has
 		                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
 		                                      need to be done for every separate run after the first
@@ -123,6 +123,8 @@ params.input_dir = "${workflow.projectDir}/input/preprocessedBams"
 params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.sample_sheet = null
+params.singularity_module = null
+params.email = null
 params.mutect_ref_vcf_concatenated = "yes"
 params.vep_ref_cached = "yes"
 params.telomerehunter = "on"
