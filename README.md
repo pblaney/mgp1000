@@ -86,7 +86,7 @@ ln -s /absolute/path/to/unprocessed/samples/directory/*.fastq.gz input/
 ## Run the Preprocessing Step of the Pipeline
 The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
 
-There are two methods for running each step in the pipeline: [directly from the current environment](#Direct Submission Example) or submitted to job scheduler as a whole. Typically, it is regarded as best practice in an HPC setting to submit the job as a whole but both are equally handled and output is the same. Examples of both are given below.
+There are two methods for running each step in the pipeline: directly from the current environment or batch submission. Typically, it is regarded as best practice in an HPC setting to submit the job as a whole but both are equally handled and output is the same. Examples of both are given below.
 
 **NOTE: The pipeline is currently configured to run with SLURM as the executor. If the user's HPC uses an alternative scheduler please reach out for assistance with adjustments to the configuration to accommodate this, contact information at end of README.**
 
@@ -152,6 +152,40 @@ Main Options:
 ################################################
 ```
 
+### Batch Submission Example
+Within the base directory there is a script `nextflow_run_slurm_submitter.sh` that will accept user-specified parameters for running the Preprocessing step of the pipeline then generate and run a batch submission script.
+
+Basic example of batch submission to job scheduler for running Preprocessing script.
+```
+$ ./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"
+```
+Here is the full help message for the `nextflow_run_slurm_submitter.sh` script.
+```
+$ ./nextflow_run_slurm_submitter.sh -h
+This script will generate a SLURM batch submission script for any pipeline
+run command and then submit this to the scheduler
+
+Syntax:
+	./nextflow_run_slurm_submitter [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]"
+
+Argument Descriptions:
+	[-h]			Print this message
+	[pipelineStepScript]	The name of the Nextflow script that will be run
+	[runId]			The unique ID associated with the run
+	[userEmail]		The email address to be sent notifications of pipeline progress
+	[estimatedRuntime]	The estimated number of days the pipeline will take to complete
+	[moduleLoadCmd]		The text string that will be used to load required modules within the parent SLURM job
+	[pipelineStepOptions]	The text string of any pipeline step specific run options
+
+Usage Examples:
+	./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"
+
+	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
+
+	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
+```
+
+
 ### Preprocessing Output Description
 This step of the pipeline generates various per tool QC metrics that are useful in determining samples for best use in downstream analyses. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
 
@@ -176,8 +210,22 @@ make preprocessing-completion
 ## Run the Germline Variant Analysis Step of the Pipeline
 The most important component of this step of the pipeline is the user-provided sample sheet CSV. This file includes two comma-separated columns: filename of normal sample BAMs and filename of corresponding paired tumor sample BAMs. An example of this is provided in `samplesheet.csv` within the `testSamples` directory. The sample sheet file should typically be within the main `mgp1000` directory.
 
+There are two methods for running each step in the pipeline: directly from the current environment or batch submission. Typically, it is regarded as best practice in an HPC setting to submit the job as a whole but both are equally handled and output is the same. Examples of both are given below.
+
+### Direct Submission Example
+First, the user will need to load the necessary software to run the pipeline step to the environment. At most, this will require Java, Nextflow, and Singularity. This is a user-specific step so the commands may be different depending on the user's HPC configuration.
+```
+$ module load java/1.8 nextflow/21.04.3 singularity/3.7.1
+```
+Basic example of direct submission after loading in required modules for execution.
+```
+$ nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name wgs_set --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline
+```
+
 ### Note on Parameters
-There are two parameters that will prepare necessary reference files as part of this step of the pipeline, `--vep_ref_cached` and `--ref_vcf_concatenated`. These parameters must be be set to `no` for the first run of the Germline Variant Analysis step of the pipeline.  
+There are two parameters that will prepare necessary reference files as part of this step of the pipeline, `--vep_ref_cached` and `--ref_vcf_concatenated`. These parameters only need be set to `no` for the **first run** of the Germline Variant Analysis step of the pipeline.
+
+Here is the full help message for the Germline Variant Analysis step.
 ```
 nextflow run germline.nf --help
 ...
@@ -238,6 +286,39 @@ Main Options:
 ################################################
 ```
 
+### Batch Submission Example
+Within the base directory there is a script `nextflow_run_slurm_submitter.sh` that will accept user-specified parameters for running the Germline Variant Analysis step of the pipeline then generate and run a batch submission script.
+
+Basic example of batch submission to job scheduler for running Germline Variant Analysis script.
+```
+$ ./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
+```
+Here is the full help message for the `nextflow_run_slurm_submitter.sh` script.
+```
+$ ./nextflow_run_slurm_submitter.sh -h
+This script will generate a SLURM batch submission script for any pipeline
+run command and then submit this to the scheduler
+
+Syntax:
+	./nextflow_run_slurm_submitter [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]"
+
+Argument Descriptions:
+	[-h]			Print this message
+	[pipelineStepScript]	The name of the Nextflow script that will be run
+	[runId]			The unique ID associated with the run
+	[userEmail]		The email address to be sent notifications of pipeline progress
+	[estimatedRuntime]	The estimated number of days the pipeline will take to complete
+	[moduleLoadCmd]		The text string that will be used to load required modules within the parent SLURM job
+	[pipelineStepOptions]	The text string of any pipeline step specific run options
+
+Usage Examples:
+	./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"
+
+	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
+
+	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
+```
+
 ### Germline Variant Analysis Output Description
 This step of the pipeline generates a per-cohort joint genotyped VCF and ADMIXTURE estimation of individual ancestries in the context of the 26 populations outlined in the 1000 Genomes Project. By default, all output files are stored into a subdirectory which is named based on the user-defined `--cohort_name` parameter within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
 
@@ -264,8 +345,20 @@ make germline-completion
 ## Run the Somatic Variant Analysis Step of the Pipeline
 This step uses the same user-provided sample sheet CSV as the Germline Variant Analysis step.
 
+There are two methods for running each step in the pipeline: directly from the current environment or batch submission. Typically, it is regarded as best practice in an HPC setting to submit the job as a whole but both are equally handled and output is the same. Examples of both are given below.
+
+### Direct Submission Example
+First, the user will need to load the necessary software to run the pipeline step to the environment. At most, this will require Java, Nextflow, and Singularity. This is a user-specific step so the commands may be different depending on the user's HPC configuration.
+```
+$ module load java/1.8 nextflow/21.04.3 singularity/3.7.1
+```
+Basic example of direct submission after loading in required modules for execution.
+```
+$ nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --email someperson@gmail.com --mutect_ref_vcf_concatenated no --vep_ref_cached no -profile somatic
+```
+
 ### Note on Parameters
-There are two parameters that will prepare necessary reference files as part of this step of the pipeline, `--vep_ref_cached` and `--mutect_ref_vcf_concatenated`. These parameters must be be set to `no` for the first run of the Somatic Variant Analysis step of the pipeline. By default, all tools in this step will be used with the standard command in the usage example. The consensus output per variant type expects all tools to be included in the run for consensus processes to be run.
+There are two parameters that will prepare necessary reference files as part of this step of the pipeline, `--vep_ref_cached` and `--mutect_ref_vcf_concatenated`. These parameters only need be set to `no` for the **first run** of the Somatic Variant Analysis step of the pipeline. By default, all tools in this step will be used with the standard command in the usage example. The consensus output per variant type expects all tools to be included in the run for consensus processes to be run.
 ```
 nextflow run somatic.nf --help
 ...
@@ -373,6 +466,39 @@ Toolbox Switches and Options:
 ################################################
 ```
 
+### Batch Submission Example
+Within the base directory there is a script `nextflow_run_slurm_submitter.sh` that will accept user-specified parameters for running the Somatic Variant Analysis step of the pipeline then generate and run a batch submission script.
+
+Basic example of batch submission to job scheduler for running Somatic Variant Analysis script.
+```
+$ ./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
+```
+Here is the full help message for the `nextflow_run_slurm_submitter.sh` script.
+```
+$ ./nextflow_run_slurm_submitter.sh -h
+This script will generate a SLURM batch submission script for any pipeline
+run command and then submit this to the scheduler
+
+Syntax:
+	./nextflow_run_slurm_submitter [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]"
+
+Argument Descriptions:
+	[-h]			Print this message
+	[pipelineStepScript]	The name of the Nextflow script that will be run
+	[runId]			The unique ID associated with the run
+	[userEmail]		The email address to be sent notifications of pipeline progress
+	[estimatedRuntime]	The estimated number of days the pipeline will take to complete
+	[moduleLoadCmd]		The text string that will be used to load required modules within the parent SLURM job
+	[pipelineStepOptions]	The text string of any pipeline step specific run options
+
+Usage Examples:
+	./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"
+
+	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
+
+	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
+```
+
 ### Somatic Variant Analysis Output Description
 This step of the pipeline generates per tumor-normal pair consensus calls for SNVs, InDels, CNVs, and SVs, capture telomere length and composition, and aggregate metadata information on tumor-normal concordance, contamination, purity, ploidy, and subclonal populations. Each tool used has its native output kept within a self-named subdirectory while the final consensus output files per tumor-normal pair are funneled into the `consensus` subdirectory. By default, all output files are stored into process-specific subdirectories within the `output/` directory. However, each step in the pipeline includes an option (`--output_dir`) for the user to define the base output directory.
 
@@ -416,7 +542,6 @@ make somatic-completion
 If an error is encountered while deploying or using the pipeline, please open an [issue](https://github.com/pblaney/mgp1000/issues) so that it can be addressed and others who may have a similar issue can have a resource for potential solutions.
 
 To further facilitate this, a cataloge of common issues and their solutions will be maintained within the [Wiki](https://github.com/pblaney/mgp1000/wiki)
-
 
 ## Contact
 If there are any further questions, suggestions for improvement, or wishes for collaboration please feel free to email: patrick.blaney@nyulangone.org

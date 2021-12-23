@@ -1,6 +1,48 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script will generate a SLURM batch submission script for any pipeline run command and
 # then submit this to the scheduler
+
+####################	Help Message	####################
+Help()
+{
+	# Display help message
+	echo "This script will generate a SLURM batch submission script for any pipeline"
+	echo "run command and then submit this to the scheduler"
+	echo ""
+	echo "Syntax:"
+	echo '	./nextflow_run_slurm_submitter [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]"'
+	echo ""
+	echo "Argument Descriptions:"
+	echo "	[-h]			Print this message"
+	echo "	[pipelineStepScript]	The name of the Nextflow script that will be run"
+	echo "	[runId]			The unique ID associated with the run"
+	echo "	[userEmail]		The email address to be sent notifications of pipeline progress"
+	echo "	[estimatedRuntime]	The estimated number of days the pipeline will take to complete"
+	echo "	[moduleLoadCmd]		The text string that will be used to load required modules within the parent SLURM job"
+	echo "	[pipelineStepOptions]	The text string of any pipeline step specific run options"
+	echo ""
+	echo "Usage Examples:"
+	echo '	./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"'
+	echo ""
+	echo '	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"'
+	echo ""
+	echo '	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"'
+	echo ""
+}
+
+while getopts ":h" option;
+	do
+		case $option in
+			h) # Show help message
+				Help
+				exit;;
+		   \?) # Reject other passed options
+				echo "Invalid option"
+				exit;;
+		esac
+	done
+
+############################################################
 
 # Capture command line arguments
 pipelineStepScript=$1
@@ -44,8 +86,7 @@ echo "############################################################" >> "${submis
 echo "" >> "${submissionScript}"
 
 echo "export NXF_ANSI_LOG=false" >> "${submissionScript}"
-echo 'export NXF_OPTS="-Xms500M -Xmx2G -Dleveldb.mmap=false"'
-echo ""
+echo 'export NXF_OPTS="-Xms500M -Xmx2G -Dleveldb.mmap=false"' >> "${submissionScript}"
 
 runCommand="
 nextflow run \

@@ -14,7 +14,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
+		nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing 
 
 	Mandatory Arguments:
 		--run_id                       [str]  Unique identifier for pipeline run
@@ -33,8 +33,6 @@ def helpMessage() {
 		                                      Default: input/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 		                                      Default: output/
-		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
-		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, can only be used in conjunction with bam as the input_format,
 		                                      should only be used for extreme coverage BAMs that have been previously aligned with BWA MEM to the hg38
@@ -69,7 +67,6 @@ params.input_dir = "${workflow.projectDir}/input"
 params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.input_format = null
-//params.singularity_module = null
 params.email = null
 params.skip_to_qc = "no"
 params.cpus = null
@@ -161,13 +158,13 @@ log.info '################################################'
 log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
 log.info '################################################'
 log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info "~~~ Launch Time ~~~	${workflowTimestamp}"
 log.info ''
-log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info "~~~ Input Directory ~~~	${params.input_dir}"
 log.info ''
-log.info "~~~ Output Directory ~~~ 	${params.output_dir}"
+log.info "~~~ Output Directory ~~~	${params.output_dir}"
 log.info ''
-log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
+log.info "~~~ Run Report File ~~~	nextflow_report.${params.run_id}.html"
 log.info ''
 log.info '################################################'
 log.info ''

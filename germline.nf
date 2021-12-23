@@ -13,7 +13,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name mmrf_set --singularity_module singularity/3.1 --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
+		nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name wgs_set --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
 
 	Mandatory Arguments:
     	--run_id                       [str]  Unique identifier for pipeline run
@@ -35,8 +35,6 @@ def helpMessage() {
 		                                      Default: input/preprocessedBams/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 		                                      Default: output/
-		--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
-		                                      this option is not needed if Singularity is natively installed on the deployment environment
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
 		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
@@ -77,7 +75,6 @@ params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.sample_sheet = null
 params.cohort_name = null
-params.singularity_module = null
 params.email = null
 params.vep_ref_cached = "yes"
 params.ref_vcf_concatenated = "yes"
@@ -245,13 +242,13 @@ log.info '################################################'
 log.info '~~~~~~~~~~~ GERMLINE VARIANT ANALYSIS ~~~~~~~~~~'
 log.info '################################################'
 log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info "~~~ Launch Time ~~~	${workflowTimestamp}"
 log.info ''
-log.info "~~~ Input Directory ~~~ 	${params.input_dir}"
+log.info "~~~ Input Directory ~~~	${params.input_dir}"
 log.info ''
-log.info "~~~ Output Directory ~~~ 	${params.output_dir}"
+log.info "~~~ Output Directory ~~~	${params.output_dir}"
 log.info ''
-log.info "~~~ Run Report File ~~~ 	nextflow_report.${params.run_id}.html"
+log.info "~~~ Run Report File ~~~	nextflow_report.${params.run_id}.html"
 log.info ''
 log.info '################################################'
 log.info ''
