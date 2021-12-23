@@ -99,6 +99,7 @@ Basic example of direct submission after loading in required modules for executi
 ```
 $ nextflow run preprocessing.nf -bg --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing
 ```
+
 Here is the full help message for the Preprocessing step.
 ```
 $ nextflow run preprocessing.nf --help
@@ -159,6 +160,7 @@ Basic example of batch submission to job scheduler for running Preprocessing scr
 ```
 $ ./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"
 ```
+
 Here is the full help message for the `nextflow_run_slurm_submitter.sh` script.
 ```
 $ ./nextflow_run_slurm_submitter.sh -h
@@ -293,6 +295,7 @@ Basic example of batch submission to job scheduler for running Germline Variant 
 ```
 $ ./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
 ```
+
 Here is the full help message for the `nextflow_run_slurm_submitter.sh` script.
 ```
 $ ./nextflow_run_slurm_submitter.sh -h
@@ -473,6 +476,7 @@ Basic example of batch submission to job scheduler for running Somatic Variant A
 ```
 $ ./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
 ```
+
 Here is the full help message for the `nextflow_run_slurm_submitter.sh` script.
 ```
 $ ./nextflow_run_slurm_submitter.sh -h
