@@ -86,7 +86,7 @@ ln -s /absolute/path/to/unprocessed/samples/directory/*.fastq.gz input/
 ## Run the Preprocessing Step of the Pipeline
 The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
 
-There are two methods for running each step in the pipeline: [directly from the current environment](#DirectSubmissionExample) or submitted to job scheduler as a whole. Typically, it is regarded as best practice in an HPC setting to submit the job as a whole but both are equally handled and output is the same. Examples of both are given below.
+There are two methods for running each step in the pipeline: [directly from the current environment](#Direct Submission Example) or submitted to job scheduler as a whole. Typically, it is regarded as best practice in an HPC setting to submit the job as a whole but both are equally handled and output is the same. Examples of both are given below.
 
 **NOTE: The pipeline is currently configured to run with SLURM as the executor. If the user's HPC uses an alternative scheduler please reach out for assistance with adjustments to the configuration to accommodate this, contact information at end of README.**
 
