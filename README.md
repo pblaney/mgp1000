@@ -10,14 +10,20 @@ This compartmentalizes the workflow and provides significant completion checkpoi
 <img src="https://github.com/pblaney/mgp1000/blob/master/MGP1000Pipeline.png" width="800">
 
 ## Deploying the Pipeline
-The pipeline was developed to be run on various HPCs without concern of environment incompatibilities, version issues, or missing dependencies. None of the commands require admin access or `sudo`  to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available on nearly all HPC systems.
+The pipeline was developed to be run on various HPCs without concern of environment incompatibilities, version issues, or missing dependencies. None of the commands require admin access or `sudo` to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available on nearly all HPC systems.
 * Git
 * GNU Utilities
 * Java 8 (or later)
 * Singularity (validated on v3.1, v3.5.2, v3.7.1 other versions will be tested)
 
 
-## Installing Git LFS
+## Clone GitHub Repository
+The first step in the deployment process is to clone the MGP1000 GitHub repository to a location on your HPC that is large enough to hold the input/output data and has access to the job scheduling software, such as SLURM or SGE.
+```
+git clone https://github.com/pblaney/mgp1000.git
+```
+
+### Installing Git LFS
 In an effort to containerize the pipeline further, all the necessary reference files and Singularity container images are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
 
 **NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
@@ -32,12 +38,9 @@ Move the `git-lfs` binary to a location on `$PATH`
 ```
 mv git-lfs $HOME/bin
 ```
-
-
-## Clone GitHub Repository
-The first step in the deployment process is to clone the MGP1000 GitHub repository to a location on your HPC that is large enough to hold the input/output data and has access to the job scheduling software, such as SLURM or SGE.
+Use `git-lfs` to retrieve the rest of the GitHub repository's files
 ```
-git clone https://github.com/pblaney/mgp1000.git
+git-lfs pull
 ```
 
 ### Reference Data
@@ -83,8 +86,20 @@ ln -s /absolute/path/to/unprocessed/samples/directory/*.fastq.gz input/
 ## Run the Preprocessing Step of the Pipeline
 The Preprocessing step of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
 
+There are two methods for running each step in the pipeline: [[directly from the current environment|Direct Submission Example]] or submitted to job scheduler as a whole. Typically, it is regarded as best practice in an HPC setting to submit the job as a whole but both are equally handled and output is the same. Examples of both are given below.
+
 **NOTE: The pipeline is currently configured to run with SLURM as the executor. If the user's HPC uses an alternative scheduler please reach out for assistance with adjustments to the configuration to accommodate this, contact information at end of README.**
 
+### Direct Submission Example
+First, the user will need to load the necessary software to run the pipeline step to the environment. At most, this will require Java, Nextflow, and Singularity. This is a user-specific step so the commands may be different depending on the user's HPC configuration.
+```
+$ module load java/1.8 nextflow/21.04.3 singularity/3.7.1
+```
+Basic example of direct submission after loading in required modules for execution.
+```
+$ nextflow run preprocessing.nf -bg --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing
+```
+Here is the full help message for the Preprocessing step.
 ```
 $ nextflow run preprocessing.nf --help
 ...
@@ -94,7 +109,7 @@ $ nextflow run preprocessing.nf --help
 
 Usage Example:
 
-	nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --singularity_module singularity/3.1 --email someperson@gmail.com -profile preprocessing 
+	nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing 
 
 Mandatory Arguments:
 	--run_id                       [str]  Unique identifier for pipeline run
@@ -114,8 +129,6 @@ Main Options:
 	--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 	                                      Default: output/
 	--email                        [str]  Email address to send workflow completion/stoppage notification
-	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
-	                                      this option is not needed if Singularity is natively installed on the deployment environment
 	--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, can only be used in conjunction with bam as the input_format,
 	                                      should only be used for extreme coverage BAMs that have been previously aligned with BWA MEM to the hg38
 	                                      reference genome and have adequate provenance to reflect this
@@ -174,7 +187,7 @@ nextflow run germline.nf --help
 
 Usage Example:
 
-	nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name mmrf_set --singularity_module singularity/3.1 --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
+	nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name wgs_set --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
 
 Mandatory Arguments:
    	--run_id                       [str]  Unique identifier for pipeline run
@@ -192,13 +205,11 @@ Main Options:
 	                                      environment
 	-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 	                                      previously completed tasks are skipped while maintaining their output
-	--email                        [str]  Email address to send workflow completion/stoppage notification
 	--input_dir                    [str]  Directory that holds BAMs and associated index files
 	                                      Default: input/preprocessedBams/
 	--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 	                                      Default: output/
-	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
-	                                      this option is not needed if Singularity is natively installed on the deployment environment
+	--email                        [str]  Email address to send workflow completion/stoppage notification
 	--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
 	                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
 	                                      done for every separate run after the first
@@ -264,7 +275,7 @@ nextflow run somatic.nf --help
 
 Usage Example:
 
-	nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --singularity_module singularity/3.1 --email someperson@gmail.com --mutect_ref_vcf_concatenated no --vep_ref_cached no -profile somatic 
+	nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --email someperson@gmail.com --mutect_ref_vcf_concatenated no --vep_ref_cached no -profile somatic 
 
 Mandatory Arguments:
    	--run_id                       [str]  Unique identifier for pipeline run
@@ -285,8 +296,6 @@ Main Options:
 	--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
 	                                      Default: output/
 	--email                        [str]  Email address to send workflow completion/stoppage notification
-	--singularity_module           [str]  Indicates the name of the Singularity software module to be loaded for use in the pipeline,
-	                                      this option is not needed if Singularity is natively installed on the deployment environment
 	--mutect_ref_vcf_concatenated  [str]  Indicates whether or not the gnomAD allele frequency reference VCF used for MuTect2 processes has
 	                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
 	                                      need to be done for every separate run after the first
