@@ -44,6 +44,7 @@ echo "############################################################" >> "${submis
 echo "" >> "${submissionScript}"
 
 echo "export NXF_ANSI_LOG=false" >> "${submissionScript}"
+echo 'export NXF_OPTS="-Xms500M -Xmx2G -Dleveldb.mmap=false"'
 echo ""
 
 runCommand="
