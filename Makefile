@@ -8,7 +8,8 @@ none:
 # Install Git LFS
 install-gitlfs-linuxamd64:
 	wget https://github.com/git-lfs/git-lfs/releases/download/v3.0.2/git-lfs-linux-amd64-v3.0.2.tar.gz
-	tar -zxvf git-lfs-linux-amd64-v3.0.2.tar.gz --exclude=README.md --exclude=CHANGELOG.md --exclude=install.sh --exclude=man/
+	tar -zxvf git-lfs-linux-amd64-v3.0.2.tar.gz --exclude=README.md --exclude=CHANGELOG.md --exclude=install.sh
+	rm -rf man/
 	git lfs install
 	rm git-lfs-linux-amd64-v3.0.2.tar.gz
 
