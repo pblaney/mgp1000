@@ -184,7 +184,7 @@ Usage Examples:
 
 	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
 
-	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
+	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached no"
 ```
 
 
@@ -319,7 +319,7 @@ Usage Examples:
 
 	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
 
-	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
+	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached no"
 ```
 
 ### Germline Variant Analysis Output Description
@@ -500,7 +500,7 @@ Usage Examples:
 
 	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"
 
-	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached"
+	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached no"
 ```
 
 ### Somatic Variant Analysis Output Description

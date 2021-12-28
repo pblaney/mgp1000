@@ -48,41 +48,39 @@ preprocessing-completion:
 	mv nextflow_report.*.html logs/preprocessing
 	mv timeline_report.*.html logs/preprocessing
 	mv trace.*.txt logs/preprocessing
+	mv slurmsub.preprocessing.*.* logs/preprocessing
 
 germline-completion:
 	mkdir -p logs/germline
 	mv nextflow_report.*.html logs/germline
 	mv timeline_report.*.html logs/germline
 	mv trace.*.txt logs/germline
+	mv slurmsub.germline.*.* logs/germline
 
 somatic-completion:
 	mkdir -p logs/somatic
 	mv nextflow_report.*.html logs/somatic
 	mv timeline_report.*.html logs/somatic
 	mv trace.*.txt logs/somatic
+	mv slurmsub.somatic.*.* logs/somatic
 
 ###############################################################################
 
-# Remove logs/pid/reports/trace files
+# Remove logs/pid/reports/trace/slurmsub files
 quick-clean:
 	rm -f .nextflow.log*
 	rm -f .nextflow.pid*
-	rm -f timeline_report.*.html*
 	rm -f nextflow_report.*.html*
+	rm -f timeline_report.*.html*
 	rm -f trace.*.txt*
+	rm -f slurmsub.*.*.*
 
 # Clean up the pipeline directory after a successful run to prep for new run
 clean-postrun: quick-clean
 	rm -rf work/*
 
 # Completely scrub the pipeline directory
-clean-all:
-	rm -rf work
-	rm -rf output
-	rm -f .nextflow.log*
-	rm -f .nextflow.pid*
-	rm -f timeline_report.*.html*
-	rm -f nextflow_report.*.html*
-	rm -f trace.*.txt*
+clean-all: clean-postrun
+	rm -rf output/*
 
 ###############################################################################
