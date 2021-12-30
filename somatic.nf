@@ -380,7 +380,7 @@ log.info '################################################'
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
-log.info "~~~ Input Directory ~~~	a${params.input_dir}"
+log.info "~~~ Input Directory ~~~		${params.input_dir}"
 log.info ''
 log.info "~~~ Output Directory ~~~	${params.output_dir}"
 log.info ''
