@@ -215,6 +215,7 @@ process revertMappedBam_gatk {
 	gatk RevertSam \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
+	--VALIDATION_STRINGENCY LENIENT \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
 	--SANITIZE true \

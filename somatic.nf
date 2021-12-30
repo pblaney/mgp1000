@@ -1882,7 +1882,7 @@ process svAndIndelCalling_manta {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index) into manta_sv_vcf_forSurvivorPrep
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) into manta_sv_vcf_forPostprocessing
 	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
 	tuple path(germline_sv_vcf), path(germline_sv_vcf_index)
 
@@ -1901,8 +1901,8 @@ process svAndIndelCalling_manta {
 	germline_sv_vcf_index = "${germline_sv_vcf}.tbi"
 	candidate_indel_vcf = "${tumor_normal_sample_id}.manta.somatic.indels.unfiltered.vcf.gz"
 	candidate_indel_vcf_index = "${candidate_indel_vcf}.tbi"
-	final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf.gz"
-	final_manta_somatic_sv_vcf_index = "${final_manta_somatic_sv_vcf}.tbi"
+	manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unprocessed.vcf.gz"
+	manta_somatic_sv_vcf_index = "${manta_somatic_sv_vcf}.tbi"
 	"""
 	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed_forManta}"
 	tabix "${zipped_wgs_bed_forManta}"
@@ -1945,9 +1945,43 @@ process svAndIndelCalling_manta {
 	| \
 	grep -E "^#|PASS" \
 	| \
-	bgzip > "${final_manta_somatic_sv_vcf}"
-	tabix "${final_manta_somatic_sv_vcf}"
+	bgzip > "${manta_somatic_sv_vcf}"
+	tabix "${manta_somatic_sv_vcf}"
 	"""
+}
+
+// BCFtools filter / view ~ filter out additional false positives based on alternative variant reads in normal sample, prepare VCF for SURVIVOR
+process filterAndPostprocessMantaVcf_bcftools {
+     tag "$tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
+
+     output:
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index) into manta_sv_vcf_forSurvivor
+
+     when:
+     params.manta == "on"
+
+     script:
+     final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf.gz"
+     final_manta_somatic_sv_vcf_index = "${final_manta_somatic_sv_vcf}.tbi"
+     """
+     touch name.txt
+     echo "${normal_id}" >> name.txt
+
+     bcftools filter \
+     --output-type v \
+     --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
+     "${manta_somatic_sv_vcf}" \
+     | \
+     bcftools view \
+     --output-type v \
+     --samples "${tumor_id}" \
+     --output-file "${final_manta_somatic_sv_vcf}"
+
+     tabix "${final_manta_somatic_sv_vcf}"
+     """
 }
 
 // END
@@ -2095,7 +2129,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(sample_renaming_file) into svaba_sv_vcf_forSurvivorPrep
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -2115,8 +2149,8 @@ process svAndIndelCalling_svaba {
 	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
 	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
 	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
-	final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
-	final_svaba_somatic_sv_vcf_index = "${final_svaba_somatic_sv_vcf}.tbi"
+	svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unprocessed.vcf.gz"
+	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
 	sample_renaming_file = "sample_renaming_file.txt"
 	"""
 	svaba run \
@@ -2136,11 +2170,50 @@ process svAndIndelCalling_svaba {
 	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
 
 	tabix "${filtered_somatic_indel_vcf}"
-	tabix "${final_svaba_somatic_sv_vcf}"
+	tabix "${svaba_somatic_sv_vcf}"
 
 	touch "${sample_renaming_file}"
 	echo "${tumor_bam} ${tumor_id}" >> "${sample_renaming_file}"
 	"""
+}
+
+// BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality score and support
+// read mapping quality, prepare VCF for SURVIVOR 
+process filterAndPostprocessSvabaVcf_bcftools {
+     tag "$tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
+
+     output:
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index) into svaba_sv_vcf_forSurvivor
+
+     when:
+     params.svaba == "on"
+
+     script:
+     final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
+     final_svaba_somatic_sv_vcf_index = "${final_svaba_somatic_sv_vcf}.tbi"
+     """
+     bcftools filter \
+     --output-type v \
+     --exclude 'QUAL<6' \
+     "${svaba_somatic_sv_vcf}" \
+     | \
+     bcftools filter \
+     --output-type v \
+     --include 'INFO/MAPQ>55 || INFO/DISC_MAPQ>55' \
+     | \
+     bcftools reheader \
+     --samples "${sample_renaming_file}" \
+     | \
+     bcftools view \
+     --output-type v \
+     --samples "${tumor_id}" \
+     --output-file "${final_svaba_somatic_sv_vcf}"
+
+     tabix "${final_svaba_somatic_sv_vcf}"
+     """
 }
 
 // Combine all needed reference FASTA files into one channel for use in SvABA / BCFtools Norm process
@@ -2154,8 +2227,7 @@ process leftNormalizeSvabaVcf_bcftools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index), path(reference_genome_fasta_forSvabaBcftools), path(reference_genome_fasta_index_forSvabaBcftools),
-	path(reference_genome_fasta_dict_forSvabaBcftools) from filtered_indel_vcf_forSvabaBcftools.combine(reference_genome_bundle_forSvabaBcftools)
+	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index), path(reference_genome_fasta_forSvabaBcftools), path(reference_genome_fasta_index_forSvabaBcftools), path(reference_genome_fasta_dict_forSvabaBcftools) from filtered_indel_vcf_forSvabaBcftools.combine(reference_genome_bundle_forSvabaBcftools)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index) into final_svaba_indel_vcf_forConsensus
@@ -2202,7 +2274,7 @@ process svAndIndelCalling_delly {
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forDelly), path(reference_genome_fasta_index_forDelly), path(reference_genome_fasta_dict_forDelly), path(gatk_bundle_wgs_bed_blacklist_0based_forDelly) from tumor_normal_pair_forDelly.combine(reference_genome_and_blacklist_bundle_forDelly)
 
 	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) into delly_sv_vcf_forSurvivorPrep
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
 
 	when:
 	params.delly == "on"
@@ -2211,8 +2283,8 @@ process svAndIndelCalling_delly {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf.gz"
-	final_delly_somatic_sv_vcf_index = "${final_delly_somatic_sv_vcf}.tbi"
+	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
+	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
 	"""
 	delly call \
 	--genome "${reference_genome_fasta_forDelly}" \
@@ -2229,17 +2301,51 @@ process svAndIndelCalling_delly {
 	--pass \
 	--altaf 0.1 \
 	--minsize 51 \
-	--coverage 5 \
+	--coverage 10 \
 	--samples samples.tsv \
-	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.bcf" \
+	--outfile "${tumor_normal_sample_id}.somatic.sv.unprocessed.bcf" \
 	"${tumor_normal_sample_id}.delly.somatic.sv.unfiltered.bcf"
 
 	bcftools view \
 	--output-type z \
-	"${tumor_normal_sample_id}.delly.somatic.sv.bcf" > "${final_delly_somatic_sv_vcf}"
+	"${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" > "${delly_somatic_sv_vcf}"
 
-	tabix "${final_delly_somatic_sv_vcf}"
+	tabix "${delly_somatic_sv_vcf}"
 	"""
+}
+
+// BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality
+// score and support read mapping quality, prepare VCF for SURVIVOR 
+process filterAndPostprocessDellyVcf_bcftools {
+     tag "$tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
+
+     output:
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) into delly_sv_vcf_forSurvivor
+
+     when:
+     params.delly == "on"
+
+     script:
+     final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf.gz"
+     final_delly_somatic_sv_vcf_index = "${final_delly_somatic_sv_vcf}.tbi"
+     """
+     bcftools filter \
+     --output-type v \
+     --include 'INFO/MAPQ>55 || INFO/SRMAPQ>55' \
+     "${delly_somatic_sv_vcf}" \
+     | \
+     bcftools filter \
+     --output-type v \
+     --include 'INFO/PE>3 || INFO/SR>3' \
+     | \
+     bcftools view \
+     --output-type v \
+     --samples "${tumor_id}" \
+     --output-file "${final_delly_somatic_sv_vcf}"
+     """
 }
 
 // END
@@ -3030,54 +3136,13 @@ process mergeSubclonalCnvCalls {
 // ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
 // START
 
-// BCFtools reheader / view ~ rename the samples within SvABA VCF and then remove normal sample from both SvABA, Manta, and DELLY VCFs
-process prepSvVcfsForSurvivor_bcftools {
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(sample_renaming_file), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) from manta_sv_vcf_forSurvivorPrep.join(svaba_sv_vcf_forSurvivorPrep, by: [0,1]).join(delly_sv_vcf_forSurvivorPrep, by: [0,1])
-
-	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) into sv_vcfs_forSurvivor
-
-	when:
-	params.manta == "on" && params.svaba == "on" && params.delly == "on"
-
-	script:
-	manta_tumor_sample_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.tumorsample.vcf"
-	svaba_tumor_sample_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.tumorsample.vcf"
-	delly_tumor_sample_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.tumorsample.vcf"
-	"""
-	bcftools view \
-	--output-type v \
-	--samples "${tumor_id}" \
-	--output-file "${manta_tumor_sample_sv_vcf}" \
-	"${final_manta_somatic_sv_vcf}"
-
-	bcftools reheader \
-	--samples "${sample_renaming_file}" \
-	"${final_svaba_somatic_sv_vcf}" \
-	| \
-	bcftools view \
-	--output-type v \
-	--samples "${tumor_id}" \
-	--output-file "${svaba_tumor_sample_sv_vcf}"
-
-	bcftools view \
-	--output-type v \
-	--samples "${tumor_id}" \
-	--output-file "${delly_tumor_sample_sv_vcf}" \
-	"${final_delly_somatic_sv_vcf}"
-	"""
-}
-
 // SURVIVOR ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_survivor {
 	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf}'
 	tag	"${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(manta_tumor_sample_sv_vcf), path(svaba_tumor_sample_sv_vcf), path(delly_tumor_sample_sv_vcf) from sv_vcfs_forSurvivor
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by [0,1]) 
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConversion
@@ -3088,7 +3153,8 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	script:
 	consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
 	"""
-	ls *.vcf > input_vcf_list.txt
+	touch input_vcf_list.txt
+	ls *.vcf >> input_vcf_list.txt
 
 	SURVIVOR merge \
 	input_vcf_list.txt \
