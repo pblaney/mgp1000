@@ -1908,7 +1908,7 @@ process svAndIndelCalling_manta {
 	tabix "${zipped_wgs_bed_forManta}"
 
 	touch "${manta_somatic_config}"
-	cat $MANTA_DIR/bin/configManta.py.ini \
+	cat \${MANTA_DIR}/bin/configManta.py.ini \
 	| \
 	sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
 	| \
@@ -2227,6 +2227,9 @@ process svAndIndelCalling_delly {
 	delly filter \
 	--filter somatic \
 	--pass \
+	--altaf 0.1 \
+	--minsize 51 \
+	--coverage 5 \
 	--samples samples.tsv \
 	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.bcf" \
 	"${tumor_normal_sample_id}.delly.somatic.sv.unfiltered.bcf"
@@ -3089,8 +3092,8 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 
 	SURVIVOR merge \
 	input_vcf_list.txt \
-	1000 \
-	2 \
+	500 \
+	1 \
 	0 \
 	1 \
 	0 \
