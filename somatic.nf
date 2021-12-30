@@ -1895,6 +1895,7 @@ process svAndIndelCalling_manta {
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
 	zipped_wgs_bed_forManta = "${gatk_bundle_wgs_bed_forManta}.gz"
 	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unfiltered.vcf.gz"
+	manta_somatic_config = "${tumor_normal_sample_id}.manta.somatic.config.ini"
 	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
 	germline_sv_vcf = "${tumor_normal_sample_id}.manta.germline.sv.vcf.gz"
 	germline_sv_vcf_index = "${germline_sv_vcf}.tbi"
@@ -1906,11 +1907,21 @@ process svAndIndelCalling_manta {
 	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed_forManta}"
 	tabix "${zipped_wgs_bed_forManta}"
 
+	touch "${manta_somatic_config}"
+	cat $MANTA_DIR/bin/configManta.py.ini \
+	| \
+	sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
+	| \
+	sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
+	| \
+	sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
+
 	python \${MANTA_DIR}/bin/configManta.py \
 	--tumorBam "${tumor_bam}" \
 	--normalBam "${normal_bam}" \
 	--referenceFasta "${reference_genome_fasta_forManta}" \
 	--callRegions "${zipped_wgs_bed_forManta}" \
+	--config "${manta_somatic_config}" \
 	--runDir manta
 
 	python manta/runWorkflow.py \
