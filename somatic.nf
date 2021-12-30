@@ -2129,7 +2129,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
