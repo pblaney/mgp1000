@@ -1981,6 +1981,11 @@ process filterAndPostprocessMantaVcf_bcftools {
      --output-file "${final_manta_somatic_sv_vcf}"
 
      tabix "${final_manta_somatic_sv_vcf}"
+
+     bcftools query \
+     --format '%ID\t[%SR{1}]\t[%PR{1}]\n' \
+     --output "${${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt}" \
+     "${final_manta_somatic_sv_vcf}"
      """
 }
 
@@ -2213,6 +2218,11 @@ process filterAndPostprocessSvabaVcf_bcftools {
      --output-file "${final_svaba_somatic_sv_vcf}"
 
      tabix "${final_svaba_somatic_sv_vcf}"
+
+     bcftools query \
+     --format '%ID\t[%SR]\t[%DR]\n' \
+     --output "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt" \
+     "${final_svaba_somatic_sv_vcf}"
      """
 }
 
@@ -2345,6 +2355,13 @@ process filterAndPostprocessDellyVcf_bcftools {
      --output-type v \
      --samples "${tumor_id}" \
      --output-file "${final_delly_somatic_sv_vcf}"
+
+     tabix "${final_delly_somatic_sv_vcf}"
+
+     bcftools query \
+     --format '%ID\t%PE\t%SR\n' \
+     --output "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt" \
+     "${final_delly_somatic_sv_vcf}"
      """
 }
 
