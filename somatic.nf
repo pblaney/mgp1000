@@ -1984,7 +1984,7 @@ process filterAndPostprocessMantaVcf_bcftools {
 
      bcftools query \
      --format '%ID\t[%SR{1}]\t[%PR{1}]\n' \
-     --output "${${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt}" \
+     --output "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt" \
      "${final_manta_somatic_sv_vcf}"
      """
 }
