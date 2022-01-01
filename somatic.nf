@@ -1958,14 +1958,13 @@ process filterAndPostprocessMantaVcf_bcftools {
      tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
 
      output:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index) into manta_sv_vcf_forSurvivor
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forSurvivor
 
      when:
      params.manta == "on"
 
      script:
-     final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf.gz"
-     final_manta_somatic_sv_vcf_index = "${final_manta_somatic_sv_vcf}.tbi"
+     final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf"
      """
      touch name.txt
      echo "${normal_id}" >> name.txt
@@ -1979,8 +1978,6 @@ process filterAndPostprocessMantaVcf_bcftools {
      --output-type v \
      --samples "${tumor_id}" \
      --output-file "${final_manta_somatic_sv_vcf}"
-
-     tabix "${final_manta_somatic_sv_vcf}"
 
      bcftools query \
      --format '%ID\t[%SR{1}]\t[%PR{1}]\n' \
@@ -2191,14 +2188,13 @@ process filterAndPostprocessSvabaVcf_bcftools {
      tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
 
      output:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index) into svaba_sv_vcf_forSurvivor
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forSurvivor
 
      when:
      params.svaba == "on"
 
      script:
-     final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
-     final_svaba_somatic_sv_vcf_index = "${final_svaba_somatic_sv_vcf}.tbi"
+     final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
      """
      bcftools filter \
      --output-type v \
@@ -2216,8 +2212,6 @@ process filterAndPostprocessSvabaVcf_bcftools {
      --output-type v \
      --samples "${tumor_id}" \
      --output-file "${final_svaba_somatic_sv_vcf}"
-
-     tabix "${final_svaba_somatic_sv_vcf}"
 
      bcftools query \
      --format '%ID\t[%SR]\t[%DR]\n' \
@@ -2333,14 +2327,13 @@ process filterAndPostprocessDellyVcf_bcftools {
      tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
 
      output:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) into delly_sv_vcf_forSurvivor
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf) into delly_sv_vcf_forSurvivor
 
      when:
      params.delly == "on"
 
      script:
-     final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf.gz"
-     final_delly_somatic_sv_vcf_index = "${final_delly_somatic_sv_vcf}.tbi"
+     final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
      """
      bcftools filter \
      --output-type v \
@@ -2355,8 +2348,6 @@ process filterAndPostprocessDellyVcf_bcftools {
      --output-type v \
      --samples "${tumor_id}" \
      --output-file "${final_delly_somatic_sv_vcf}"
-
-     tabix "${final_delly_somatic_sv_vcf}"
 
      bcftools query \
      --format '%ID\t%PE\t%SR\n' \
@@ -3159,7 +3150,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	tag	"${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_manta_somatic_sv_vcf_index), path(final_svaba_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf_index), path(final_delly_somatic_sv_vcf), path(final_delly_somatic_sv_vcf_index) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf), from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConversion
