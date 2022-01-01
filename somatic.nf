@@ -2170,6 +2170,7 @@ process svAndIndelCalling_svaba {
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.sv.vcf.gz" "${unfiltered_somatic_sv_vcf}"
 	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
+	mv "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" "${svaba_somatic_sv_vcf}"
 
 	tabix "${filtered_somatic_indel_vcf}"
 	tabix "${svaba_somatic_sv_vcf}"
