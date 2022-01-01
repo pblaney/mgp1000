@@ -3150,7 +3150,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	tag	"${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf), from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConversion
