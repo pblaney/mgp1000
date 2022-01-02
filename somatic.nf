@@ -2308,7 +2308,7 @@ process svAndIndelCalling_delly {
 	--minsize 51 \
 	--coverage 10 \
 	--samples samples.tsv \
-	--outfile "${tumor_normal_sample_id}.somatic.sv.unprocessed.bcf" \
+	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" \
 	"${tumor_normal_sample_id}.delly.somatic.sv.unfiltered.bcf"
 
 	bcftools view \
