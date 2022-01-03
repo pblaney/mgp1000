@@ -517,7 +517,6 @@ Here is a snapshot of the final `output/somatic/consensus/[tumor_normal_id]` dir
 | `*.consensus.somatic.cnv.alleles.merged.bed` | per segment consensus CNV BED |
 | `*.consensus.somatic.cnv.subclonal.txt` | aggregated subclonal population estimates from Control-FREEC and Sclust |
 | `*.consensus.somatic.sv.vcf` | consensus SV VCF |
-| `*.consensus.somatic.sv.bedpe` | consensus SV calls in simplified BEDPE format |
 | `*.consensus.somatic.metadata.txt` | aggregated metadata from alleleCount, Conpair, Mutect2, ascatNGS, Control-FREEC, and Sclust |
 
 Additional per-tool subdirectories included in the base `output/somatic` output directory:
