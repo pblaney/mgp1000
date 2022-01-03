@@ -1952,7 +1952,7 @@ process svAndIndelCalling_manta {
 
 // BCFtools filter / view ~ filter out additional false positives based on alternative variant reads in normal sample, prepare VCF for SURVIVOR
 process filterAndPostprocessMantaVcf_bcftools {
-     tag "$tumor_normal_sample_id}"
+     tag "${tumor_normal_sample_id}"
 
      input:
      tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
@@ -2183,7 +2183,7 @@ process svAndIndelCalling_svaba {
 // BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality score and support
 // read mapping quality, prepare VCF for SURVIVOR 
 process filterAndPostprocessSvabaVcf_bcftools {
-     tag "$tumor_normal_sample_id}"
+     tag "${tumor_normal_sample_id}"
 
      input:
      tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
@@ -2204,7 +2204,7 @@ process filterAndPostprocessSvabaVcf_bcftools {
      | \
      bcftools filter \
      --output-type v \
-     --include 'INFO/MAPQ>55 || INFO/DISC_MAPQ>55' \
+     --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
      | \
      bcftools reheader \
      --samples "${sample_renaming_file}" \
@@ -2322,7 +2322,7 @@ process svAndIndelCalling_delly {
 // BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality
 // score and support read mapping quality, prepare VCF for SURVIVOR 
 process filterAndPostprocessDellyVcf_bcftools {
-     tag "$tumor_normal_sample_id}"
+     tag "${tumor_normal_sample_id}"
 
      input:
      tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
@@ -2338,7 +2338,7 @@ process filterAndPostprocessDellyVcf_bcftools {
      """
      bcftools filter \
      --output-type v \
-     --include 'INFO/MAPQ>55 || INFO/SRMAPQ>55' \
+     --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
      "${delly_somatic_sv_vcf}" \
      | \
      bcftools filter \
@@ -3147,7 +3147,7 @@ process mergeSubclonalCnvCalls {
 
 // SURVIVOR ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_survivor {
-	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf}'
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.vcf}'
 	tag	"${tumor_normal_sample_id}"
 
 	input:
@@ -3167,7 +3167,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 
 	SURVIVOR merge \
 	input_vcf_list.txt \
-	500 \
+	1000 \
 	1 \
 	0 \
 	1 \
@@ -3176,55 +3176,6 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	"${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
 
 	sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" > "${consensus_somatic_sv_vcf}"
-	"""
-}
-
-// svtools vcftobedpe ~ convert the consensus SV VCF to a more convenient BEDPE file
-process convertSvVcfToBedpe_svtools {
-	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.bedpe}'
-	tag	"${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) from consensus_sv_vcf_forConversion
-
-	output:
-	tuple val(tumor_normal_sample_id), path(consensus_sv_bedpe)
-
-	when:
-	params.manta == "on" && params.svaba == "on" && params.delly == "on"
-
-	script:
-	consensus_sv_bedpe = "${tumor_normal_sample_id}.consensus.somatic.sv.bedpe"
-	"""
-	svtools vcftobedpe \
-	--input "${consensus_somatic_sv_vcf}" \
-	--output "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
-	--tempdir .
-
-	touch "${consensus_sv_bedpe}"
-	grep '##fileformat' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" >> "${consensus_sv_bedpe}"
-	grep '##source' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" >> "${consensus_sv_bedpe}"
-	grep '##fileDate' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" >> "${consensus_sv_bedpe}"
-
-	grep '#CHROM' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
-	| \
-	cut -f 1-6,9-11,19 \
-	| \
-	sed 's|INFO_A|CALLER_AGREEMENT|' >> "${consensus_sv_bedpe}"
-
-	grep -vE '^#' "${tumor_normal_sample_id}.consensus.somatic.sv.badformat.bedpe" \
-	| \
-	cut -f 1-6,9-11,19 \
-	| \
-	sed -E 's|CIEND.*SUPP_VEC=111.*|delly,manta,svaba|' \
-	| \
-	sed -E 's|CIEND.*SUPP_VEC=110.*|delly,manta|' \
-	| \
-	sed -E 's|CIEND.*SUPP_VEC=101.*|delly,svaba|' \
-	| \
-	sed -E 's|CIEND.*SUPP_VEC=011.*|manta,svaba|' \
-	| \
-	sort -k1,1V -k2,2n >> "${consensus_sv_bedpe}"
 	"""
 }
 
