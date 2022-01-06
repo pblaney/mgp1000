@@ -158,13 +158,13 @@ log.info '################################################'
 log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
 log.info '################################################'
 log.info ''
-log.info "~~~ Launch Time ~~~	${workflowTimestamp}"
+log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
-log.info "~~~ Input Directory ~~~	${params.input_dir}"
+log.info "~~~ Input Directory ~~~		${params.input_dir}"
 log.info ''
 log.info "~~~ Output Directory ~~~	${params.output_dir}"
 log.info ''
-log.info "~~~ Run Report File ~~~	nextflow_report.${params.run_id}.html"
+log.info "~~~ Run Report File ~~~		nextflow_report.${params.run_id}.html"
 log.info ''
 log.info '################################################'
 log.info ''
@@ -210,7 +210,7 @@ process revertMappedBam_gatk {
 	params.skip_to_qc == "no"
 
 	script:
-	bam_unmapped = "${bam_mapped}".replaceFirst(/\.bam/, ".unmapped.bam")
+	bam_unmapped = "${bam_mapped}".replaceFirst(/\..*bam/, ".unmapped.bam")
 	"""
 	gatk RevertSam \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
