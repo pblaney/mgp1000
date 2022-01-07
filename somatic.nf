@@ -39,6 +39,11 @@ def helpMessage() {
 		                                      need to be done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
+		--annotsv_ref_cached           [str]  Indicates whether or not the AnnotSV reference files used for annotation have been downloaded/cached
+		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
+		                                      done for every separate run after the first
+		                                      Available: yes, no
+		                                      Default: yes
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
 		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
 		                                      done for every separate run after the first
@@ -123,6 +128,7 @@ params.run_id = null
 params.sample_sheet = null
 params.email = null
 params.mutect_ref_vcf_concatenated = "yes"
+params.annotsv_ref_cached = "yes"
 params.vep_ref_cached = "yes"
 params.telomerehunter = "on"
 params.conpair = "on"
@@ -361,6 +367,13 @@ Channel
 	.fromPath( 'references/hg38/simple_and_centromeric_repeats.hg38.bed' )
 	.into{ simple_and_centromeric_repeats_bed_forSnvBedFilter;
 	       simple_and_centromeric_repeats_bed_forIndelBedFilter }
+
+if( params.annotsv_ref_cached == "yes" ) {
+     Channel
+          .fromPath( 'references/hg38/annotations_human_annotsv_hg38/', type: 'dir', checkIfExists: true )
+          .ifEmpty{ error "The run command issued has the '--annotsv_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--annotsv_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
+          .set{ annotsv_ref_dir_preDownloaded }
+}
 
 if( params.vep_ref_cached == "yes" ) {
 	Channel
@@ -3154,7 +3167,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
 
 	output:
-	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConversion
+	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forAnnotation
 
 	when:
 	params.manta == "on" && params.svaba == "on" && params.delly == "on"
@@ -3175,8 +3188,78 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	51 \
 	"${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
 
-	sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" > "${consensus_somatic_sv_vcf}"
+	sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" \
+	| \
+	sed 's|SVTYPE=TRA|SVTYPE=BND|' > "${consensus_somatic_sv_vcf}"
 	"""
+}
+
+// AnnotSV ~ download the reference files used for VEP annotation, if needed
+process downloadAnnotsvAnnotationReferences_annotsv {
+     publishDir "references/hg38", mode: 'copy'
+
+     output:
+     path cached_ref_dir_vep into annotsv_ref_dir_fromProcess
+
+     when:
+     params.annotsv_ref_cached == "no"
+
+     script:
+     cached_ref_dir_annotsv = "annotations_human_annotsv_hg38"
+     """
+     mkdir -p "${cached_ref_dir_annotsv}" && \
+     cd "${cached_ref_dir_annotsv}" && \
+     curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
+     tar -zxf Annotations_Human_hg38_3.1.1.tar.gz && \
+     rm Annotations_Human_hg38_3.1.1.tar.gz && \
+     mkdir -p Annotations_Exomiser && \
+     cd Annotations_Exomiser && \
+     curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/2109_hg19.tar.gz && \
+     curl -C - -LO https://data.monarchinitiative.org/exomiser/data/2109_phenotype.zip && \
+     tar -zxf 2109_hg19.tar.gz && \
+     unzip -q 2109_phenotype.zip && \
+     rm 2109_hg19.tar.gz && \
+     rm 2109_phenotype.zip
+     """
+}
+
+// Depending on whether the reference files used for AnnotSV annotation was pre-downloaded, set the input
+// channel for the AnnotSV annotation process
+if( params.annotsv_ref_cached == "yes" ) {
+     annotsv_ref_dir = annotsv_ref_dir_preDownloaded
+}
+else {
+     annotsv_ref_dir = annotsv_ref_dir_fromProcess
+}
+
+// AnnotSV ~ annotate consensus SV calls with multiple resources
+process annotateConsensusSvCalls_annotsv {
+     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
+     tag  "${tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
+
+     output:
+     path annotated_consensus_sv_tsv into annotated_consensus_sv_tsv_forTransformation
+
+     when:
+     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+
+     script:
+     annotated_consensus_sv_tsv = "${consensus_somatic_sv_vcf}".replaceFirst(/\.vcf$/, ".annotated.tsv")
+     """
+     \$ANNOTSV/bin/AnnotSV \
+     -annotationsDir "${annotsv_ref_dir}" \
+     -annotationMode full \
+     -genomeBuild GRCh38 \
+     -hpo HP:0006775 \
+     -outputDir . \
+     -outputFile "${OUTPUTTSV}" \
+     -SVinputFile "${consensus_somatic_sv_vcf}" \
+     -SVminSize 51 \
+     -tx ENSEMBL
+     """
 }
 
 // END
@@ -3287,8 +3370,8 @@ reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAn
 	.combine( reference_genome_fasta_dict_forAnnotation )
 	.set{ reference_genome_bundle_forAnnotation }
 
-// VEP ~ annotate the final somatic VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
-process annotateSomaticVcf_vep {
+// VEP ~ annotate the final somatic SNV and InDel VCFs using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
+process annotateSnvAndIndelVcf_vep {
 	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf.gz,html}'
 	tag "${tumor_normal_sample_id}"
 
