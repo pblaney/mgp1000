@@ -3199,7 +3199,7 @@ process downloadAnnotsvAnnotationReferences_annotsv {
      publishDir "references/hg38", mode: 'copy'
 
      output:
-     path cached_ref_dir_vep into annotsv_ref_dir_fromProcess
+     path cached_ref_dir_annotsv into annotsv_ref_dir_fromProcess
 
      when:
      params.annotsv_ref_cached == "no"
