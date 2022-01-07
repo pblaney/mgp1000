@@ -3241,23 +3241,32 @@ process annotateConsensusSvCalls_annotsv {
      tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
 
      output:
-     path annotated_consensus_sv_tsv into annotated_consensus_sv_tsv_forTransformation
+     path annotated_consensus_sv_txt into annotated_consensus_sv_txt_forTransformation
 
      when:
      params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
      script:
-     annotated_consensus_sv_tsv = "${consensus_somatic_sv_vcf}".replaceFirst(/\.vcf$/, ".annotated.tsv")
+     annotated_consensus_sv_txt = "${consensus_somatic_sv_vcf}".replaceFirst(/\.vcf$/, ".annotated.txt")
      """
-     #cp -r ${annotsv_ref_dir_bundle}/Annotations_Exomiser/* \$ANNOTSV/share/AnnotSV/Annotations_Exomiser/2109/
-
      \$ANNOTSV/bin/AnnotSV \
      -annotationsDir "${annotsv_ref_dir_bundle}" \
-     -annotationMode both \
+     -annotationMode split \
      -genomeBuild GRCh38 \
      -hpo HP:0006775 \
      -outputDir . \
-     -outputFile "${annotated_consensus_sv_tsv}" \
+     -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.txt" \
+     -SVinputFile "${consensus_somatic_sv_vcf}" \
+     -SVminSize 51 \
+     -tx ENSEMBL
+
+     \$ANNOTSV/bin/AnnotSV \
+     -annotationsDir "${annotsv_ref_dir_bundle}" \
+     -annotationMode full \
+     -genomeBuild GRCh38 \
+     -hpo HP:0006775 \
+     -outputDir . \
+     -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.txt" \
      -SVinputFile "${consensus_somatic_sv_vcf}" \
      -SVminSize 51 \
      -tx ENSEMBL
