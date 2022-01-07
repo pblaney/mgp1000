@@ -3252,7 +3252,7 @@ process annotateConsensusSvCalls_annotsv {
      cp -r "${annotsv_ref_dir_bundle}/Annotations_Exomiser/*" \$ANNOTSV/share/AnnotSV/Annotations_Exomiser/2109/
 
      \$ANNOTSV/bin/AnnotSV \
-     -annotationsDir "${annotsv_ref_dir}" \
+     -annotationsDir "${annotsv_ref_dir_bundle}" \
      -annotationMode both \
      -genomeBuild GRCh38 \
      -hpo HP:0006775 \
