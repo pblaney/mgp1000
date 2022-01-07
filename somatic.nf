@@ -3257,7 +3257,7 @@ process annotateConsensusSvCalls_annotsv {
      -genomeBuild GRCh38 \
      -hpo HP:0006775 \
      -outputDir . \
-     -outputFile "${OUTPUTTSV}" \
+     -outputFile "${annotated_consensus_sv_tsv}" \
      -SVinputFile "${consensus_somatic_sv_vcf}" \
      -SVminSize 51 \
      -tx ENSEMBL
