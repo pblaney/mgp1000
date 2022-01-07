@@ -3253,7 +3253,7 @@ process annotateConsensusSvCalls_annotsv {
 
      \$ANNOTSV/bin/AnnotSV \
      -annotationsDir "${annotsv_ref_dir}" \
-     -annotationMode full \
+     -annotationMode both \
      -genomeBuild GRCh38 \
      -hpo HP:0006775 \
      -outputDir . \
