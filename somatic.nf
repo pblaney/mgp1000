@@ -13,7 +13,7 @@ def helpMessage() {
 
 	Usage Example:
 
-		nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --email someperson@gmail.com --mutect_ref_vcf_concatenated no --vep_ref_cached no -profile somatic 
+		nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --email someperson@gmail.com --mutect_ref_vcf_concatenated no --annotsv_ref_cached no --vep_ref_cached no -profile somatic 
 
 	Mandatory Arguments:
     	--run_id                       [str]  Unique identifier for pipeline run
@@ -3210,8 +3210,8 @@ process downloadAnnotsvAnnotationReferences_annotsv {
      mkdir -p "${cached_ref_dir_annotsv}" && \
      cd "${cached_ref_dir_annotsv}" && \
      curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
-     tar -zxf Annotations_Human_hg38_3.1.1.tar.gz && \
-     rm Annotations_Human_hg38_3.1.1.tar.gz && \
+     tar -zxf Annotations_Human_3.1.1.tar.gz && \
+     rm Annotations_Human_3.1.1.tar.gz && \
      mkdir -p Annotations_Exomiser && \
      cd Annotations_Exomiser && \
      curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/2109_hg19.tar.gz && \
