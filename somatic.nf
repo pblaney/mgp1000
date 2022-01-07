@@ -3249,7 +3249,7 @@ process annotateConsensusSvCalls_annotsv {
      script:
      annotated_consensus_sv_tsv = "${consensus_somatic_sv_vcf}".replaceFirst(/\.vcf$/, ".annotated.tsv")
      """
-     cp -r ${annotsv_ref_dir_bundle}/Annotations_Exomiser/* \$ANNOTSV/share/AnnotSV/Annotations_Exomiser/2109/
+     #cp -r ${annotsv_ref_dir_bundle}/Annotations_Exomiser/* \$ANNOTSV/share/AnnotSV/Annotations_Exomiser/2109/
 
      \$ANNOTSV/bin/AnnotSV \
      -annotationsDir "${annotsv_ref_dir_bundle}" \
