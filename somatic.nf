@@ -65,6 +65,9 @@ def helpMessage() {
 		--help                        [flag]  Prints this message
 
 	Toolbox Switches and Options:
+		--telomerecat                  [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 		--telomerehunter               [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -130,6 +133,7 @@ params.email = null
 params.mutect_ref_vcf_concatenated = "yes"
 params.annotsv_ref_cached = "yes"
 params.vep_ref_cached = "yes"
+params.telomerecat = "on"
 params.telomerehunter = "on"
 params.conpair = "on"
 params.varscan = "on"
@@ -415,6 +419,7 @@ Channel
 	             		 file("${params.input_dir}/${normal_bam}"), 
 	             		 file("${params.input_dir}/${normal_bam_index}*.bai") ] }
 	.into{ tumor_normal_pair_forAlleleCount;
+		   tumor_normal_pair_forTelomerecat;
 		   tumor_normal_pair_forTelomereHunter;
 		   tumor_normal_pair_forConpairPileup;
 	       tumor_normal_pair_forVarscanSamtoolsMpileup;
@@ -461,6 +466,42 @@ process identifySampleSex_allelecount {
 
 	sample_sex_determinator.sh "${sex_loci_allele_counts}" > "${sample_sex}"
 	"""
+}
+
+// Telomerecat bam2length ~  estimating the average telomere length
+process telomereLengthEstimation_telomerecat {
+     publishDir "${params.output_dir}/somatic/telomerecat", mode: 'copy', pattern: '*.{csv}'
+     tag "${tumor_normal_sample_id}"
+
+     input:
+     tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forTelomerecat
+
+     output:
+     path normal_telomere_estimates
+     path tumor_telomere_estimates
+
+     when:
+     params.telomerecat == "on"
+
+     script:
+     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+     normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+     tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+     normal_telomere_estimates = "${normal_id}.telomerecat.csv"
+     tumor_telomere_estimates = "${tumor_id}.telomerecat.csv"
+     """
+     telomerecat bam2length \
+     -p ${task.cpus} \
+     -v 1 \
+     --output "${tumor_telomere_estimates}" \
+     "${tumor_bam}"
+
+     telomerecat bam2length \
+     -p ${task.cpus} \
+     -v 1 \
+     --output "${normal_telomere_estimates}" \
+     "${normal_bam}"
+     """
 }
 
 // TelomereHunter ~ estimate telomere content and composition
@@ -3226,7 +3267,7 @@ else {
 
 // AnnotSV ~ annotate consensus SV calls with multiple resources
 process annotateConsensusSvCalls_annotsv {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{gensplit.bed}'
     tag  "${tumor_normal_sample_id}"
 
     input:
@@ -3234,7 +3275,7 @@ process annotateConsensusSvCalls_annotsv {
 
     output:
     path gene_split_annotated_consensus_sv_bed
-    path collapsed_annotated_consensus_sv_bed
+    path collapsed_annotated_consensus_sv_bed into collapsed_annotated_consensus_sv_bed_forTransformation
 
     when:
     params.manta == "on" && params.svaba == "on" && params.delly == "on"
