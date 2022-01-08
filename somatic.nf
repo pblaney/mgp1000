@@ -3268,7 +3268,7 @@ process annotateConsensusSvCalls_annotsv {
 	| \
 	awk 'BEGIN {OFS="\t"} {print "chr"\$2,\$3+1,\$4,\$7,\$5,\$6,\$1,\$8,\$9,\$10,\$11,\$12,\$13,\$14,\$15,\$16,\$17,\$18,\$19,\$20,\$21,\$22,\$41,\$42,\$23,\$24,\$25,\$26,\$27,\$28,\$29,\$30,\$31,\$32,\$33,\$34,\$35,\$36,\$37,\$38,\$39,\$40}' \
 	| \
-	sed 's|chrSV_chrom|SV_chrom|' \
+	sed 's|chrSV_chrom\t1|SV_chrom\tSV_start|' \
 	| \
 	sort -k1,1V -k2,2n > "${gene_split_annotated_consensus_sv_bed}"
 
@@ -3289,7 +3289,7 @@ process annotateConsensusSvCalls_annotsv {
 	| \
 	awk 'BEGIN {OFS="\t"} {print "chr"\$2,\$3+1,\$4,\$12,\$5,\$6,\$1,\$7,\$8,\$9,\$10,\$11,\$29,\$30,\$13,\$14,\$15,\$16,\$17,\$18,\$19,\$20,\$21,\$22,\$23,\$24,\$25,\$26,\$27,\$28}' \
 	| \
-	sed 's|chrSV_chrom|SV_chrom|' \
+	sed 's|chrSV_chrom\t1|SV_chrom\tSV_start|' \
 	| \
 	sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
     """
