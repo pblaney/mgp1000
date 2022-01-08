@@ -3249,7 +3249,7 @@ process annotateConsensusSvCalls_annotsv {
 
     script:
     gene_split_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.genesplit.bed"
-    collapsed_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.collapsed.txt"
+    collapsed_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.collapsed.bed"
     """
     \$ANNOTSV/bin/AnnotSV \
     -annotationsDir "${annotsv_ref_dir_bundle}" \
