@@ -3211,15 +3211,7 @@ process downloadAnnotsvAnnotationReferences_annotsv {
     cd "${cached_ref_dir_annotsv}" && \
     curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
     tar -zxf Annotations_Human_3.1.1.tar.gz && \
-    rm Annotations_Human_3.1.1.tar.gz && \
-    mkdir -p Annotations_Exomiser && \
-    cd Annotations_Exomiser && \
-    curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/2109_hg19.tar.gz && \
-    curl -C - -LO https://data.monarchinitiative.org/exomiser/data/2109_phenotype.zip && \
-    tar -zxf 2109_hg19.tar.gz && \
-    unzip -q 2109_phenotype.zip && \
-    rm 2109_hg19.tar.gz && \
-    rm 2109_phenotype.zip
+    rm Annotations_Human_3.1.1.tar.gz
     """
 }
 
