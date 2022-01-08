@@ -1965,38 +1965,38 @@ process svAndIndelCalling_manta {
 
 // BCFtools filter / view ~ filter out additional false positives based on alternative variant reads in normal sample, prepare VCF for SURVIVOR
 process filterAndPostprocessMantaVcf_bcftools {
-     tag "${tumor_normal_sample_id}"
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
 
-     output:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forSurvivor
+    output:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forSurvivor
 
-     when:
-     params.manta == "on"
+    when:
+    params.manta == "on"
 
-     script:
-     final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf"
-     """
-     touch name.txt
-     echo "${normal_id}" >> name.txt
+    script:
+    final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf"
+    """
+    touch name.txt
+    echo "${normal_id}" >> name.txt
 
-     bcftools filter \
-     --output-type v \
-     --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
-     "${manta_somatic_sv_vcf}" \
-     | \
-     bcftools view \
-     --output-type v \
-     --samples "${tumor_id}" \
-     --output-file "${final_manta_somatic_sv_vcf}"
+    bcftools filter \
+    --output-type v \
+    --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
+    "${manta_somatic_sv_vcf}" \
+    | \
+    bcftools view \
+    --output-type v \
+    --samples "${tumor_id}" \
+    --output-file "${final_manta_somatic_sv_vcf}"
 
-     bcftools query \
-     --format '%ID\t[%SR{1}]\t[%PR{1}]\n' \
-     --output "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt" \
-     "${final_manta_somatic_sv_vcf}"
-     """
+    bcftools query \
+    --format '%ID\t[%SR{1}]\t[%PR{1}]\n' \
+    --output "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt" \
+    "${final_manta_somatic_sv_vcf}"
+    """
 }
 
 // END
@@ -2196,42 +2196,42 @@ process svAndIndelCalling_svaba {
 // BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality score and support
 // read mapping quality, prepare VCF for SURVIVOR 
 process filterAndPostprocessSvabaVcf_bcftools {
-     tag "${tumor_normal_sample_id}"
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
 
-     output:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forSurvivor
+    output:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forSurvivor
 
-     when:
-     params.svaba == "on"
+    when:
+    params.svaba == "on"
 
-     script:
-     final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
-     """
-     bcftools filter \
-     --output-type v \
-     --exclude 'QUAL<6' \
-     "${svaba_somatic_sv_vcf}" \
-     | \
-     bcftools filter \
-     --output-type v \
-     --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
-     | \
-     bcftools reheader \
-     --samples "${sample_renaming_file}" \
-     | \
-     bcftools view \
-     --output-type v \
-     --samples "${tumor_id}" \
-     --output-file "${final_svaba_somatic_sv_vcf}"
+    script:
+    final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
+    """
+    bcftools filter \
+    --output-type v \
+    --exclude 'QUAL<6' \
+    "${svaba_somatic_sv_vcf}" \
+    | \
+    bcftools filter \
+    --output-type v \
+    --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
+    | \
+    bcftools reheader \
+    --samples "${sample_renaming_file}" \
+    | \
+    bcftools view \
+    --output-type v \
+    --samples "${tumor_id}" \
+    --output-file "${final_svaba_somatic_sv_vcf}"
 
-     bcftools query \
-     --format '%ID\t[%SR]\t[%DR]\n' \
-     --output "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt" \
-     "${final_svaba_somatic_sv_vcf}"
-     """
+    bcftools query \
+    --format '%ID\t[%SR]\t[%DR]\n' \
+    --output "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt" \
+    "${final_svaba_somatic_sv_vcf}"
+    """
 }
 
 // Combine all needed reference FASTA files into one channel for use in SvABA / BCFtools Norm process
@@ -2335,39 +2335,39 @@ process svAndIndelCalling_delly {
 // BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality
 // score and support read mapping quality, prepare VCF for SURVIVOR 
 process filterAndPostprocessDellyVcf_bcftools {
-     tag "${tumor_normal_sample_id}"
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
 
-     output:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf) into delly_sv_vcf_forSurvivor
+    output:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf) into delly_sv_vcf_forSurvivor
 
-     when:
-     params.delly == "on"
+    when:
+    params.delly == "on"
 
-     script:
-     final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
-     """
-     bcftools filter \
-     --output-type v \
-     --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
-     "${delly_somatic_sv_vcf}" \
-     | \
-     bcftools filter \
-     --output-type v \
-     --include 'INFO/PE>3 || INFO/SR>3' \
-     | \
-     bcftools view \
-     --output-type v \
-     --samples "${tumor_id}" \
-     --output-file "${final_delly_somatic_sv_vcf}"
+    script:
+    final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
+    """
+    bcftools filter \
+    --output-type v \
+    --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
+    "${delly_somatic_sv_vcf}" \
+    | \
+    bcftools filter \
+    --output-type v \
+    --include 'INFO/PE>3 || INFO/SR>3' \
+    | \
+    bcftools view \
+    --output-type v \
+    --samples "${tumor_id}" \
+    --output-file "${final_delly_somatic_sv_vcf}"
 
-     bcftools query \
-     --format '%ID\t%PE\t%SR\n' \
-     --output "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt" \
-     "${final_delly_somatic_sv_vcf}"
-     """
+    bcftools query \
+    --format '%ID\t%PE\t%SR\n' \
+    --output "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt" \
+    "${final_delly_somatic_sv_vcf}"
+    """
 }
 
 // END
@@ -3196,82 +3196,101 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 
 // AnnotSV ~ download the reference files used for VEP annotation, if needed
 process downloadAnnotsvAnnotationReferences_annotsv {
-     publishDir "references/hg38", mode: 'copy'
+    publishDir "references/hg38", mode: 'copy'
 
-     output:
-     path cached_ref_dir_annotsv into annotsv_ref_dir_fromProcess
+    output:
+    path cached_ref_dir_annotsv into annotsv_ref_dir_fromProcess
 
-     when:
-     params.annotsv_ref_cached == "no"
+    when:
+    params.annotsv_ref_cached == "no"
 
-     script:
-     cached_ref_dir_annotsv = "annotations_human_annotsv_hg38"
-     """
-     mkdir -p "${cached_ref_dir_annotsv}" && \
-     cd "${cached_ref_dir_annotsv}" && \
-     curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
-     tar -zxf Annotations_Human_3.1.1.tar.gz && \
-     rm Annotations_Human_3.1.1.tar.gz && \
-     mkdir -p Annotations_Exomiser && \
-     cd Annotations_Exomiser && \
-     curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/2109_hg19.tar.gz && \
-     curl -C - -LO https://data.monarchinitiative.org/exomiser/data/2109_phenotype.zip && \
-     tar -zxf 2109_hg19.tar.gz && \
-     unzip -q 2109_phenotype.zip && \
-     rm 2109_hg19.tar.gz && \
-     rm 2109_phenotype.zip
-     """
+    script:
+    cached_ref_dir_annotsv = "annotations_human_annotsv_hg38"
+    """
+    mkdir -p "${cached_ref_dir_annotsv}" && \
+    cd "${cached_ref_dir_annotsv}" && \
+    curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
+    tar -zxf Annotations_Human_3.1.1.tar.gz && \
+    rm Annotations_Human_3.1.1.tar.gz && \
+    mkdir -p Annotations_Exomiser && \
+    cd Annotations_Exomiser && \
+    curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/2109_hg19.tar.gz && \
+    curl -C - -LO https://data.monarchinitiative.org/exomiser/data/2109_phenotype.zip && \
+    tar -zxf 2109_hg19.tar.gz && \
+    unzip -q 2109_phenotype.zip && \
+    rm 2109_hg19.tar.gz && \
+    rm 2109_phenotype.zip
+    """
 }
 
 // Depending on whether the reference files used for AnnotSV annotation was pre-downloaded, set the input
 // channel for the AnnotSV annotation process
 if( params.annotsv_ref_cached == "yes" ) {
-     annotsv_ref_dir = annotsv_ref_dir_preDownloaded
+    annotsv_ref_dir = annotsv_ref_dir_preDownloaded
 }
 else {
-     annotsv_ref_dir = annotsv_ref_dir_fromProcess
+    annotsv_ref_dir = annotsv_ref_dir_fromProcess
 }
 
 // AnnotSV ~ annotate consensus SV calls with multiple resources
 process annotateConsensusSvCalls_annotsv {
-     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
-     tag  "${tumor_normal_sample_id}"
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
+    tag  "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
+    input:
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
 
-     output:
-     path annotated_consensus_sv_txt into annotated_consensus_sv_txt_forTransformation
+    output:
+    //path annotated_consensus_sv_txt into annotated_consensus_sv_txt_forTransformation
+    path gene_split_annotated_consensus_sv_table
+    path collapsed_annotated_consensus_sv_table
 
-     when:
-     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+    when:
+    params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
-     script:
-     annotated_consensus_sv_txt = "${consensus_somatic_sv_vcf}".replaceFirst(/\.vcf$/, ".annotated.txt")
-     """
-     \$ANNOTSV/bin/AnnotSV \
-     -annotationsDir "${annotsv_ref_dir_bundle}" \
-     -annotationMode split \
-     -genomeBuild GRCh38 \
-     -hpo HP:0006775 \
-     -outputDir . \
-     -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.txt" \
-     -SVinputFile "${consensus_somatic_sv_vcf}" \
-     -SVminSize 51 \
-     -tx ENSEMBL
+    script:
+    gene_split_annotated_consensus_sv_table = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.genesplit.txt"
+    collapsed_annotated_consensus_sv_table = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.collapsed.txt"
+    """
+    \$ANNOTSV/bin/AnnotSV \
+    -annotationsDir "${annotsv_ref_dir_bundle}" \
+    -annotationMode split \
+    -genomeBuild GRCh38 \
+    -hpo HP:0006775 \
+    -outputDir . \
+    -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit" \
+    -SVinputFile "${consensus_somatic_sv_vcf}" \
+    -SVminSize 51 \
+    -tx ENSEMBL
 
-     \$ANNOTSV/bin/AnnotSV \
-     -annotationsDir "${annotsv_ref_dir_bundle}" \
-     -annotationMode full \
-     -genomeBuild GRCh38 \
-     -hpo HP:0006775 \
-     -outputDir . \
-     -outputFile "${annotated_consensus_sv_txt}" \
-     -SVinputFile "${consensus_somatic_sv_vcf}" \
-     -SVminSize 51 \
-     -tx ENSEMBL
-     """
-}
+    paste \
+	<(cut -f 1-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
+	<(cut -f 19-20,22-35,39-40,43-44,47-48,51-64,107 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
+	| \
+	awk 'BEGIN {OFS="\t"} {print "chr"$2,$3,$4,$7,$5,$6,$1,$43,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$41,$42,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40}' \
+	| \
+	sed 's|chrSV_chrom|SV_chrom|' > "${gene_split_annotated_consensus_sv_table}"
+
+    \$ANNOTSV/bin/AnnotSV \
+    -annotationsDir "${annotsv_ref_dir_bundle}" \
+    -annotationMode full \
+    -genomeBuild GRCh38 \
+    -hpo HP:0006775 \
+    -outputDir . \
+    -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed" \
+    -SVinputFile "${consensus_somatic_sv_vcf}" \
+    -SVminSize 51 \
+    -tx ENSEMBL
+
+    paste \
+	<(cut -f 1-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
+	<(cut -f 8,13,15-17,19-21,65-78,105-107 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
+	| \
+	awk 'BEGIN {OFS="\t"} {print "chr"$2,$3,$4,$12,$5,$6,$1,$7,$8,$9,$10,$11,$29,$30,$31,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28}' \
+	| \
+	sed 's|chrSV_chrom|SV_chrom|' > "${collapsed_annotated_consensus_sv_table}"
+    """
+    }
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
