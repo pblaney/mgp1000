@@ -3297,15 +3297,16 @@ process annotateConsensusSvCalls_annotsv {
 
     paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1+1,\$2}') \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
 	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
 	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
-	<(cut -f 20,22-35 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
-	<(cut -f 63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
-	<(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
+	<(cut -f 20,22-35,63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t$|\t.|') \
+	<(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
-	sed 's|chrSV_chrom\t1|SV_chrom\tSV_start|' \
+	sed 's|\t$|\t.|' \
+	| \
+	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
 	| \
 	sort -k1,1V -k2,2n > "${gene_split_annotated_consensus_sv_bed}"
 
@@ -3322,13 +3323,15 @@ process annotateConsensusSvCalls_annotsv {
 
     paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print \$1+1,\$2}') \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
 	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
-	<(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
-	<(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
+	<(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
+	<(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
-	sed 's|chrSV_chrom\t1|SV_chrom\tSV_start|' \
+	sed 's|\t$|\t.|' \
+	| \
+	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
 	| \
 	sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
     """
