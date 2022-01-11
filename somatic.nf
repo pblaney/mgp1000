@@ -3304,7 +3304,7 @@ process annotateConsensusSvCalls_annotsv {
 	<(cut -f 20,22-35,63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t$|\t.|') \
 	<(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
-	sed 's|\t$|\t.|' \
+	sed 's|\t\$|\t.|' \
 	| \
 	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
 	| \
@@ -3329,7 +3329,7 @@ process annotateConsensusSvCalls_annotsv {
 	<(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
 	<(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
-	sed 's|\t$|\t.|' \
+	sed 's|\t\$|\t.|' \
 	| \
 	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
 	| \
