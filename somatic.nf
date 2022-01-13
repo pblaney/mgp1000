@@ -2034,7 +2034,7 @@ process filterAndPostprocessMantaVcf_bcftools {
     --output-file "${final_manta_somatic_sv_vcf}"
 
     bcftools query \
-    --format '%ID\t[%SR{1}]\t[%PR{1}]\n' \
+    --format '%ID\t[%PR{1}]\t[%SR{1}]\n' \
     --output "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt" \
     "${final_manta_somatic_sv_vcf}"
     """
@@ -2177,7 +2177,7 @@ bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{somatic.sv.vcf.gz,somatic.sv.vcf.gz.tbi}'
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{somatic.sv.unprocessed.vcf.gz,somatic.sv.unprocessed.vcf.gz.tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -2269,7 +2269,7 @@ process filterAndPostprocessSvabaVcf_bcftools {
     --output-file "${final_svaba_somatic_sv_vcf}"
 
     bcftools query \
-    --format '%ID\t[%SR]\t[%DR]\n' \
+    --format '%ID\t[%DR]\t[%SR]\n' \
     --output "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt" \
     "${final_svaba_somatic_sv_vcf}"
     """
@@ -3297,7 +3297,7 @@ process annotateConsensusSvCalls_annotsv {
 
     paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
 	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
 	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
@@ -3323,7 +3323,7 @@ process annotateConsensusSvCalls_annotsv {
 
     paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
 	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
 	<(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
