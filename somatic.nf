@@ -249,12 +249,12 @@ Channel
 	       gatk_bundle_wgs_bed_forMutectPileup;
 	       gatk_bundle_wgs_bed_forControlFreecSamtoolsMpileup;
 	       gatk_bundle_wgs_bed_forManta;
-	       gatk_bundle_wgs_bed_forStrelka;
-	       gatk_bundle_wgs_bed_forSvaba }
+	       gatk_bundle_wgs_bed_forStrelka }
 
 Channel
 	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.0based.hg38.bed' )
-	.set{ gatk_bundle_wgs_bed_blacklist_0based_forDelly }
+	.into{ gatk_bundle_wgs_bed_blacklist_0based_forDelly;
+	       gatk_bundle_wgs_bed_blacklist_0based_forSvaba }
 
 Channel
 	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
@@ -369,7 +369,8 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/simple_and_centromeric_repeats.hg38.bed' )
-	.into{ simple_and_centromeric_repeats_bed_forSnvBedFilter;
+	.into{ simple_and_centromeric_repeats_bed_forSvaba;
+		   simple_and_centromeric_repeats_bed_forSnvBedFilter;
 	       simple_and_centromeric_repeats_bed_forIndelBedFilter }
 
 if( params.annotsv_ref_cached == "yes" ) {
@@ -2168,12 +2169,13 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 // Combine all needed reference FASTA files, WGS BED, and reference VCF files into one channel for use in SvABA process
 bwa_ref_genome_files.collect()
 	.combine( reference_genome_fasta_dict_forSvaba )
-	.combine( gatk_bundle_wgs_bed_forSvaba )
+	.combine( gatk_bundle_wgs_bed_blacklist_0based_forSvaba )
 	.set{ bwa_ref_genome_and_wgs_bed }
 
 bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
 	.combine( dbsnp_known_indel_ref_vcf_index )
-	.set{ bwa_ref_genome_wgs_bed_and_ref_vcf }
+	.combine( simple_and_centromeric_repeats_bed_forSvaba )
+	.set{ bwa_ref_genome_wgs_bed_and_ref_files }
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
@@ -2181,7 +2183,7 @@ process svAndIndelCalling_svaba {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_vcf)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_blacklist_0based_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index), path(simple_and_centromeric_repeats_bed_forSvaba) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_files)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
@@ -2210,13 +2212,15 @@ process svAndIndelCalling_svaba {
 	sample_renaming_file = "sample_renaming_file.txt"
 	"""
 	svaba run \
-	-t "${tumor_bam}" \
-	-n "${normal_bam}" \
+	--case-bam "${tumor_bam}" \
+	--control-bam "${normal_bam}" \
 	--reference-genome Homo_sapiens_assembly38.fasta \
-	--region "${gatk_bundle_wgs_bed_forSvaba}" \
+	--blacklist "${gatk_bundle_wgs_bed_blacklist_0based_forSvaba}" \
 	--id-string "${tumor_normal_sample_id}" \
 	--dbsnp-vcf "${dbsnp_known_indel_ref_vcf}" \
+	--simple-seq-database "${simple_and_centromeric_repeats_bed_forSvaba}" \
 	--threads "${task.cpus}" \
+	--hp \
 	--verbose 1 \
 	--g-zip
 
