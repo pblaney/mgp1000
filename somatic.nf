@@ -2212,8 +2212,8 @@ process svAndIndelCalling_svaba {
 	sample_renaming_file = "sample_renaming_file.txt"
 	"""
 	svaba run \
-	--case-bam "${tumor_bam}" \
-	--control-bam "${normal_bam}" \
+	-t "${tumor_bam}" \
+	-n "${normal_bam}" \
 	--reference-genome Homo_sapiens_assembly38.fasta \
 	--blacklist "${gatk_bundle_wgs_bed_blacklist_0based_forSvaba}" \
 	--id-string "${tumor_normal_sample_id}" \
