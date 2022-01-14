@@ -2014,12 +2014,14 @@ process filterAndPostprocessMantaVcf_bcftools {
 
     output:
     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forSurvivor
+    tuple val(tumor_normal_sample_id), path(final_manta_somatic_sv_read_support) into manta_sv_read_support_forAnnotation
 
     when:
     params.manta == "on"
 
     script:
     final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf"
+    final_manta_somatic_sv_read_support = "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt"
     """
     touch name.txt
     echo "${normal_id}" >> name.txt
@@ -2036,7 +2038,7 @@ process filterAndPostprocessMantaVcf_bcftools {
 
     bcftools query \
     --format '%ID\t[%PR{1}]\t[%SR{1}]\n' \
-    --output "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt" \
+    --output "${final_manta_somatic_sv_read_support}" \
     "${final_manta_somatic_sv_vcf}"
     """
 }
@@ -2220,7 +2222,6 @@ process svAndIndelCalling_svaba {
 	--dbsnp-vcf "${dbsnp_known_indel_ref_vcf}" \
 	--simple-seq-database "${simple_and_centromeric_repeats_bed_forSvaba}" \
 	--threads "${task.cpus}" \
-	--hp \
 	--verbose 1 \
 	--g-zip
 
@@ -2248,12 +2249,14 @@ process filterAndPostprocessSvabaVcf_bcftools {
 
     output:
     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forSurvivor
+    tuple val(tumor_normal_sample_id), path(final_svaba_somatic_sv_read_support) into svaba_sv_read_support_forAnnotation
 
     when:
     params.svaba == "on"
 
     script:
     final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
+    final_svaba_somatic_sv_read_support = "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt"
     """
     bcftools filter \
     --output-type v \
@@ -2274,7 +2277,7 @@ process filterAndPostprocessSvabaVcf_bcftools {
 
     bcftools query \
     --format '%ID\t[%DR]\t[%SR]\n' \
-    --output "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt" \
+    --output "${final_svaba_somatic_sv_read_support}" \
     "${final_svaba_somatic_sv_vcf}"
     """
 }
@@ -2387,12 +2390,14 @@ process filterAndPostprocessDellyVcf_bcftools {
 
     output:
     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf) into delly_sv_vcf_forSurvivor
+    tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_read_support) into delly_sv_read_support_forAnnotation
 
     when:
     params.delly == "on"
 
     script:
     final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
+    final_delly_somatic_sv_read_support = "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt"
     """
     bcftools filter \
     --output-type v \
@@ -2410,7 +2415,7 @@ process filterAndPostprocessDellyVcf_bcftools {
 
     bcftools query \
     --format '%ID\t%PE\t%SR\n' \
-    --output "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt" \
+    --output "${final_delly_somatic_sv_read_support}" \
     "${final_delly_somatic_sv_vcf}"
     """
 }
@@ -3278,8 +3283,8 @@ process annotateConsensusSvCalls_annotsv {
     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
 
     output:
-    path gene_split_annotated_consensus_sv_bed
-    path collapsed_annotated_consensus_sv_bed into collapsed_annotated_consensus_sv_bed_forTransformation
+    //path gene_split_annotated_consensus_sv_bed
+    //path collapsed_annotated_consensus_sv_bed into collapsed_annotated_consensus_sv_bed_forTransformation
 
     when:
     params.manta == "on" && params.svaba == "on" && params.delly == "on"
@@ -3288,56 +3293,62 @@ process annotateConsensusSvCalls_annotsv {
     gene_split_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.genesplit.bed"
     collapsed_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.collapsed.bed"
     """
-    \$ANNOTSV/bin/AnnotSV \
-    -annotationsDir "${annotsv_ref_dir_bundle}" \
-    -annotationMode split \
-    -genomeBuild GRCh38 \
-    -hpo HP:0006775 \
-    -outputDir . \
-    -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit" \
-    -SVinputFile "${consensus_somatic_sv_vcf}" \
-    -SVminSize 51 \
-    -tx ENSEMBL
+    grep -v 'SVTYPE=BND' "${consensus_somatic_sv_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf"
+
+	\$ANNOTSV/bin/AnnotSV \
+	-annotationsDir "${annotsv_ref_dir_bundle}" \
+	-annotationMode split \
+	-genomeBuild GRCh38 \
+	-hpo HP:0006775 \
+	-outputDir . \
+	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit" \
+	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf" \
+	-SVminSize 51 \
+	-tx ENSEMBL
 
     paste \
-	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
-	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
-	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
-	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv") \
-	<(cut -f 20,22-35,63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
-	<(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
+	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
+	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
+	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
+	<(cut -f 20,22-35,63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
+	<(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
 	sed 's|\t\$|\t.|' \
 	| \
-	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
+	sed 's|chrSV_chrom|SV_chrom|' \
 	| \
-	sort -k1,1V -k2,2n > "${gene_split_annotated_consensus_sv_bed}"
+	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.genesplit.bed"
 
-    \$ANNOTSV/bin/AnnotSV \
-    -annotationsDir "${annotsv_ref_dir_bundle}" \
-    -annotationMode full \
-    -genomeBuild GRCh38 \
-    -hpo HP:0006775 \
-    -outputDir . \
-    -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed" \
-    -SVinputFile "${consensus_somatic_sv_vcf}" \
-    -SVminSize 51 \
-    -tx ENSEMBL
+	\$ANNOTSV/bin/AnnotSV \
+	-annotationsDir "${annotsv_ref_dir_bundle}" \
+	-annotationMode full \
+	-genomeBuild GRCh38 \
+	-hpo HP:0006775 \
+	-outputDir . \
+	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed" \
+	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf" \
+	-SVminSize 51 \
+	-tx ENSEMBL
 
-    paste \
-	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
-	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
-	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv") \
-	<(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
-	<(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+	paste \
+	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
+	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
+	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
+	<(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
+	<(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
 	sed 's|\t\$|\t.|' \
 	| \
-	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
+	sed 's|chrSV_chrom|SV_chrom|' \
 	| \
-	sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
+	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.collapsed.bed"
+
+
+	grep -E '^#|SVTYPE=BND' "${consensus_somatic_sv_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf"
+
     """
 }
 
