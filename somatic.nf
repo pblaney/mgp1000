@@ -3237,7 +3237,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 
 	SURVIVOR merge \
 	input_vcf_list.txt \
-	100 \
+	1000 \
 	1 \
 	0 \
 	1 \
