@@ -25,7 +25,7 @@ for id in `grep -v '^#' $svaba_processed_vcf | cut -f 3 | sed 's|:.||' | sort -k
 					zgrep "${id}:2\t" $svaba_unprocessed_vcf >> $svaba_processed_vcf
 				else
 					
-					zgrep "${id}:1\t" $svaba_unprocessed_vcf >> svaba_processed_vcf
+					zgrep "${id}:1\t" $svaba_unprocessed_vcf >> $svaba_processed_vcf
 				fi
 
 			fi
