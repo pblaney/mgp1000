@@ -3312,7 +3312,7 @@ process annotateConsensusSvCalls_annotsv {
 
     paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,$2}') \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
 	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
 	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
