@@ -2277,7 +2277,8 @@ process filterAndPostprocessSvabaVcf_bcftools {
 
     svaba_interchromosomal_mate_finder.sh \
     "${final_svaba_somatic_sv_vcf}" \
-    "${svaba_somatic_sv_vcf}"
+    "${svaba_somatic_sv_vcf}" \
+    "${tumor_normal_sample_id}.svaba.missingmates.txt"
 
     bcftools query \
     --format '%ID\t[%DR]\t[%SR]\n' \

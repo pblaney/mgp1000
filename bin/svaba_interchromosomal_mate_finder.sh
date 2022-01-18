@@ -6,6 +6,8 @@ svaba_processed_vcf=$1
 
 svaba_unprocessed_vcf=$2
 
+missing_mate_records=$3
+
 for id in `grep -v '^#' $svaba_processed_vcf | cut -f 3 | sed 's|:.||' | sort -k1,1n | uniq`
 	do
 		have_mate=$(grep -c $id $svaba_processed_vcf)
@@ -22,10 +24,10 @@ for id in `grep -v '^#' $svaba_processed_vcf | cut -f 3 | sed 's|:.||' | sort -k
 
 				if [[ $sub_id == 1 ]]; then
 
-					zgrep "${id}:2\t" $svaba_unprocessed_vcf >> $svaba_processed_vcf
+					zgrep "${id}:2\t" $svaba_unprocessed_vcf >> $missing_mate_records
 				else
 					
-					zgrep "${id}:1\t" $svaba_unprocessed_vcf >> $svaba_processed_vcf
+					zgrep "${id}:1\t" $svaba_unprocessed_vcf >> $missing_mate_records
 				fi
 
 			fi
