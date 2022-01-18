@@ -2275,6 +2275,10 @@ process filterAndPostprocessSvabaVcf_bcftools {
     --samples "${tumor_id}" \
     --output-file "${final_svaba_somatic_sv_vcf}"
 
+    svaba_interchromosomal_mate_finder.sh \
+    "${final_svaba_somatic_sv_vcf}" \
+    "${svaba_somatic_sv_vcf}"
+
     bcftools query \
     --format '%ID\t[%DR]\t[%SR]\n' \
     --output "${final_svaba_somatic_sv_read_support}" \
@@ -3308,7 +3312,7 @@ process annotateConsensusSvCalls_annotsv {
 
     paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
+	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,$2}') \
 	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
 	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
@@ -3317,7 +3321,7 @@ process annotateConsensusSvCalls_annotsv {
 	| \
 	sed 's|\t\$|\t.|' \
 	| \
-	sed 's|chrSV_chrom|SV_chrom|' \
+	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
 	| \
 	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.genesplit.bed"
 
