@@ -2280,6 +2280,8 @@ process filterAndPostprocessSvabaVcf_bcftools {
     "${final_svaba_somatic_sv_vcf}" \
     "${svaba_somatic_sv_vcf}" >> "${tumor_normal_sample_id}.svaba.missingmates.txt"
 
+    cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
+
     bcftools query \
     --format '%ID\t[%DR]\t[%SR]\n' \
     --output "${final_svaba_somatic_sv_read_support}" \
