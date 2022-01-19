@@ -3296,7 +3296,7 @@ process annotateConsensusSvCalls_annotsv {
     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
 
     output:
-    //path gene_split_annotated_consensus_sv_bed
+    path gene_split_annotated_consensus_sv_bed
     //path collapsed_annotated_consensus_sv_bed into collapsed_annotated_consensus_sv_bed_forTransformation
 
     when:
@@ -3416,6 +3416,12 @@ process annotateConsensusSvCalls_annotsv {
     sed 's|chrSV_chrom|SV_chrom|' \
     | \
     sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.collapsed.bed"
+
+
+    cat "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.genesplit.bed" \
+    <(grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.genesplit.bed") \
+    | \
+    sort -k1,1V -k2,2n > "${gene_split_annotated_consensus_sv_bed}"
     """
 }
 
