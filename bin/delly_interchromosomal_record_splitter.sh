@@ -4,12 +4,11 @@
 
 delly_processed_vcf=$1
 
-
 for id in `grep 'SVTYPE=BND' $delly_processed_vcf | cut -f 3`
     do
-        mate_chrom=$(grep $id $delly_processed_vcf | grep -oE 'CHR2=chr.*?;' | sed 's|CHR2=||' | sed 's|;||')
+        mate_chrom=$(grep $id $delly_processed_vcf | grep -oP 'CHR2=chr.*?;' | sed 's|CHR2=||' | sed 's|;||')
 
-        mate_pos=$(grep $id $delly_processed_vcf | grep -oE 'POS2=\d*?;' | sed 's|POS2=||' | sed 's|;||')
+        mate_pos=$(grep $id $delly_processed_vcf | grep -oP 'POS2=\d*?;' | sed 's|POS2=||' | sed 's|;||')
 
         mate_id="${id}_mate"
         mate_ref="N"
