@@ -3297,7 +3297,7 @@ process annotateConsensusSvCalls_annotsv {
 
     output:
     path gene_split_annotated_consensus_sv_bed
-    //path collapsed_annotated_consensus_sv_bed into collapsed_annotated_consensus_sv_bed_forTransformation
+    path collapsed_annotated_consensus_sv_bed into collapsed_annotated_consensus_sv_bed_forTransformation
 
     when:
     params.manta == "on" && params.svaba == "on" && params.delly == "on"
@@ -3422,6 +3422,11 @@ process annotateConsensusSvCalls_annotsv {
     <(grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.genesplit.bed") \
     | \
     sort -k1,1V -k2,2n > "${gene_split_annotated_consensus_sv_bed}"
+
+    cat "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.collapsed.bed" \
+    <(grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.collapsed.bed") \
+    | \
+    sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
     """
 }
 
