@@ -3316,7 +3316,8 @@ process annotateConsensusSvCalls_annotsv {
 	-outputDir . \
 	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit" \
 	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf" \
-	-SVminSize 51 \
+	-SVminSize 1 \
+	-includeCI 0 \
 	-tx ENSEMBL
 
     paste \
@@ -3342,7 +3343,8 @@ process annotateConsensusSvCalls_annotsv {
 	-outputDir . \
 	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed" \
 	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf" \
-	-SVminSize 51 \
+	-SVminSize 1 \
+	-includeCI 0 \
 	-tx ENSEMBL
 
 	paste \
@@ -3362,6 +3364,58 @@ process annotateConsensusSvCalls_annotsv {
 
 	grep -E '^#|SVTYPE=BND' "${consensus_somatic_sv_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf"
 
+	\$ANNOTSV/bin/AnnotSV \
+	-annotationsDir "${annotsv_ref_dir_bundle}" \
+	-annotationMode split \
+	-genomeBuild GRCh38 \
+	-hpo HP:0006775 \
+	-outputDir . \
+	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit" \
+	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf" \
+	-SVminSize 1 \
+	-includeCI 0 \
+	-tx ENSEMBL
+
+	paste \
+    <(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
+    <(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
+    <(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
+    <(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
+    <(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
+    <(cut -f 20,22-35,63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
+    <(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+    | \
+    sed 's|\t\$|\t.|' \
+    | \
+    sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
+    | \
+    sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.genesplit.bed"
+
+    \$ANNOTSV/bin/AnnotSV \
+    -annotationsDir "${annotsv_ref_dir_bundle}" \
+    -annotationMode full \
+    -genomeBuild GRCh38 \
+    -hpo HP:0006775 \
+    -outputDir . \
+    -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed" \
+    -SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf" \
+    -SVminSize 1 \
+	-includeCI 0 \
+    -tx ENSEMBL
+
+    paste \
+    <(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
+    <(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
+    <(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
+    <(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
+    <(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
+    <(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+    | \
+    sed 's|\t\$|\t.|' \
+    | \
+    sed 's|chrSV_chrom|SV_chrom|' \
+    | \
+    sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
     """
 }
 
