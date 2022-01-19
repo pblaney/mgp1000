@@ -2420,6 +2420,12 @@ process filterAndPostprocessDellyVcf_bcftools {
     --samples "${tumor_id}" \
     --output-file "${final_delly_somatic_sv_vcf}"
 
+    touch "${tumor_normal_sample_id}.delly.splitmates.txt"
+    delly_interchromosomal_record_splitter.sh \
+    "${final_delly_somatic_sv_vcf}" >> "${tumor_normal_sample_id}.delly.splitmates.txt"
+
+    cat "${tumor_normal_sample_id}.delly.splitmates.txt" >> "${final_delly_somatic_sv_vcf}"
+
     bcftools query \
     --format '%ID\t%PE\t%SR\n' \
     --output "${final_delly_somatic_sv_read_support}" \
