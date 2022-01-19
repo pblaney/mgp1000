@@ -18,19 +18,16 @@ for id in `grep 'SVTYPE=BND' $delly_processed_vcf | cut -f 3`
 
         mate_info_svtype="SVTYPE=BND;"
 
-        end=$(echo $mate_pos | awk '{print $1+1}')
-        mate_info_end="END=${end};"
-
         chr2=$(grep $id $delly_processed_vcf | cut -f 1)
         mate_info_chr2="CHR2=${chr2};"
 
-        pos2=$(grep $id $delly_processed_vcf | cut -f 2)
-        mate_info_pos2="POS2=${pos2}"
+        end=$(grep $id $delly_processed_vcf | cut -f 2)
+        mate_info_end="END=${end}"
 
         mate_format=$(grep $id $delly_processed_vcf | cut -f 9)
 
         mate_sample=$(grep $id $delly_processed_vcf | cut -f 10)
 
-        echo -e "${mate_chrom}\t${mate_pos}\t${mate_id}\t${mate_ref}\t${mate_alt}\t${mate_qual}\t${mate_filter}\t${mate_info_svtype}${mate_info_end}${mate_info_chr2}${mate_info_pos2}\t${mate_format}\t${mate_sample}"
+        echo -e "${mate_chrom}\t${mate_pos}\t${mate_id}\t${mate_ref}\t${mate_alt}\t${mate_qual}\t${mate_filter}\t${mate_info_svtype}${mate_info_chr2}${mate_info_end}\t${mate_format}\t${mate_sample}"
     done
 
