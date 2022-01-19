@@ -3246,7 +3246,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
 	1000 \
 	1 \
 	0 \
-	1 \
+	0 \
 	0 \
 	51 \
 	"${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
