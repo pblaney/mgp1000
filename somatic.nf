@@ -3415,7 +3415,7 @@ process annotateConsensusSvCalls_annotsv {
     | \
     sed 's|chrSV_chrom|SV_chrom|' \
     | \
-    sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
+    sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.collapsed.bed"
     """
 }
 
