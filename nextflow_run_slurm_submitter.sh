@@ -10,7 +10,7 @@ Help()
 	echo "run command and then submit this to the scheduler"
 	echo ""
 	echo "Syntax:"
-	echo '	./nextflow_run_slurm_submitter [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]"'
+	echo '	./nextflow_run_slurm_submitter.sh [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]"'
 	echo ""
 	echo "Argument Descriptions:"
 	echo "	[-h]			Print this message"
@@ -24,7 +24,7 @@ Help()
 	echo "Usage Examples:"
 	echo '	./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"'
 	echo ""
-	echo '	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 14 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"'
+	echo '	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 10 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"'
 	echo ""
 	echo '	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --vep_ref_cached no"'
 	echo ""
@@ -56,8 +56,6 @@ pipelineStepOptions=$6
 pipelineStep=$(echo "${pipelineStepScript}" | sed 's|.nf||')
 submissionScript="slurmsub.${pipelineStep}.${runId}.sh"
 
-runtime=$((${estimatedRuntime} * 24))
-
 touch "${submissionScript}"
 chmod +x "${submissionScript}"
 
@@ -65,10 +63,11 @@ echo "#!/bin/bash" >> "${submissionScript}"
 echo "" >> "${submissionScript}"
 echo "#SBATCH --mail-user=${userEmail}" >> "${submissionScript}"
 echo "#SBATCH --mail-type=BEGIN,END,FAIL" >> "${submissionScript}"
+echo "#SBATCH --nodes=1" >> "${submissionScript}"
 echo "#SBATCH --ntasks-per-node=1" >> "${submissionScript}"
 echo "#SBATCH --cpus-per-task=2" >> "${submissionScript}"
 echo "#SBATCH --mem=4G" >> "${submissionScript}"
-echo "#SBATCH --time=${runtime}:00:00" >> "${submissionScript}"
+echo "#SBATCH --time=${estimatedRuntime}-00:00:00" >> "${submissionScript}"
 echo "#SBATCH --job-name=slurmsub.${pipelineStep}.${runId}" >> "${submissionScript}"
 echo "#SBATCH --output=slurmsub.${pipelineStep}.${runId}.txt" >> "${submissionScript}"
 echo "#SBATCH --error=slurmsub.${pipelineStep}.${runId}.err" >> "${submissionScript}"
