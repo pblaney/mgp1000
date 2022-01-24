@@ -1571,7 +1571,7 @@ reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_
 
 // Control-FREEC ~ detection of copy-number changes and allelic imbalances
 process cnvCalling_controlfreec {
-	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy', pattern: '*.{txt,cnv}'
+	publishDir "${params.output_dir}/somatic/controlFreec", mode: 'copy', pattern: '*.{txt,cnv,bedGraph}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -1582,6 +1582,7 @@ process cnvCalling_controlfreec {
 	path control_freec_config_file
 	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file) into control_freec_subclones_forConsensusSubclones
 	tuple val(tumor_normal_sample_id), path(control_freec_run_info) into control_freec_output_forConsensusMetadata
+	path control_freec_bedgraph
 
 	when:
 	params.controlfreec == "on"
@@ -1593,12 +1594,14 @@ process cnvCalling_controlfreec {
 	cnv_ratio_file = "${tumor_normal_sample_id}.controlfreec.ratio.txt"
 	control_freec_subclones_file = "${tumor_normal_sample_id}.controlfreec.subclones.txt"
 	baf_file = "${tumor_normal_sample_id}.controlfreec.baf.txt"
+	control_freec_bedgraph = "${tumor_normal_sample_id}.controlfreec.ratio.bedGraph"
 	"""
 	unzip -q "${mappability_track_zip}"
 	sex=\$(cut -d ' ' -f 2 "${sex_of_sample_forControlFreecCalling}")
 
 	touch "${control_freec_config_file}"
 	echo "[general]" >> "${control_freec_config_file}"
+	echo "BedGraphOutput = TRUE" >> "${control_freec_config_file}"
 	echo "chrFiles = \${PWD}/${autosome_sex_chromosome_fasta_dir}" >> "${control_freec_config_file}"
 	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${control_freec_config_file}"
 	echo "contaminationAdjustment = TRUE" >> "${control_freec_config_file}"
@@ -1633,6 +1636,7 @@ process cnvCalling_controlfreec {
 	mv "${tumor_pileup}_ratio.txt" "${cnv_ratio_file}"
 	mv "${tumor_pileup}_subclones.txt" "${control_freec_subclones_file}"
 	mv "${tumor_pileup}_BAF.txt" "${baf_file}"
+	mv "${tumor_pileup}_ratio.BedGraph" "${control_freec_bedgraph}"
 	"""
 }
 
