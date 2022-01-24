@@ -99,6 +99,10 @@ def helpMessage() {
 		--controlfreec                 [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--controlfreec_bp_threshold  [float]  Manually set the breakpoint threshold value to be used for the Control-FREEC algorithm, this can be lowered
+		                                      if the sample is expected to have large number of CNV segments or increased for the opposite assumption
+		                                      Available: 0.6, 0.8, 1.2
+		                                      Default: 
 		--sclust                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -147,6 +151,7 @@ params.svaba = "on"
 params.delly = "on"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
+params.controlfreec_bp_threshold = null
 params.sclust_lambda = null
 params.cpus = null
 params.memory = null
@@ -1588,6 +1593,7 @@ process cnvCalling_controlfreec {
 	params.controlfreec == "on"
 
 	script:
+	breakpoint_threshold = "${params.controlfreec_bp_threshold}" ? "${params.controlfreec_bp_threshold}" : 0.8
 	control_freec_config_file = "${tumor_normal_sample_id}.controlfreec.config.txt"
 	control_freec_run_info = "${tumor_normal_sample_id}.controlfreec.runinfo.txt"
 	cnv_profile_raw = "${tumor_normal_sample_id}.controlfreec.raw.cnv"
@@ -1602,14 +1608,18 @@ process cnvCalling_controlfreec {
 	touch "${control_freec_config_file}"
 	echo "[general]" >> "${control_freec_config_file}"
 	echo "BedGraphOutput = TRUE" >> "${control_freec_config_file}"
+	echo "breakPointThreshold = ${breakpoint_threshold}" >> "${control_freec_config_file}"
+	echo "breakPointType = 2" >> "${control_freec_config_file}"
 	echo "chrFiles = \${PWD}/${autosome_sex_chromosome_fasta_dir}" >> "${control_freec_config_file}"
 	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${control_freec_config_file}"
 	echo "contaminationAdjustment = TRUE" >> "${control_freec_config_file}"
+	echo "forceGCcontentNormalization = 1" >> "${control_freec_config_file}"
 	echo "gemMappabilityFile = \${PWD}/out100m2_hg38.gem" >> "${control_freec_config_file}"
 	echo "minimalSubclonePresence = 20" >> "${control_freec_config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${control_freec_config_file}"
 	echo "ploidy = 2,3,4" >> "${control_freec_config_file}"
 	echo "sex = \${sex}" >> "${control_freec_config_file}"
+	echo "uniqueMatch = TRUE" >> "${control_freec_config_file}"
 	echo "window = 50000" >> "${control_freec_config_file}"
 	echo "" >> "${control_freec_config_file}"
 
