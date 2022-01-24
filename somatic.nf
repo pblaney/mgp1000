@@ -3064,7 +3064,7 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
 process mergeAndGenerateConsensusCnvCalls_bedtools {
-	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: "*{consensus_merged_cnv_alleles_bed}"
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: "*.{merged.bed}"
 	tag "${tumor_normal_sample_id}"
 
 	input:

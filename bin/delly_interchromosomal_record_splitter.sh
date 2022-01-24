@@ -16,7 +16,7 @@ for id in `grep 'SVTYPE=BND' $delly_processed_vcf | cut -f 3`
         mate_qual="."
         mate_filter="PASS"
 
-        mate_info_svtype="SVTYPE=BND;"
+        mate_info_svtype=$(grep $id $delly_processed_vcf | cut -f 8)
 
         chr2=$(grep $id $delly_processed_vcf | cut -f 1)
         mate_info_chr2="CHR2=${chr2};"

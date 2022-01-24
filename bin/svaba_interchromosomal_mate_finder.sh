@@ -22,10 +22,10 @@ for id in `grep -v '^#' $svaba_processed_vcf | cut -f 3 | sed 's|:.||' | sort -k
 
 				if [[ $sub_id == 1 ]]; then
 
-					zgrep -P "${id}:2\t" $svaba_unprocessed_vcf
+					zgrep -P "${id}:2\t" $svaba_unprocessed_vcf | cut -f 1-9,11
 				else
 					
-					zgrep -P "${id}:1\t" $svaba_unprocessed_vcf
+					zgrep -P "${id}:1\t" $svaba_unprocessed_vcf | cut -f 1-9,11
 				fi
 
 			fi
