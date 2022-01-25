@@ -3303,7 +3303,7 @@ else {
 
 // AnnotSV ~ annotate consensus SV calls with multiple resources
 process annotateConsensusSvCalls_annotsv {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.annotated.genesplit.bed}'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{bed}'
     tag  "${tumor_normal_sample_id}"
 
     input:
