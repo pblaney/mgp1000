@@ -102,7 +102,10 @@ def helpMessage() {
 		--controlfreec_bp_threshold  [float]  Manually set the breakpoint threshold value to be used for the Control-FREEC algorithm, this can be lowered
 		                                      if the sample is expected to have large number of CNV segments or increased for the opposite assumption
 		                                      Available: 0.6, 0.8, 1.2
-		                                      Default: 
+		                                      Default: 0.8
+		--controlfreec_ploidy          [int]  Manually set the ploidy value to be used for the Control-FREEC algorithm
+											  Available: 2, 3, 4
+											  Default: 2
 		--sclust                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -152,6 +155,7 @@ params.delly = "on"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
 params.controlfreec_bp_threshold = 0.8
+params.controlfreec_ploidy = 2
 params.sclust_lambda = null
 params.cpus = null
 params.memory = null
@@ -1594,6 +1598,7 @@ process cnvCalling_controlfreec {
 
 	script:
 	breakpoint_threshold = "${params.controlfreec_bp_threshold}"
+	control_freec_ploidy = "${params.controlfreec_ploidy}"
 	control_freec_config_file = "${tumor_normal_sample_id}.controlfreec.config.txt"
 	control_freec_run_info = "${tumor_normal_sample_id}.controlfreec.runinfo.txt"
 	cnv_profile_raw = "${tumor_normal_sample_id}.controlfreec.raw.cnv"
@@ -1617,7 +1622,7 @@ process cnvCalling_controlfreec {
 	echo "gemMappabilityFile = \${PWD}/out100m2_hg38.gem" >> "${control_freec_config_file}"
 	echo "minimalSubclonePresence = 20" >> "${control_freec_config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${control_freec_config_file}"
-	echo "ploidy = 2,3,4" >> "${control_freec_config_file}"
+	echo "ploidy = ${control_freec_ploidy}" >> "${control_freec_config_file}"
 	echo "sex = \${sex}" >> "${control_freec_config_file}"
 	echo "uniqueMatch = TRUE" >> "${control_freec_config_file}"
 	echo "window = 50000" >> "${control_freec_config_file}"
@@ -3303,7 +3308,7 @@ else {
 
 // AnnotSV ~ annotate consensus SV calls with multiple resources
 process annotateConsensusSvCalls_annotsv {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{bed}'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.annotated.genesplit.bed}'
     tag  "${tumor_normal_sample_id}"
 
     input:
