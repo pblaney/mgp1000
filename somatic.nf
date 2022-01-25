@@ -151,7 +151,7 @@ params.svaba = "on"
 params.delly = "on"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
-params.controlfreec_bp_threshold = null
+params.controlfreec_bp_threshold = 0.8
 params.sclust_lambda = null
 params.cpus = null
 params.memory = null
@@ -1593,7 +1593,7 @@ process cnvCalling_controlfreec {
 	params.controlfreec == "on"
 
 	script:
-	breakpoint_threshold = "${params.controlfreec_bp_threshold}" ? "${params.controlfreec_bp_threshold}" : 0.8
+	breakpoint_threshold = "${params.controlfreec_bp_threshold}"
 	control_freec_config_file = "${tumor_normal_sample_id}.controlfreec.config.txt"
 	control_freec_run_info = "${tumor_normal_sample_id}.controlfreec.runinfo.txt"
 	cnv_profile_raw = "${tumor_normal_sample_id}.controlfreec.raw.cnv"
