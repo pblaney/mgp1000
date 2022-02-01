@@ -3128,7 +3128,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	"${reference_genome_fasta_index_forConsensusCnv}"
 
 	control_freec_segment_refiner.py \
-	"${tumor_normal_sample_id}.controlfreec.complete.cnv.allele.merged.bed" \
+	"${tumor_normal_sample_id}.controlfreec.complete.cnv.alleles.merged.bed" \
 	"${control_freec_somatic_alleles_bed}" \
 	"${control_freec_somatic_cnv_bed}"
 
