@@ -109,6 +109,12 @@ def helpMessage() {
 		--sclust                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--sclust_minp				 [float]  Manually set the minimal expected ploidy to be used for the Sclust algorithm
+											  Available: 1.5, 2.0
+											  Default: 1.5
+		--sclust_maxp				 [float]  Manually set the maximal expected ploidy to be used for the Sclust algorithm
+											  Available: 2.0, 3.5, 4.5, etc
+											  Default: 4.5
 		--sclust_lambda                [str]  Manually set the degree of smoothing for clustering mutations, increasing the value should resolve
 		                                      issues with QP iterations related errors
 		                                      Available: 1e-6, 1e-5
@@ -156,6 +162,8 @@ params.ascatngs_ploidy = null
 params.ascatngs_purity = null
 params.controlfreec_bp_threshold = 0.8
 params.controlfreec_ploidy = 2
+params.sclust_minp = 1.5
+params.sclust_maxp = 4.5
 params.sclust_lambda = null
 params.cpus = null
 params.memory = null
@@ -1897,6 +1905,8 @@ process cnvCalling_sclust {
 	params.sclust == "on" && params.mutect == "on"
 
 	script:
+	sclust_min_ploidy = "${params.sclust_minp}"
+	sclust_max_ploidy = "${params.sclust_maxp}"
 	sclust_lambda = params.sclust_lambda ? "-lambda ${params.sclust_lambda}" : ""
 	sclust_allelic_states_file = "${tumor_normal_sample_id}.sclust.allelicstates.txt"
 	sclust_cnv_profile_pdf = "${tumor_normal_sample_id}.sclust.profile.pdf"
@@ -1915,7 +1925,9 @@ process cnvCalling_sclust {
 	-rc "${read_count_file}" \
 	-snp "${common_snp_count_file}" \
 	-vcf "${tumor_normal_sample_id}.sclust.final.vcf" \
-	-o "${tumor_normal_sample_id}"
+	-o "${tumor_normal_sample_id}" \
+	-minp "${sclust_min_ploidy}" \
+	-maxp "${sclust_max_ploidy}"
 
 	mv "${tumor_normal_sample_id}_allelic_states.txt" "${sclust_allelic_states_file}"
 	mv "${tumor_normal_sample_id}_cn_profile.pdf" "${sclust_cnv_profile_pdf}"
