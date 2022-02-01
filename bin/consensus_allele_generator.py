@@ -9,7 +9,7 @@ import sys
 class AlleleSegment(object):
 
     def __init__(self, allele_segment_line):
-        '''Parse merged allele segment file to construct object'''
+        """Parse merged allele segment file to construct object"""
         chrom, start, end, ascat_alleles, controlfreec_alleles, sclust_alleles = allele_segment_line.rstrip().split('\t')
         self.chrom = chrom
         self.start  = start
@@ -17,13 +17,13 @@ class AlleleSegment(object):
         self.ascat_alleles = ascat_alleles
         self.controlfreec_alleles = controlfreec_alleles
         self.sclust_alleles = sclust_alleles
-        self.na_count = (ascat_alleles, controlfreec_alleles, sclust_alleles).count('NA')
+        self.na_count = (ascat_alleles, controlfreec_alleles, sclust_alleles).count('.')
         self.alleles_dict = {"ascat": ascat_alleles,
                              "controlfreec": controlfreec_alleles,
                              "sclust": sclust_alleles}
 
 def consensus_writer(consensus_allele_segment_tuple):
-    '''Return output BED line with allele consensus of per segment'''
+    """Return output BED line with allele consensus of per segment"""
     return '\t'.join(consensus_allele_segment_tuple)
 
 input_args = sys.argv
@@ -39,21 +39,15 @@ with open(input_args[1]) as merged_allele_file:
     for line in merged_allele_file:
         allele_obj = AlleleSegment(line)
 
-        if allele_obj.na_count == 3:
-            no_caller_no_agreement_allele_tuple = (allele_obj.chrom, allele_obj.start, allele_obj.end,
-                                                   "-", "-", "no_agreement",
-                                                   allele_obj.ascat_alleles, allele_obj.controlfreec_alleles, allele_obj.sclust_alleles)
-            consensus_allele_bed.write('{0}\n'.format(consensus_writer(no_caller_no_agreement_allele_tuple)))
-
-        elif allele_obj.na_count == 2:
-            single_caller_allele = [(key,value) for (key,value) in allele_obj.alleles_dict.items() if value != 'NA'][0]
+        if allele_obj.na_count == 2:
+            single_caller_allele = [(key,value) for (key,value) in allele_obj.alleles_dict.items() if value != '.'][0]
             single_caller_allele_tuple = (allele_obj.chrom, allele_obj.start, allele_obj.end,
                                           single_caller_allele[1].replace("/", "\t"), single_caller_allele[0],
                                           allele_obj.ascat_alleles, allele_obj.controlfreec_alleles, allele_obj.sclust_alleles)
             consensus_allele_bed.write('{0}\n'.format(consensus_writer(single_caller_allele_tuple)))
 
         elif allele_obj.na_count == 1:
-            double_caller_allele = [(key,value) for (key,value) in allele_obj.alleles_dict.items() if value != 'NA']
+            double_caller_allele = [(key,value) for (key,value) in allele_obj.alleles_dict.items() if value != '.']
 
             if double_caller_allele[0][1] == double_caller_allele[1][1]:
                 double_caller_allele_callers = ','.join([double_caller_allele[0][0], double_caller_allele[1][0]])

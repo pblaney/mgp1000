@@ -225,6 +225,7 @@ Channel
 	       reference_genome_fasta_index_forDelly;
 	       reference_genome_fasta_index_forConsensusSnvMpileup;
 	       reference_genome_fasta_index_forConsensusIndelMpileup;
+	       reference_genome_fasta_index_forConsensusCnv;
 	       reference_genome_fasta_index_forAnnotation }
 
 Channel
@@ -1587,11 +1588,10 @@ process cnvCalling_controlfreec {
 	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup), path(sex_of_sample_forControlFreecCalling), path(reference_genome_fasta_forControlFreecCalling), path(reference_genome_fasta_index_forControlFreecCalling), path(reference_genome_fasta_dict_forControlFreecCalling), path(autosome_sex_chromosome_fasta_dir), path(autosome_sex_chromosome_sizes), path(common_dbsnp_ref_vcf), path(common_dbsnp_ref_vcf_index), path(mappability_track_zip) from tumor_normal_pileups_and_sex_ident.combine(reference_data_bundle_forControlFreec)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) into cnv_calling_files_forControlFreecPostProcessing
+	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file), path(control_freec_bedgraph) into cnv_calling_files_forControlFreecPostProcessing
 	path control_freec_config_file
 	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file) into control_freec_subclones_forConsensusSubclones
 	tuple val(tumor_normal_sample_id), path(control_freec_run_info) into control_freec_output_forConsensusMetadata
-	path control_freec_bedgraph
 
 	when:
 	params.controlfreec == "on"
@@ -1661,10 +1661,10 @@ process cnvPredictionPostProcessing_controlfreec {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file) from cnv_calling_files_forControlFreecPostProcessing
+	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file), path(control_freec_bedgraph) from cnv_calling_files_forControlFreecPostProcessing
 
 	output:
-	tuple val(tumor_normal_sample_id), path(control_freec_cnv_ratio_bed_file), path(control_freec_cnv_profile_final) into final_control_freec_cnv_profile_forConsensus
+	tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final) into final_control_freec_cnv_profile_forConsensus
 	path ratio_graph_png
 	path ratio_log2_graph_png
 	path baf_graph_png
@@ -3087,7 +3087,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_cnv_ratio_bed_file), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus)
+	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).combine(reference_genome_fasta_index_forConsensusCnv)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed)
@@ -3121,43 +3121,16 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 
 
 	### Prep Control-FREEC files ###
-	# total copy number per segment
-	paste <(awk 'BEGIN {OFS="\t"} {print \$1,\$2-1,\$3-1}' "${control_freec_cnv_ratio_bed_file}") \
-	<(printf "%.0f\n" \$(cut -d ' ' -f 4 "${control_freec_cnv_ratio_bed_file}")) \
-	| \
-	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromratio.bed"
+	control_freec_cnv_and_allele_preparer.sh \
+	"${tumor_normal_sample_id}" \
+	"${control_freec_cnv_profile_final}" \
+	"${control_freec_bedgraph}" \
+	"${reference_genome_fasta_index_forConsensusCnv}"
 
-	grep -v 'chr' "${control_freec_cnv_profile_final}" \
-	| \
-	awk 'BEGIN {OFS="\t"} {print "chr"\$1,\$2,\$3,\$4}' \
-	| \
-	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromprofile.bed"
-
-	bedtools subtract \
-	-a "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromratio.bed" \
-	-b "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromprofile.bed" \
-	| \
-	bedops --everything \
-	- "${tumor_normal_sample_id}.controlfreec.somatic.cnv.fromprofile.bed" \
-	| \
-	sort -k1,1V -k2,2n > "${control_freec_somatic_cnv_bed}"
-
-	# major/minor alleles per segment
-	grep -v 'chr' "${control_freec_cnv_profile_final}" \
-	| \
-	awk 'BEGIN {OFS="\t"} {print "chr"\$1,\$2,\$3,\$6}' \
-	| \
-	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.controlfreec.allele.genotypes.bed"
-
-	bedtools map \
-	-a "${control_freec_somatic_cnv_bed}" \
-	-b "${tumor_normal_sample_id}.controlfreec.allele.genotypes.bed" \
-	-c 4 \
-	-o distinct > "${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed"
-
-	control_freec_allele_segmentor.py \
-	"${tumor_normal_sample_id}.controlfreec.allele.mapped.cnv.bed" \
-	"${control_freec_somatic_alleles_bed}"
+	control_freec_segment_refiner.py \
+	"${tumor_normal_sample_id}.controlfreec.complete.cnv.allele.merged.bed" \
+	"${control_freec_somatic_alleles_bed}" \
+	"${control_freec_somatic_cnv_bed}"
 
 
 	### Prep Sclust files ###
@@ -3174,7 +3147,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 
 	### Create consensus total copy number file ###
 	bedtools unionbedg \
-	-filler NA \
+	-filler . \
 	-i "${ascat_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${sclust_somatic_cnv_bed}" \
 	-header \
 	-names ascat_total_cn controlfreec_total_cn sclust_total_cn > "${merged_cnv_bed}"
@@ -3186,7 +3159,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 
 	### Create consensus major and minor allele file ###
 	bedtools unionbedg \
-	-filler NA \
+	-filler . \
 	-i "${ascat_somatic_alleles_bed}" "${control_freec_somatic_alleles_bed}" "${sclust_somatic_alleles_bed}" \
 	-header \
 	-names ascat_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles > "${merged_alleles_bed}"
