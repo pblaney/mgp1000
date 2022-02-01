@@ -3087,7 +3087,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).combine(reference_genome_fasta_index_forConsensusCnv)
+	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forConsensusCnv) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).combine(reference_genome_fasta_index_forConsensusCnv)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed)
