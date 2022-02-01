@@ -1437,7 +1437,7 @@ process cnvCalling_ascatngs {
 	params.ascatngs == "on"
 
 	script:
-	ploidy_and_purity = (params.ascatngs_ploidy && params.ascatngs_purity) ? "-ploidy ${params.ascatngs_ploidy} -purity ${params.ascatngs_purity}" : ""
+	ascat_ploidy_and_purity = (params.ascatngs_ploidy && params.ascatngs_purity) ? "-ploidy ${params.ascatngs_ploidy} -purity ${params.ascatngs_purity}" : ""
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	ascat_profile_png = "${tumor_normal_sample_id}.ascat.profile.png"
@@ -1468,7 +1468,7 @@ process cnvCalling_ascatngs {
 	-assembly GRCh38 \
 	-cpus "${task.cpus}" \
 	-nobigwig \
-	${ploidy_and_purity}
+	${ascat_ploidy_and_purity}
 
 	mv "${tumor_id}.ASCATprofile.png" "${ascat_profile_png}"
 	mv "${tumor_id}.rawprofile.png" "${ascat_raw_profile_png}"
