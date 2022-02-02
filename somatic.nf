@@ -3228,119 +3228,119 @@ process mergeSubclonalCnvCalls {
 
 // SURVIVOR ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_survivor {
-     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf}'
-     tag  "${tumor_normal_sample_id}"
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf}'
+    tag  "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
 
-     output:
-     tuple val(tumor_normal_sample_id), val(tumor_id), path(consensus_somatic_sv_badheader_vcf) into consensus_sv_vcf_forFilterPrep
+    output:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(consensus_somatic_sv_badheader_vcf) into consensus_sv_vcf_forFilterPrep
 
-     when:
-     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+    when:
+    params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
-     script:
-     consensus_somatic_sv_badheader_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
-     """
-     touch input_vcf_list.txt
-     ls *.vcf >> input_vcf_list.txt
+    script:
+    consensus_somatic_sv_badheader_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
+    """
+    touch input_vcf_list.txt
+    ls *.vcf >> input_vcf_list.txt
 
-     SURVIVOR merge \
-     input_vcf_list.txt \
-     1000 \
-     1 \
-     0 \
-     0 \
-     0 \
-     51 \
-     "${consensus_somatic_sv_badheader_vcf}"
-     """
+    SURVIVOR merge \
+    input_vcf_list.txt \
+    1000 \
+    1 \
+    0 \
+    0 \
+    0 \
+    51 \
+    "${consensus_somatic_sv_badheader_vcf}"
+    """
 }
 
 // VAtools vcf-genotype-annotator ~ add sample name to SURVIVOR consensus SV VCF for use in Duphold filtering to remove false positives
 process prepConsensusSvVcfForFpFiltering_vatools {
-     tag "${tumor_normal_sample_id}"
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), val(tumor_id) path(consensus_somatic_sv_badheader_vcf) from consensus_sv_vcf_forFilterPrep
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(consensus_somatic_sv_badheader_vcf) from consensus_sv_vcf_forFilterPrep
 
-     output:
-     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConsensusSvFpFilter
+    output:
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConsensusSvFpFilter
 
-     when:
-     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+    when:
+    params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
-     script:
-     consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
-     """
-     sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" \
-     | \
-     sed 's|SVTYPE=TRA|SVTYPE=BND|' > "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf"
+    script:
+    consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
+    """
+    sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" \
+    | \
+    sed 's|SVTYPE=TRA|SVTYPE=BND|' > "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf"
 
-     vcf-genotype-annotator \
-     --output-vcf "${consensus_somatic_sv_vcf}" \
-     "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf" \
-     "${tumor_id}" \
-     .
-     """
+    vcf-genotype-annotator \
+    --output-vcf "${consensus_somatic_sv_vcf}" \
+    "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf" \
+    "${tumor_id}" \
+    .
+    """
 }
 
 // Combine all reference FASTA files into one channel for use in duphold process
 reference_genome_fasta_forConsensusSvFpFilter.combine( reference_genome_fasta_index_forConsensusSvFpFilter )
-     .set{ reference_genome_bundle_forConsensusSvFpFilter }
+    .set{ reference_genome_bundle_forConsensusSvFpFilter }
 
 // duphold ~ efficiently annotate SV calls with sequence depth information to reduce false positive deletion and duplication calls
 process falsePostiveSvFiltering_duphold {
-     tag "${tumor_normal_sample_id}"
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(tumor_bam), path(tumor_bam_index), path(reference_genome_fasta_forConsensusSvFpFilter), path(reference_genome_fasta_index_forConsensusSvFpFilter) from consensus_sv_vcf_forConsensusSvFpFilter.join(bams_forConsensusSvFpFilter).combine(reference_genome_bundle_forConsensusSvFpFilter)
+    input:
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(tumor_bam), path(tumor_bam_index), path(reference_genome_fasta_forConsensusSvFpFilter), path(reference_genome_fasta_index_forConsensusSvFpFilter) from consensus_sv_vcf_forConsensusSvFpFilter.join(bams_forConsensusSvFpFilter).combine(reference_genome_bundle_forConsensusSvFpFilter)
 
-     output:
-     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) into consensus_sv_vcf_forFpFiltering
+    output:
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) into consensus_sv_vcf_forFpFiltering
 
-     when:
-     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+    when:
+    params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
-     script:
-     consensus_somatic_sv_fpmarked_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.fpmarked.vcf"
-     """
-     duphold \
-     --vcf "${consensus_somatic_sv_vcf}" \
-     --bam "${tumor_bam}" \
-     --fasta "${reference_genome_fasta_forConsensusSvFpFilter}" \
-     --threads ${task.cpus} \
-     --output "${consensus_somatic_sv_fpmarked_vcf}"
-     """
+    script:
+    consensus_somatic_sv_fpmarked_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.fpmarked.vcf"
+    """
+    duphold \
+    --vcf "${consensus_somatic_sv_vcf}" \
+    --bam "${tumor_bam}" \
+    --fasta "${reference_genome_fasta_forConsensusSvFpFilter}" \
+    --threads ${task.cpus} \
+    --output "${consensus_somatic_sv_fpmarked_vcf}"
+    """
 }
 
 // BCFtools filter ~ extract all deletion and duplication records that pass the duphold false positive filter
 process extractFpFilterPassingSvCalls_bcftools {
-     tag "${tumor_normal_sample_id}"
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) from consensus_sv_vcf_forFpFiltering
+    input:
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) from consensus_sv_vcf_forFpFiltering
 
-     output:
-     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forAnnotation
+    output:
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forAnnotation
 
-     when:
-     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+    when:
+    params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
-     script:
-     consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
-     """
-     bcftools filter \
-     --output-type v \
-     --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
-     "${consensus_somatic_sv_fpmarked_vcf}" \
-     | \
-     bcftools filter \
-     --output-type v \
-     --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
-     --output "${consensus_somatic_sv_vcf}"
-     """
+    script:
+    consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
+    """
+    bcftools filter \
+    --output-type v \
+    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
+    "${consensus_somatic_sv_fpmarked_vcf}" \
+    | \
+    bcftools filter \
+    --output-type v \
+    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
+    --output "${consensus_somatic_sv_vcf}"
+    """
 }
 
 // AnnotSV ~ download the reference files used for VEP annotation, if needed
