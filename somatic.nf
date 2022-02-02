@@ -211,6 +211,7 @@ Channel
 	       reference_genome_fasta_forDelly;
 	       reference_genome_fasta_forConsensusSnvMpileup;
 	       reference_genome_fasta_forConsensusIndelMpileup;
+	       reference_genome_fasta_forConsensusSvFpFilter;
 	       reference_genome_fasta_forAnnotation }
 
 Channel
@@ -234,6 +235,7 @@ Channel
 	       reference_genome_fasta_index_forConsensusSnvMpileup;
 	       reference_genome_fasta_index_forConsensusIndelMpileup;
 	       reference_genome_fasta_index_forConsensusCnv;
+	       reference_genome_fasta_index_forConsensusSvFpFilter;
 	       reference_genome_fasta_index_forAnnotation }
 
 Channel
