@@ -469,6 +469,7 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusIndelMpileup
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into bams_forConsensusSvFpFilter
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -3227,38 +3228,119 @@ process mergeSubclonalCnvCalls {
 
 // SURVIVOR ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_survivor {
-	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.vcf}'
-	tag	"${tumor_normal_sample_id}"
+     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf}'
+     tag  "${tumor_normal_sample_id}"
 
-	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
+     input:
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
 
-	output:
-	tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forAnnotation
+     output:
+     tuple val(tumor_normal_sample_id), val(tumor_id), path(consensus_somatic_sv_badheader_vcf) into consensus_sv_vcf_forFilterPrep
 
-	when:
-	params.manta == "on" && params.svaba == "on" && params.delly == "on"
+     when:
+     params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
-	script:
-	consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
-	"""
-	touch input_vcf_list.txt
-	ls *.vcf >> input_vcf_list.txt
+     script:
+     consensus_somatic_sv_badheader_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
+     """
+     touch input_vcf_list.txt
+     ls *.vcf >> input_vcf_list.txt
 
-	SURVIVOR merge \
-	input_vcf_list.txt \
-	1000 \
-	1 \
-	0 \
-	0 \
-	0 \
-	51 \
-	"${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
+     SURVIVOR merge \
+     input_vcf_list.txt \
+     1000 \
+     1 \
+     0 \
+     0 \
+     0 \
+     51 \
+     "${consensus_somatic_sv_badheader_vcf}"
+     """
+}
 
-	sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" \
-	| \
-	sed 's|SVTYPE=TRA|SVTYPE=BND|' > "${consensus_somatic_sv_vcf}"
-	"""
+// VAtools vcf-genotype-annotator ~ add sample name to SURVIVOR consensus SV VCF for use in Duphold filtering to remove false positives
+process prepConsensusSvVcfForFpFiltering_vatools {
+     tag "${tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), val(tumor_id) path(consensus_somatic_sv_badheader_vcf) from consensus_sv_vcf_forFilterPrep
+
+     output:
+     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConsensusSvFpFilter
+
+     when:
+     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+
+     script:
+     consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
+     """
+     sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" \
+     | \
+     sed 's|SVTYPE=TRA|SVTYPE=BND|' > "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf"
+
+     vcf-genotype-annotator \
+     --output-vcf "${consensus_somatic_sv_vcf}" \
+     "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf" \
+     "${tumor_id}" \
+     .
+     """
+}
+
+// Combine all reference FASTA files into one channel for use in duphold process
+reference_genome_fasta_forConsensusSvFpFilter.combine( reference_genome_fasta_index_forConsensusSvFpFilter )
+     .set{ reference_genome_bundle_forConsensusSvFpFilter }
+
+// duphold ~ efficiently annotate SV calls with sequence depth information to reduce false positive deletion and duplication calls
+process falsePostiveSvFiltering_duphold {
+     tag "${tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(tumor_bam), path(tumor_bam_index), path(reference_genome_fasta_forConsensusSvFpFilter), path(reference_genome_fasta_index_forConsensusSvFpFilter) from consensus_sv_vcf_forConsensusSvFpFilter.join(bams_forConsensusSvFpFilter).combine(reference_genome_bundle_forConsensusSvFpFilter)
+
+     output:
+     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) into consensus_sv_vcf_forFpFiltering
+
+     when:
+     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+
+     script:
+     consensus_somatic_sv_fpmarked_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.fpmarked.vcf"
+     """
+     duphold \
+     --vcf "${consensus_somatic_sv_vcf}" \
+     --bam "${tumor_bam}" \
+     --fasta "${reference_genome_fasta_forConsensusSvFpFilter}" \
+     --threads ${task.cpus} \
+     --output "${consensus_somatic_sv_fpmarked_vcf}"
+     """
+}
+
+// BCFtools filter ~ extract all deletion and duplication records that pass the duphold false positive filter
+process extractFpFilterPassingSvCalls_bcftools {
+     tag "${tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) from consensus_sv_vcf_forFpFiltering
+
+     output:
+     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forAnnotation
+
+     when:
+     params.manta == "on" && params.svaba == "on" && params.delly == "on"
+
+     script:
+     consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
+     """
+     bcftools filter \
+     --output-type v \
+     --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
+     "${consensus_somatic_sv_fpmarked_vcf}" \
+     | \
+     bcftools filter \
+     --output-type v \
+     --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
+     --output "${consensus_somatic_sv_vcf}"
+     """
 }
 
 // AnnotSV ~ download the reference files used for VEP annotation, if needed
@@ -3327,11 +3409,11 @@ process annotateConsensusSvCalls_annotsv {
     paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
 	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
-	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
+	<(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
 	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
-	<(cut -f 20,22-35,63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
-	<(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+	<(cut -f 21,23-36,64-65 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
+	<(cut -f 44-45,48-49,52-63 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
 	sed 's|\t\$|\t.|' \
 	| \
@@ -3354,10 +3436,10 @@ process annotateConsensusSvCalls_annotsv {
 	paste \
 	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
 	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
-	<(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
+	<(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
 	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
-	<(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
-	<(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+	<(cut -f 1,106,108 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
+	<(cut -f 8,13,15-17,21-22,66-79 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
 	| \
 	sed 's|\t\$|\t.|' \
 	| \
@@ -3383,11 +3465,11 @@ process annotateConsensusSvCalls_annotsv {
 	paste \
     <(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
     <(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
-    <(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
+    <(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
     <(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
     <(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
-    <(cut -f 20,22-35,63-64 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
-    <(cut -f 43-44,47-48,51-62 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+    <(cut -f 21,23-36,64-65 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
+    <(cut -f 44-45,48-49,52-63 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
     | \
     sed 's|\t\$|\t.|' \
     | \
@@ -3410,17 +3492,16 @@ process annotateConsensusSvCalls_annotsv {
     paste \
     <(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
     <(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
-    <(cut -f 19 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
+    <(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
     <(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
-    <(cut -f 1,105,107 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
-    <(cut -f 8,13,15-17,20-21,65-78 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
+    <(cut -f 1,106,108 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
+    <(cut -f 8,13,15-17,21-22,66-79 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
     | \
     sed 's|\t\$|\t.|' \
     | \
     sed 's|chrSV_chrom|SV_chrom|' \
     | \
     sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.collapsed.bed"
-
 
     cat "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.genesplit.bed" \
     <(grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.genesplit.bed") \
