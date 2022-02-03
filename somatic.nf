@@ -2312,7 +2312,7 @@ process filterAndPostprocessSvabaVcf_bcftools {
     touch "${tumor_normal_sample_id}.svaba.missingmates.txt"
     svaba_interchromosomal_mate_finder.sh \
     "${final_svaba_somatic_sv_vcf}" \
-    "${svaba_somatic_sv_vcf}" >> "${tumor_normal_sample_id}.svaba.missingmates.txt"
+    "${svaba_somatic_sv_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
 
     cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
 
@@ -2456,7 +2456,7 @@ process filterAndPostprocessDellyVcf_bcftools {
 
     touch "${tumor_normal_sample_id}.delly.splitmates.txt"
     delly_interchromosomal_record_splitter.sh \
-    "${final_delly_somatic_sv_vcf}" >> "${tumor_normal_sample_id}.delly.splitmates.txt"
+    "${final_delly_somatic_sv_vcf}" > "${tumor_normal_sample_id}.delly.splitmates.txt"
 
     cat "${tumor_normal_sample_id}.delly.splitmates.txt" >> "${final_delly_somatic_sv_vcf}"
 
@@ -3325,13 +3325,13 @@ process extractFpFilterPassingSvCalls_bcftools {
     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) from consensus_sv_vcf_forFpFiltering
 
     output:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forAnnotation
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf) into consensus_sv_vcf_forAnnotation
 
     when:
     params.manta == "on" && params.svaba == "on" && params.delly == "on"
 
     script:
-    consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
+    consensus_somatic_sv_fpfiltered_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.fpfiltered.vcf"
     """
     bcftools filter \
     --output-type v \
@@ -3341,7 +3341,7 @@ process extractFpFilterPassingSvCalls_bcftools {
     bcftools filter \
     --output-type v \
     --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
-    --output "${consensus_somatic_sv_vcf}"
+    --output "${consensus_somatic_sv_fpfiltered_vcf}"
     """
 }
 
@@ -3381,7 +3381,7 @@ process annotateConsensusSvCalls_annotsv {
     tag  "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
 
     output:
     path gene_split_annotated_consensus_sv_bed
@@ -3394,7 +3394,7 @@ process annotateConsensusSvCalls_annotsv {
     gene_split_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.genesplit.bed"
     collapsed_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.collapsed.bed"
     """
-    grep -v 'SVTYPE=BND' "${consensus_somatic_sv_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf"
+    grep -v 'SVTYPE=BND' "${consensus_somatic_sv_fpfiltered_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf"
 
 	\$ANNOTSV/bin/AnnotSV \
 	-annotationsDir "${annotsv_ref_dir_bundle}" \
@@ -3450,7 +3450,7 @@ process annotateConsensusSvCalls_annotsv {
 	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.collapsed.bed"
 
 
-	grep -E '^#|SVTYPE=BND' "${consensus_somatic_sv_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf"
+	grep -E '^#|SVTYPE=BND' "${consensus_somatic_sv_fpfiltered_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf"
 
 	\$ANNOTSV/bin/AnnotSV \
 	-annotationsDir "${annotsv_ref_dir_bundle}" \
