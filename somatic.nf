@@ -83,6 +83,9 @@ def helpMessage() {
 		--strelka                      [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--copycat                      [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 		--ascatngs                     [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -152,6 +155,7 @@ params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
 params.strelka = "on"
+params.copycat = "on"
 params.ascatngs = "on"
 params.controlfreec = "on"
 params.sclust = "on"
@@ -358,7 +362,8 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38_autosome_sex_chrom_sizes.txt' )
-	.set{ autosome_sex_chromosome_sizes }
+	.into{ autosome_sex_chromosome_sizes_forControlFreec;
+	       autosome_sex_chromosome_sizes_forCopycat }
 
 Channel
 	.fromPath( 'references/hg38/common_all_20180418.vcf.gz' )
@@ -465,13 +470,14 @@ process identifySampleSex_allelecount {
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_index_forAlleleCount), path(sex_identification_loci) from tumor_normal_pair_forAlleleCount.combine(ref_index_and_sex_ident_loci)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(sample_sex) into allelecount_output_forConsensusMetadata
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forVarscanBamReadcount
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(normal_bam) into bams_forCopycat
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusIndelMpileup
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into bams_forConsensusSvFpFilter
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into bam_forConsensusSvFpFilter
+	tuple val(tumor_normal_sample_id), path(sample_sex) into allelecount_output_forConsensusMetadata
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -1407,6 +1413,46 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+// ~~~~~~~~~~~~~~~~ Copycat ~~~~~~~~~~~~~~~~ \\
+// START
+
+// Copycat ~ capture and bin the read coverage across a genome for CNV and SV support
+process binReadCoverage_copycat {
+     publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv}'
+     tag "${tumor_normal_sample_id}"
+
+     input:
+     tuple val(tumor_normal_sample_id), path(tumor_bam), path(normal_bam), path(autosome_sex_chromosome_sizes) into bam_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
+
+     output:
+     path tumor_copycat_coverage
+     path normal_copycat_coverage
+
+     when:
+     params.copycat == "on"
+
+     script:
+     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+     normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+     tumor_copycat_coverage = "${tumor_id}.coverage.10kb.csv"
+     normal_copycat_coverage = "${normal_id}.coverage.10kb.csv"
+     """
+     copycat.sh \
+     "${tumor_bam}" \
+     "${autosome_sex_chromosome_sizes}" \
+     "${tumor_id}"
+
+     copycat.sh \
+     "${tumor_bam}" \
+     "${autosome_sex_chromosome_sizes}" \
+     "${normal_id}"
+     """
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
 // ~~~~~~~~~~~~~~~~ ascatNGS ~~~~~~~~~~~~~~~ \\
 // START
 
@@ -1584,7 +1630,7 @@ reference_genome_fasta_forControlFreecCalling.combine( reference_genome_fasta_in
 	.set{ reference_genome_bundle_forControlFreecCalling }
 
 reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_fasta_dir )
-	.combine( autosome_sex_chromosome_sizes )
+	.combine( autosome_sex_chromosome_sizes_forControlFreec )
 	.combine( common_dbsnp_ref_vcf )
 	.combine( common_dbsnp_ref_vcf_index )
 	.combine( mappability_track_zip )
@@ -3297,7 +3343,7 @@ process falsePostiveSvFiltering_duphold {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(tumor_bam), path(tumor_bam_index), path(reference_genome_fasta_forConsensusSvFpFilter), path(reference_genome_fasta_index_forConsensusSvFpFilter) from consensus_sv_vcf_forConsensusSvFpFilter.join(bams_forConsensusSvFpFilter).combine(reference_genome_bundle_forConsensusSvFpFilter)
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(tumor_bam), path(tumor_bam_index), path(reference_genome_fasta_forConsensusSvFpFilter), path(reference_genome_fasta_index_forConsensusSvFpFilter) from consensus_sv_vcf_forConsensusSvFpFilter.join(bam_forConsensusSvFpFilter).combine(reference_genome_bundle_forConsensusSvFpFilter)
 
     output:
     tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) into consensus_sv_vcf_forFpFiltering
@@ -3377,11 +3423,11 @@ else {
 
 // AnnotSV ~ annotate consensus SV calls with multiple resources
 process annotateConsensusSvCalls_annotsv {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.annotated.genesplit.bed}'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.annotated.genesplit.bed,bedpe}'
     tag  "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.combine(annotsv_ref_dir)
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf), path(final_manta_somatic_sv_read_support), path(final_svaba_somatic_sv_read_support), path(final_delly_somatic_sv_read_support), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.join(manta_sv_read_support_forAnnotation).join(svaba_sv_read_support_forAnnotation).join(delly_sv_read_support_forAnnotation).combine(annotsv_ref_dir)
 
     output:
     path gene_split_annotated_consensus_sv_bed
@@ -3393,6 +3439,7 @@ process annotateConsensusSvCalls_annotsv {
     script:
     gene_split_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.genesplit.bed"
     collapsed_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.collapsed.bed"
+    hq_consensus_sv_bedpe = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.bedpe"
     """
     grep -v 'SVTYPE=BND' "${consensus_somatic_sv_fpfiltered_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf"
 
@@ -3514,6 +3561,15 @@ process annotateConsensusSvCalls_annotsv {
     <(grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.collapsed.bed") \
     | \
     sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
+
+
+    # Transform collapsed annotation BED to high quality BEDPE
+    high_quality_bedpe_transformer.py \
+    <(grep -v 'SV_chrom' "${collapsed_annotated_consensus_sv_bed}") \
+    "${final_manta_somatic_sv_read_support}" \
+    "${final_svaba_somatic_sv_read_support}" \
+    "${final_delly_somatic_sv_read_support}" \
+    "${hq_consensus_sv_bedpe}"
     """
 }
 
