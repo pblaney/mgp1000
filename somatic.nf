@@ -104,17 +104,17 @@ def helpMessage() {
 		                                      Available: 0.6, 0.8, 1.2
 		                                      Default: 0.8
 		--controlfreec_ploidy          [int]  Manually set the ploidy value to be used for the Control-FREEC algorithm
-											  Available: 2, 3, 4
-											  Default: 2
+		                                      Available: 2, 3, 4
+		                                      Default: 2
 		--sclust                       [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--sclust_minp				 [float]  Manually set the minimal expected ploidy to be used for the Sclust algorithm
-											  Available: 1.5, 2.0
-											  Default: 1.5
-		--sclust_maxp				 [float]  Manually set the maximal expected ploidy to be used for the Sclust algorithm
-											  Available: 2.0, 3.5, 4.5, etc
-											  Default: 4.5
+		--sclust_minp                [float]  Manually set the minimal expected ploidy to be used for the Sclust algorithm
+		                                      Available: 1.5, 2.0
+		                                      Default: 1.5
+		--sclust_maxp                [float]  Manually set the maximal expected ploidy to be used for the Sclust algorithm
+		                                      Available: 2.0, 3.5, 4.5, etc
+		                                      Default: 4.5
 		--sclust_lambda                [str]  Manually set the degree of smoothing for clustering mutations, increasing the value should resolve
 		                                      issues with QP iterations related errors
 		                                      Available: 1e-6, 1e-5
