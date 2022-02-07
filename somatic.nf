@@ -1422,7 +1422,7 @@ process binReadCoverage_copycat {
      tag "${tumor_normal_sample_id}"
 
      input:
-     tuple val(tumor_normal_sample_id), path(tumor_bam), path(normal_bam), path(autosome_sex_chromosome_sizes) into bams_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
+     tuple val(tumor_normal_sample_id), path(tumor_bam), path(normal_bam), path(autosome_sex_chromosome_sizes) from bams_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
 
      output:
      path tumor_copycat_coverage
