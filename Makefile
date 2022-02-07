@@ -48,21 +48,18 @@ preprocessing-completion:
 	mv nextflow_report.*.html logs/preprocessing
 	mv timeline_report.*.html logs/preprocessing
 	mv trace.*.txt logs/preprocessing
-	mv slurmsub.preprocessing.*.* logs/preprocessing
 
 germline-completion:
 	mkdir -p logs/germline
 	mv nextflow_report.*.html logs/germline
 	mv timeline_report.*.html logs/germline
 	mv trace.*.txt logs/germline
-	mv slurmsub.germline.*.* logs/germline
 
 somatic-completion:
 	mkdir -p logs/somatic
 	mv nextflow_report.*.html logs/somatic
 	mv timeline_report.*.html logs/somatic
 	mv trace.*.txt logs/somatic
-	mv slurmsub.somatic.*.* logs/somatic
 
 ###############################################################################
 
