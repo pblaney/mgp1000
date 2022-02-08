@@ -3293,7 +3293,6 @@ process mergeSubclonalCnvCalls {
 
 // SURVIVOR ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_survivor {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{vcf}'
     tag  "${tumor_normal_sample_id}"
 
     input:
