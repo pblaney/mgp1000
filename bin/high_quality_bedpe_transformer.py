@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3.7
+#!/usr/bin/env python
 
 """
 This script transforms an AnnotSV annotated set of consensus structural variants into a high quality BEDPE
