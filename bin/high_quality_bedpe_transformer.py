@@ -75,29 +75,29 @@ input_args = sys.argv
 high_quality_sv_bedpe = open(input_args[5], 'w')
 
 # Add metadata and column header information to BEDPE
-metadata_header = """#SCORE--Callers = Tools that called the SV
-#SCORE--AnnotSV_score = AnnotSV ranking score: pathogenic ≥0.99, likely pathogenic [0.90;0.98], variant of uncertain significance [0.89;-0.89], likely benign [-0.90;-0.98], benign ≤-0.99
-#SCORE--ACMG_score = ACMG ranking score: class 1 (benign), class 2 (likely benign), class 3 (variant of unknown significance), class 4 (likely pathogenic), class 5 (pathogenic)
-#SCORE--Gene_count = Number of overlapped genes with the SV
-#SUPPORT--DR = Number of discordant reads supporting the SV as reported by the caller
-#SUPPORT--SR = Number of split reads supporting the SV as reported by the caller
-#ANNOTATIONS--IMPERFECT = Flag to notify that breakend record mate does not match perfectly due to caller confidence interval
-#ANNOTATIONS--Genes = List of gene symbols that overlapped with the SV
-#ANNOTATIONS--GC_content_end1 = GC content around the end1 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--GC_content_end2 = GC content around the end2 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--Repeat_coord_end1 = Repeats coordinates around the end1 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--Repeat_type_end1 = Repeats type corresponding to Repeat_coord_end1
-#ANNOTATIONS--Repeat_coord_end2 = Repeats coordinates around the end2 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--Repeat_type_end2 = Repeats type corresponding to Repeat_coord_end2
-#ANNOTATIONS--Gap_end1 = Gap regions coordinates around the end1 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--Gap_end2 = Gap regions coordinates around the end2 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--SegDup_end1 = Segmental Duplication regions coordinates around the end1 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--SegDup_end2 = Segmental Duplication regions coordinates around the end2 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--ENCODE_blacklist_end1 = ENCODE blacklist regions coordinates around the end1 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--ENCODE_blacklist_type_end1 = ENCODE blacklist type corresponding to ENCODE_blacklist_end1
-#ANNOTATIONS--ENCODE_blacklist_end2 = ENCODE blacklist regions coordinates around the end2 SV breakpoint (+/- 100bp)
-#ANNOTATIONS--ENCODE_blacklist_type_end2 = ENCODE blacklist type corresponding to ENCODE_blacklist_end2
-#ANNOTATIONS--AnnotSV_id = AnnotSV ID assigned to the SV which can be used to related gene/transcript specific annotations"""
+metadata_header = """#SCORE: Callers = Tools that called the SV
+#SCORE: AnnotSV_score = AnnotSV ranking score: pathogenic ≥0.99, likely pathogenic [0.90;0.98], variant of uncertain significance [0.89;-0.89], likely benign [-0.90;-0.98], benign ≤-0.99
+#SCORE: ACMG_score = ACMG ranking score: class 1 (benign), class 2 (likely benign), class 3 (variant of unknown significance), class 4 (likely pathogenic), class 5 (pathogenic)
+#SCORE: Gene_count = Number of overlapped genes with the SV
+#SUPPORT: DR = Number of discordant reads supporting the SV as reported by the caller
+#SUPPORT: SR = Number of split reads supporting the SV as reported by the caller
+#ANNOTATIONS: IMPERFECT = Flag to notify that breakend record mate does not match perfectly due to caller confidence interval
+#ANNOTATIONS: Genes = List of gene symbols that overlapped with the SV
+#ANNOTATIONS: GC_content_end1 = GC content around the end1 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: GC_content_end2 = GC content around the end2 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: Repeat_coord_end1 = Repeats coordinates around the end1 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: Repeat_type_end1 = Repeats type corresponding to Repeat_coord_end1
+#ANNOTATIONS: Repeat_coord_end2 = Repeats coordinates around the end2 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: Repeat_type_end2 = Repeats type corresponding to Repeat_coord_end2
+#ANNOTATIONS: Gap_end1 = Gap regions coordinates around the end1 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: Gap_end2 = Gap regions coordinates around the end2 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: SegDup_end1 = Segmental Duplication regions coordinates around the end1 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: SegDup_end2 = Segmental Duplication regions coordinates around the end2 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: ENCODE_blacklist_end1 = ENCODE blacklist regions coordinates around the end1 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: ENCODE_blacklist_type_end1 = ENCODE blacklist type corresponding to ENCODE_blacklist_end1
+#ANNOTATIONS: ENCODE_blacklist_end2 = ENCODE blacklist regions coordinates around the end2 SV breakpoint (+/- 100bp)
+#ANNOTATIONS: ENCODE_blacklist_type_end2 = ENCODE blacklist type corresponding to ENCODE_blacklist_end2
+#ANNOTATIONS: AnnotSV_id = AnnotSV ID assigned to the SV which can be used to related gene/transcript specific annotations"""
 high_quality_sv_bedpe.write('{0}\n'.format(metadata_header))
 column_header = ("#chrom1", "start1", "end1", "chrom2", "start2", "end2",
                  "type", "score", "strand1", "strand2",
