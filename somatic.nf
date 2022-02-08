@@ -472,7 +472,7 @@ process identifySampleSex_allelecount {
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forVarscanBamReadcount
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(normal_bam) into bams_forCopycat
+	tuple val(tumor_normal_sample_id), path(tumor_bam) into bam_forCopycat
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusIndelMpileup
@@ -1418,34 +1418,30 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 
 // Copycat ~ capture and bin the read coverage across a genome for CNV and SV support
 process binReadCoverage_copycat {
-     publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv}'
+     publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv,seg}'
      tag "${tumor_normal_sample_id}"
 
      input:
-     tuple val(tumor_normal_sample_id), path(tumor_bam), path(normal_bam), path(autosome_sex_chromosome_sizes) from bams_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
-
+     tuple val(tumor_normal_sample_id), path(tumor_bam), path(autosome_sex_chromosome_sizes) from bam_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
+     
      output:
-     path tumor_copycat_coverage
-     path normal_copycat_coverage
+     path tumor_copycat_coverage_csv
+     path tumor_copycat_coverage_seg
 
      when:
      params.copycat == "on"
 
      script:
      tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-     normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-     tumor_copycat_coverage = "${tumor_id}.coverage.10kb.csv"
-     normal_copycat_coverage = "${normal_id}.coverage.10kb.csv"
+     tumor_copycat_coverage_csv = "${tumor_id}.coverage.10kb.csv.gz"
+     tumor_copycat_coverage_seg = "${tumor_id}.coverage.10kb.igv.seg"
      """
      copycat.sh \
      "${tumor_bam}" \
      "${autosome_sex_chromosome_sizes}" \
      "${tumor_id}"
 
-     copycat.sh \
-     "${tumor_bam}" \
-     "${autosome_sex_chromosome_sizes}" \
-     "${normal_id}"
+     mv "${tumor_id}.coverage.10kb.for_IGV.seg" "${tumor_copycat_coverage_seg}"
      """
 }
 
@@ -2274,6 +2270,7 @@ process svAndIndelCalling_svaba {
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
 	path germline_sv_vcf
+	path contig_alignment_plot
 
 	when:
 	params.svaba == "on"
@@ -2428,6 +2425,8 @@ process svAndIndelCalling_delly {
 
 	output:
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) into delly_sv_vcf_forPostprocessing
+	path delly_germline_sv_vcf
+	path delly_germline_sv_vcf_index
 
 	when:
 	params.delly == "on"
@@ -2438,11 +2437,13 @@ process svAndIndelCalling_delly {
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
 	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
 	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
+	delly_germline_sv_vcf = "${tumor_normal_sample_id}.delly.germline.sv.vcf.gz"
+	delly_germline_sv_vcf_index = "${delly_germline_sv_vcf}.tbi"
 	"""
 	delly call \
 	--genome "${reference_genome_fasta_forDelly}" \
 	--exclude "${gatk_bundle_wgs_bed_blacklist_0based_forDelly}" \
-	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.unfiltered.bcf" \
+	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
 	"${tumor_bam}" "${normal_bam}"
 
 	touch samples.tsv
@@ -2457,7 +2458,23 @@ process svAndIndelCalling_delly {
 	--coverage 10 \
 	--samples samples.tsv \
 	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" \
-	"${tumor_normal_sample_id}.delly.somatic.sv.unfiltered.bcf"
+	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf"
+
+	bcftools isec \
+	--nfiles 1 \
+	--complement \
+	--write 1 \
+	--output-type v \
+	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
+	"${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" \
+	| \
+	bcftools filter \
+	--output-type v \
+	--include 'FILTER="PASS"' \
+	| \
+	bgzip > "${delly_germline_sv_vcf}"
+
+	tabix "${delly_germline_sv_vcf}"
 
 	bcftools view \
 	--output-type z \
