@@ -402,7 +402,8 @@ if( params.annotsv_ref_cached == "yes" ) {
      Channel
           .fromPath( 'references/hg38/annotations_human_annotsv_hg38/', type: 'dir', checkIfExists: true )
           .ifEmpty{ error "The run command issued has the '--annotsv_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--annotsv_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
-          .set{ annotsv_ref_dir_preDownloaded }
+          .into{ annotsv_ref_dir_pre_downloaded_forSvAnnotation;
+                 annotsv_ref_dir_pre_downloaded_forCnvAnnotation }
 }
 
 if( params.vep_ref_cached == "yes" ) {
@@ -476,6 +477,7 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusIndelMpileup
+	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forConsensusCnvTransform
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into bam_forConsensusSvFpFilter
 	tuple val(tumor_normal_sample_id), path(sample_sex) into allelecount_output_forConsensusMetadata
 
@@ -3168,7 +3170,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forConsensusCnv) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).combine(reference_genome_fasta_index_forConsensusCnv)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed)
+	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
 	when:
 	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
@@ -3253,6 +3255,96 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$9,\$10,\$5,\$11,\$6,\$12,\$7,\$13,\$8,\$14}' > "${consensus_merged_cnv_alleles_bed}"
 	"""
 }
+
+// Tidyverse ~ transform consensus CNV BED file to concise high quality format
+process highQualityTransformConsensusCnvs_tidyverse {
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed), path(sample_sex) from consensus_cnv_and_allele_bed_forConsensusCnvTransform.join(sex_of_sample_forConsensusCnvTransform)
+
+    output:
+    tuple val(tumor_normal_sample_id), path(hq_consensus_cnv_bed) into hq_consensus_cnv_bed_forAnnotation
+
+    when:
+    params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
+
+    script:
+    hq_consensus_cnv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.bed"
+    """
+    sex=\$(cut -d ' ' -f 1 "${sample_sex}")
+
+    high_quality_cnv_bed_transformer.R \
+    "${consensus_merged_cnv_alleles_bed}" \
+    \${sex} \
+    "${hq_consensus_cnv_bed}"
+    """
+}
+
+// AnnotSV ~ download the reference files used for AnnotSV annotation, if needed
+process downloadAnnotsvAnnotationReferences_annotsv {
+    publishDir "references/hg38", mode: 'copy'
+
+    output:
+    path cached_ref_dir_annotsv into annotsv_ref_dir_from_process_forSvAnnotation, annotsv_ref_dir_from_process_forCnvAnnotation
+
+    when:
+    params.annotsv_ref_cached == "no"
+
+    script:
+    cached_ref_dir_annotsv = "annotations_human_annotsv_hg38"
+    """
+    mkdir -p "${cached_ref_dir_annotsv}" && \
+    cd "${cached_ref_dir_annotsv}" && \
+    curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
+    tar -zxf Annotations_Human_3.1.1.tar.gz && \
+    rm Annotations_Human_3.1.1.tar.gz
+    """
+}
+
+// Depending on whether the reference files used for AnnotSV annotation was pre-downloaded, set the input
+// channel for the AnnotSV CNV annotation process
+if( params.annotsv_ref_cached == "yes" ) {
+    annotsv_ref_dir_forCnvAnnotation = annotsv_ref_dir_pre_downloaded_forCnvAnnotation
+}
+else {
+    annotsv_ref_dir_forCnvAnnotation = annotsv_ref_dir_from_process_forCnvAnnotation
+}
+
+// AnnotSV ~ annotate consensus CNV calls with multiple resources
+process annotateConsensusCnvCalls_annotsv {
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{bed}'
+    tag  "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(hq_consensus_cnv_bed), path(annotsv_ref_dir_bundle) from hq_consensus_cnv_bed_forAnnotation.combine(annotsv_ref_dir_forCnvAnnotation)
+
+    output:
+    path hq_consensus_cnv_annotated_bed
+
+    when:
+    params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
+
+    script:
+    hq_consensus_cnv_annotated_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.annotated.bed"
+    """
+    \$ANNOTSV/bin/AnnotSV \
+    -annotationsDir "${annotsv_ref_dir_bundle}" \
+    -annotationMode full \
+    -genomeBuild GRCh38 \
+    -outputDir . \
+    -outputFile "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.annotated" \
+    -SVinputFile "${hq_consensus_cnv_bed}" \
+    -SVminSize 1 \
+    -includeCI 0 \
+    -tx ENSEMBL
+
+    touch "${hq_consensus_cnv_annotated_bed}"
+    echo "chr\tstart\tend\tconsensus_total_cn\tconsensus_major_allele\tconsensus_minor_allele\ttype\tclass\tallele_status\tconsensus_conf_rating\tcytoband\tgenes" >> "${hq_consensus_cnv_annotated_bed}"
+    grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.annotated.tsv" \
+    | \
+    awk 'BEGIN {OFS="\t"} {print "chr"\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10,\$11,\$13,\$14}' >> "${hq_consensus_cnv_annotated_bed}"
+    """
 
 // Merge subclonal CNV segment calls, simple concatenation of per tool output
 process mergeSubclonalCnvCalls {
@@ -3407,34 +3499,13 @@ process extractFpFilterPassingSvCalls_bcftools {
     """
 }
 
-// AnnotSV ~ download the reference files used for VEP annotation, if needed
-process downloadAnnotsvAnnotationReferences_annotsv {
-    publishDir "references/hg38", mode: 'copy'
-
-    output:
-    path cached_ref_dir_annotsv into annotsv_ref_dir_fromProcess
-
-    when:
-    params.annotsv_ref_cached == "no"
-
-    script:
-    cached_ref_dir_annotsv = "annotations_human_annotsv_hg38"
-    """
-    mkdir -p "${cached_ref_dir_annotsv}" && \
-    cd "${cached_ref_dir_annotsv}" && \
-    curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
-    tar -zxf Annotations_Human_3.1.1.tar.gz && \
-    rm Annotations_Human_3.1.1.tar.gz
-    """
-}
-
 // Depending on whether the reference files used for AnnotSV annotation was pre-downloaded, set the input
-// channel for the AnnotSV annotation process
+// channel for the AnnotSV SV annotation process
 if( params.annotsv_ref_cached == "yes" ) {
-    annotsv_ref_dir = annotsv_ref_dir_preDownloaded
+    annotsv_ref_dir_forSvAnnotation = annotsv_ref_dir_pre_downloaded_forSvAnnotation
 }
 else {
-    annotsv_ref_dir = annotsv_ref_dir_fromProcess
+    annotsv_ref_dir_forSvAnnotation = annotsv_ref_dir_from_process_forSvAnnotation
 }
 
 // AnnotSV ~ annotate consensus SV calls with multiple resources
@@ -3443,7 +3514,7 @@ process annotateConsensusSvCalls_annotsv {
     tag  "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf), path(final_manta_somatic_sv_read_support), path(final_svaba_somatic_sv_read_support), path(final_delly_somatic_sv_read_support), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.join(manta_sv_read_support_forAnnotation).join(svaba_sv_read_support_forAnnotation).join(delly_sv_read_support_forAnnotation).combine(annotsv_ref_dir)
+    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf), path(final_manta_somatic_sv_read_support), path(final_svaba_somatic_sv_read_support), path(final_delly_somatic_sv_read_support), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.join(manta_sv_read_support_forAnnotation).join(svaba_sv_read_support_forAnnotation).join(delly_sv_read_support_forAnnotation).combine(annotsv_ref_dir_forSvAnnotation)
 
     output:
     path gene_split_annotated_consensus_sv_bed
