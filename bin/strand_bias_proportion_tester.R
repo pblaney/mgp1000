@@ -6,7 +6,13 @@
 # It then produces a BED file with each variant's coordinates that fail the test
 # to be used in filtering.
 
+#########################
+#####   Libraries   #####
+
 suppressPackageStartupMessages(library(tidyverse))
+
+#########################
+#####   Functions   #####
 
 strand_bias_proportion_tester <- function(strand_metrics_file) {
   
@@ -46,7 +52,7 @@ strand_bias_proportion_tester <- function(strand_metrics_file) {
     reverse_proportion <- sum(strand_read_tibble$reverse_strand_reads) / sum(strand_read_tibble)
     minimum_sb_proportion <- min(forward_proportion, reverse_proportion)
     
-    # Populate tibble with evaluation of each Fisher's Exact Test
+    # Populate tibble with evaluation of each strand bias proportion test
     strand_bias_filter_bed_file$chrom[i] <- strand_metrics$chrom[i]
     strand_bias_filter_bed_file$start[i] <- strand_metrics$start[i]
     strand_bias_filter_bed_file$end[i] <- strand_metrics$start[i]
@@ -64,6 +70,9 @@ strand_bias_proportion_tester <- function(strand_metrics_file) {
   
   return(output_file)
 }
+
+#########################
+#####   Execution   #####
 
 # Accept command line arguments as input
 input_args <- commandArgs(trailingOnly = T)

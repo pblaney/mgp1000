@@ -57,7 +57,7 @@ with open(input_args[1]) as merged_copy_number_file:
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(double_caller_cn_tuple)))
             else:
                 double_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
-                                                       "-", "no_agreement",
+                                                       ".", "no_agreement",
                                                        copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(double_caller_no_agreement_cn_tuple)))
 
@@ -96,7 +96,7 @@ with open(input_args[1]) as merged_copy_number_file:
 
             else:
                 triple_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
-                                                       "-", "no_agreement",
+                                                       ".", "no_agreement",
                                                        copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(triple_caller_no_agreement_cn_tuple)))
 

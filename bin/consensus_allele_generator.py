@@ -57,7 +57,7 @@ with open(input_args[1]) as merged_allele_file:
                 consensus_allele_bed.write('{0}\n'.format(consensus_writer(double_caller_allele_tuple)))
             else:
                 double_caller_no_agreement_allele_tuple = (allele_obj.chrom, allele_obj.start, allele_obj.end,
-                                                           "-", "-", "no_agreement",
+                                                           ".", ".", "no_agreement",
                                                            allele_obj.ascat_alleles, allele_obj.controlfreec_alleles, allele_obj.sclust_alleles)
                 consensus_allele_bed.write('{0}\n'.format(consensus_writer(double_caller_no_agreement_allele_tuple)))
 
@@ -95,7 +95,7 @@ with open(input_args[1]) as merged_allele_file:
                     consensus_allele_bed.write('{0}\n'.format(consensus_writer(pair2_of_three_allele_tuple)))
             else:
                 triple_caller_no_agreement_allele_tuple = (allele_obj.chrom, allele_obj.start, allele_obj.end,
-                                                           "-", "-", "no_agreement",
+                                                           ".", ".", "no_agreement",
                                                            allele_obj.ascat_alleles, allele_obj.controlfreec_alleles, allele_obj.sclust_alleles)
                 consensus_allele_bed.write('{0}\n'.format(consensus_writer(triple_caller_no_agreement_allele_tuple)))
 
