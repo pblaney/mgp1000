@@ -3345,6 +3345,7 @@ process annotateConsensusCnvCalls_annotsv {
     | \
     awk 'BEGIN {OFS="\t"} {print "chr"\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10,\$11,\$13,\$14}' >> "${hq_consensus_cnv_annotated_bed}"
     """
+}
 
 // Merge subclonal CNV segment calls, simple concatenation of per tool output
 process mergeSubclonalCnvCalls {
