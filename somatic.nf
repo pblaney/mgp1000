@@ -1420,7 +1420,7 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 
 // Copycat ~ capture and bin the read coverage across a genome for CNV and SV support
 process binReadCoverage_copycat {
-     publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv,seg}'
+     publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv.gz,seg}'
      tag "${tumor_normal_sample_id}"
 
      input:
@@ -3163,7 +3163,6 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
 process mergeAndGenerateConsensusCnvCalls_bedtools {
-	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: "*.{merged.bed}"
 	tag "${tumor_normal_sample_id}"
 
 	input:
@@ -3519,7 +3518,7 @@ process annotateConsensusSvCalls_annotsv {
 
     output:
     path gene_split_annotated_consensus_sv_bed
-    path collapsed_annotated_consensus_sv_bed into collapsed_annotated_consensus_sv_bed_forTransformation
+    path hq_consensus_sv_bedpe
 
     when:
     params.manta == "on" && params.svaba == "on" && params.delly == "on"
