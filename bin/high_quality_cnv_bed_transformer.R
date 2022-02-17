@@ -1,4 +1,4 @@
-#!/usr/bin/env -S Rscript --vanilla
+#!/usr/bin/env Rscript
 
 # This script accepts a BED file of merged consensus CNV and alleles per segment
 # and a string to set the sex of the sample.

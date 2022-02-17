@@ -2861,7 +2861,8 @@ process repeatsAndStrandBiasFilterSnvs_vcftools {
 	hq_snv_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.snv.vcf.gz"
 	hq_snv_consensus_vcf_index = "${hq_snv_consensus_vcf}.tbi"
 	"""
-	strand_bias_proportion_tester.R \
+	Rscript --vanilla  \
+	${workflow.projectDir}/bin/strand_bias_proportion_tester.R \
 	"${snv_strand_metrics}" \
 	"${strand_bias_filter_bed}"
 
@@ -3130,7 +3131,8 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 	hq_indel_consensus_vcf = "${tumor_normal_sample_id}.hq.consensus.somatic.indel.vcf.gz"
 	hq_indel_consensus_vcf_index = "${hq_indel_consensus_vcf}.tbi"
 	"""
-	strand_bias_proportion_tester.R \
+	Rscript --vanilla  \
+	${workflow.projectDir}/bin/strand_bias_proportion_tester.R \
 	"${indel_strand_metrics}" \
 	"${strand_bias_filter_bed}"
 
@@ -3273,7 +3275,8 @@ process highQualityTransformConsensusCnvs_tidyverse {
     """
     sex=\$(cut -d ' ' -f 1 "${sample_sex}")
 
-    high_quality_cnv_bed_transformer.R \
+    Rscript --vanilla  \
+	${workflow.projectDir}/bin/high_quality_cnv_bed_transformer.R \
     "${consensus_merged_cnv_alleles_bed}" \
     \${sex} \
     "${hq_consensus_cnv_bed}"
