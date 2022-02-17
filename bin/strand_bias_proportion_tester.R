@@ -1,4 +1,4 @@
-#!/usr/bin/env Rscript
+#!/usr/bin/env Rscript --vanilla
 
 # This script accepts a text file containing per variant REF and ALT supporting
 # reads on the forward and reverse strands to perform a simple test of minimum
