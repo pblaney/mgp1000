@@ -229,6 +229,7 @@ chain_segments <- function(scored_resolved_cnv_alleles_df) {
 segment_classification_and_finalization <- function(chained_scored_resolved_df, sex_of_sample) {
   # First, remove any segments that are only 1bp long
   orphan_segment_indices <- c()
+  final_cnv_segments_df <- tibble()
 
   for(i in 1:nrow(chained_scored_resolved_df)) {
   
@@ -238,11 +239,16 @@ segment_classification_and_finalization <- function(chained_scored_resolved_df, 
     }
   }
 
-  # Capture the orphaned segments for introspection purposes
-  orphaned_segments <- chained_scored_resolved_df[orphan_segment_indices,]
+  # Capture any orphaned segments and remove them from the final output segments df
+  if(!is.null(orphan_segment_indices)) {
 
-  # Remove the orphaned segments from the final output segments df
-  final_cnv_segments_df <- chained_scored_resolved_df[-orphan_segment_indices,]
+    orphaned_segments <- chained_scored_resolved_df[orphan_segment_indices,]
+    final_cnv_segments_df <- setdiff(x = chained_scored_resolved_df,
+                                     y = orphaned_segments)
+  } else {
+
+    final_cnv_segments_df <- chained_scored_resolved_df
+  }
 
   # Second, generate final confidence designation based on aggregate of scores over full distance of segment
   segment_final_confidence_rating <- tibble()
