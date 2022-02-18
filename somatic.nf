@@ -3345,7 +3345,9 @@ process annotateConsensusCnvCalls_annotsv {
     echo "chr\tstart\tend\tconsensus_total_cn\tconsensus_major_allele\tconsensus_minor_allele\ttype\tclass\tallele_status\tconsensus_conf_rating\tcytoband\tgenes" >> "${hq_consensus_cnv_annotated_bed}"
     grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.annotated.tsv" \
     | \
-    awk 'BEGIN {OFS="\t"} {print "chr"\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10,\$11,\$13,\$14}' >> "${hq_consensus_cnv_annotated_bed}"
+    awk 'BEGIN {OFS="\t"} {print "chr"\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10,\$11,\$13,\$14}' \
+    | \
+    sort -k1,1V -k2,2n >> "${hq_consensus_cnv_annotated_bed}"
     """
 }
 
