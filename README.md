@@ -169,7 +169,7 @@ Here is a snapshot of the expected subdirectories within the `output/preprocessi
 | `coverageMetrics` | `*.coverage.metrics.txt` | genome-wide coverage metrics of final BAM |
 | `gcBiasMetrics` | `*.gcbias.[metrics.txt/metrics.pdf/summary.txt]` | genome-wide GC bias metrics of final BAM |
 
-Upon completion of the Preprocessing run, there is a `make preprocessing-completeion` command that is useful for collecting the run-related logs.
+Upon completion of the Preprocessing run, there is a `make preprocessing-completion` command that is useful for collecting the run-related logs.
 ```
 make preprocessing-completion
 ```
@@ -271,7 +271,7 @@ Here is a snapshot of the expected subdirectories within the `output/germline/[c
 | `*.pruned.maf.gt.filtered.refmerged.26.P` | ADMIXTURE population allele frequencies |
 | `*.pruned.maf.gt.filtered.refmerged.26.Q_se` | standard error of ADMIXTURE ancestry fractions |
 
-Upon completion of the Germline Variant Analysis, there is a `make germline-completeion` command that is useful for collecting the run-related logs.
+Upon completion of the Germline Variant Analysis, there is a `make germline-completion` command that is useful for collecting the run-related logs.
 ```
 make germline-completion
 ```
@@ -461,7 +461,7 @@ Additional per-tool subdirectories included in the base `output/somatic` output 
 | `telomereHunter` | native output of TelomereHunter |
 | `varscan` | native output of VarScan2 |
 
-Upon completion of the Somatic Variant Analysis, there is a `make somatic-completeion` command that is useful for collecting the run-related logs.
+Upon completion of the Somatic Variant Analysis, there is a `make somatic-completion` command that is useful for collecting the run-related logs.
 ```
 make somatic-completion
 ```
