@@ -1821,7 +1821,7 @@ process prepareVcfForSclust_vcftools {
 	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) from mutect_vcf_forSclust
 
 	output:
-	tuple val(tumor_normal_sample_id), path(mutations_vcf) into vcf_forSclustCn
+	tuple val(tumor_normal_sample_id), path(mutations_vcf) into vcf_forSclustCn, vcf_forSclustClustering
 
 	when:
 	params.sclust == "on" && params.mutect == "on"
@@ -1944,7 +1944,7 @@ process cnvCalling_sclust {
 	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf) from read_count_and_snp_count_files.join(vcf_forSclustCn)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file) into sclust_cn_output_forClustering
+	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file) into sclust_cn_output_forClustering
 	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file) into final_sclust_cnv_profile_forConsensus
 	tuple val(tumor_normal_sample_id), path(sclust_subclones_file) into sclust_subclones_forConsensusSubclones
 	tuple val(tumor_normal_sample_id), path(sclust_cnv_summary_file) into sclust_output_forConsensusMetadata
@@ -1991,7 +1991,7 @@ process mutationalClustering_sclust {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file) from sclust_cn_output_forClustering
+	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file), path(mutations_vcf),from sclust_cn_output_forClustering.join(vcf_forSclustClustering)
 
 	output:
 	path mutation_clusters_file
