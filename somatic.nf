@@ -118,6 +118,11 @@ def helpMessage() {
 		--sclust_maxp                [float]  Manually set the maximal expected ploidy to be used for the Sclust algorithm
 		                                      Available: 2.0, 3.5, 4.5, etc
 		                                      Default: 4.5
+		--sclust_mutclustering         [str]  Manually turn on or off the mutational clustering step of the Sclust process, this can be done if the process
+		                                      cannot reach a solution for a given sample, this should only be used after attempts at lowering the lambda value
+		                                      does not work, see --sclust_lambda parameter
+		                                      Available: off, on
+		                                      Default: on
 		--sclust_lambda                [str]  Manually set the degree of smoothing for clustering mutations, increasing the value should resolve
 		                                      issues with QP iterations related errors
 		                                      Available: 1e-6, 1e-5
@@ -168,6 +173,7 @@ params.controlfreec_bp_threshold = 0.8
 params.controlfreec_ploidy = 2
 params.sclust_minp = 1.5
 params.sclust_maxp = 4.5
+params.sclust_mutclustering = "on"
 params.sclust_lambda = null
 params.cpus = null
 params.memory = null
@@ -1929,7 +1935,7 @@ process prepareVcfForSclust_vcftools {
 	"""
 }
 
-// Sclust cn / cluster ~ perform copy-number analysis, estimation of tumor purity, and mutational clustering
+// Sclust cn ~ perform copy-number analysis and estimation of tumor purity
 process cnvCalling_sclust {
 	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
 	tag "${tumor_normal_sample_id}"
@@ -1938,15 +1944,13 @@ process cnvCalling_sclust {
 	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf) from read_count_and_snp_count_files.join(vcf_forSclustCn)
 
 	output:
+	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file) into sclust_cn_output_forClustering
 	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file) into final_sclust_cnv_profile_forConsensus
 	tuple val(tumor_normal_sample_id), path(sclust_subclones_file) into sclust_subclones_forConsensusSubclones
 	tuple val(tumor_normal_sample_id), path(sclust_cnv_summary_file) into sclust_output_forConsensusMetadata
 	path mutations_exp_af_file
 	path sclust_cnv_profile_pdf
 	path sclust_cnv_segments_file
-	path mutation_clusters_file
-	path mutation_clusters_pdf
-	path cluster_assignment_file
 
 	when:
 	params.sclust == "on" && params.mutect == "on"
@@ -1961,9 +1965,6 @@ process cnvCalling_sclust {
 	sclust_cnv_segments_file = "${tumor_normal_sample_id}.sclust.cnvsegments.txt"
 	mutations_exp_af_file = "${tumor_normal_sample_id}_muts_expAF.txt"
 	sclust_subclones_file = "${tumor_normal_sample_id}.sclust.subclones.txt"
-	mutation_clusters_file = "${tumor_normal_sample_id}.sclust.mutclusters.txt"
-	mutation_clusters_pdf = "${tumor_normal_sample_id}.sclust.mutclusters.pdf"
-	cluster_assignment_file = "${tumor_normal_sample_id}.sclust.clusterassignments.txt"
 	"""
 	gunzip -f "${mutations_vcf}"
 
@@ -1981,7 +1982,33 @@ process cnvCalling_sclust {
 	mv "${tumor_normal_sample_id}_cn_summary.txt" "${sclust_cnv_summary_file}"
 	mv "${tumor_normal_sample_id}_iCN.seg" "${sclust_cnv_segments_file}"
 	mv "${tumor_normal_sample_id}_subclonal_cn.txt" "${sclust_subclones_file}"
+	"""
+}
 
+// Sclust cluster ~ perform mutational clustering based on copy-number analysis and estimation of tumor purity
+process mutationalClustering_sclust {
+	publishDir "${params.output_dir}/somatic/sclust", mode: 'copy', pattern: '*.{txt,pdf}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(mutations_vcf), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file) from sclust_cn_output_forClustering
+
+	output:
+	path mutation_clusters_file
+	path mutation_clusters_pdf
+	path cluster_assignment_file
+
+	when:
+	params.sclust == "on" && params.mutect == "on" && params.sclust_mutclustering == "on"
+
+	script:
+	sclust_lambda = params.sclust_lambda ? "-lambda ${params.sclust_lambda}" : ""
+	mutation_clusters_file = "${tumor_normal_sample_id}.sclust.mutclusters.txt"
+	mutation_clusters_pdf = "${tumor_normal_sample_id}.sclust.mutclusters.pdf"
+	cluster_assignment_file = "${tumor_normal_sample_id}.sclust.clusterassignments.txt"
+	"""
+	gunzip -f "${mutations_vcf}"
+	
 	Sclust cluster \
 	-i "${tumor_normal_sample_id}" \
 	${sclust_lambda}
