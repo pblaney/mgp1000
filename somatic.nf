@@ -1991,7 +1991,7 @@ process mutationalClustering_sclust {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file), path(mutations_vcf),from sclust_cn_output_forClustering.join(vcf_forSclustClustering)
+	tuple val(tumor_normal_sample_id), path(read_count_file), path(common_snp_count_file), path(sclust_allelic_states_file), path(sclust_subclones_file), path(sclust_cnv_summary_file), path(mutations_exp_af_file), path(sclust_cnv_segments_file), path(mutations_vcf) from sclust_cn_output_forClustering.join(vcf_forSclustClustering)
 
 	output:
 	path mutation_clusters_file
