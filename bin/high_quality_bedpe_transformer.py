@@ -134,9 +134,10 @@ with open(input_args[1]) as annot_sv_bed:
             inter_chrom_list.append(bedpe_interchrom_entry_list)
 
         else:
-            intrachrom_entry_end = str(int(annot_sv_obj.start) + 1)
-            bedpe_intrachrom_tup = (annot_sv_obj.chrom, annot_sv_obj.start, intrachrom_entry_end,
-                                     annot_sv_obj.partner_chrom, annot_sv_obj.partner_start, annot_sv_obj.partner_end,
+            intrachrom_entry_end1 = str(int(annot_sv_obj.start) + 1)
+            intrachrom_entry_end2 = str(int(annot_sv_obj.end) + 1)
+            bedpe_intrachrom_tup = (annot_sv_obj.chrom, annot_sv_obj.start, intrachrom_entry_end1,
+                                     annot_sv_obj.partner_chrom, annot_sv_obj.end, intrachrom_entry_end2,
                                      annot_sv_obj.type, score, annot_sv_obj.strand_1, annot_sv_obj.strand_2,
                                      annot_sv_obj.cytoband, support, annotations)
             high_quality_sv_bedpe.write('{0}\n'.format(bedpe_output_writer(bedpe_intrachrom_tup)))
