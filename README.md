@@ -164,10 +164,10 @@ Here is a snapshot of the expected subdirectories within the `output/preprocessi
 | `trimLogs` | `*.trim.log` | number of reads before and after trimming for quality |
 | `fastqc` | `*_fastqc.[html / zip]` | in-depth quality evaluation on a per base and per sequence manner | 
 | `alignmentFlagstats` | `*.alignment.flagstat.log` | initial number of reads of various alignment designation |
-| `markdupFlagstats` | `*.markdup.[log/flagstat.log]` | number of detected duplicate reads, number of reads after deduplication |
-| `finalPreprocessedBams` | `*.final.[bam/bai]` | final preprocessed BAM and index for downstream analysis |
+| `markdupFlagstats` | `*.markdup.[log / flagstat.log]` | number of detected duplicate reads, number of reads after deduplication |
+| `finalPreprocessedBams` | `*.final.[bam / bai]` | final preprocessed BAM and index for downstream analysis |
 | `coverageMetrics` | `*.coverage.metrics.txt` | genome-wide coverage metrics of final BAM |
-| `gcBiasMetrics` | `*.gcbias.[metrics.txt/metrics.pdf/summary.txt]` | genome-wide GC bias metrics of final BAM |
+| `gcBiasMetrics` | `*.gcbias.[metrics.txt / metrics.pdf / summary.txt]` | genome-wide GC bias metrics of final BAM |
 
 Upon completion of the Preprocessing run, there is a `make preprocessing-completion` command that is useful for collecting the run-related logs.
 ```
