@@ -3444,7 +3444,7 @@ process mergeAndGenerateConsensusSvCalls_survivor {
     1000 \
     1 \
     0 \
-    0 \
+    1 \
     0 \
     51 \
     "${consensus_somatic_sv_badheader_vcf}"
