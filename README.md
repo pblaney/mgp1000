@@ -267,6 +267,7 @@ Here is a snapshot of the expected subdirectories within the `output/germline/[c
 | `*.maf.gt.filtered.refmerged.stats.txt` | number of SNP sites filtered out based on MAF > 0.05 and missing genotypes |
 | `*.pruned.maf.gt.filtered.refmerged.stats.txt` | number of SNP sites filtered out based on linkage disequilibrium |
 | `*.pruned.maf.gt.filtered.refmerged.pop` | population file used for supervised analysis |
+| `*.pruned.maf.gt.filtered.refmerged.fam` | family pedigree file used for supervised analysis |
 | `*.pruned.maf.gt.filtered.refmerged.26.Q` | ADMIXTURE ancestry fractions |
 | `*.pruned.maf.gt.filtered.refmerged.26.P` | ADMIXTURE population allele frequencies |
 | `*.pruned.maf.gt.filtered.refmerged.26.Q_se` | standard error of ADMIXTURE ancestry fractions |
