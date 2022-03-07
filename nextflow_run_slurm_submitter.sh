@@ -10,16 +10,17 @@ Help()
 	echo "run command and then submit this to the scheduler"
 	echo ""
 	echo "Syntax:"
-	echo '	./nextflow_run_slurm_submitter.sh [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]"'
+	echo '	./nextflow_run_slurm_submitter.sh [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]" "[additionalSlurmOptions]"'
 	echo ""
 	echo "Argument Descriptions:"
-	echo "	[-h]			Print this message"
-	echo "	[pipelineStepScript]	The name of the Nextflow script that will be run"
-	echo "	[runId]			The unique ID associated with the run"
-	echo "	[userEmail]		The email address to be sent notifications of pipeline progress"
-	echo "	[estimatedRuntime]	The estimated number of days the pipeline will take to complete"
-	echo "	[moduleLoadCmd]		The text string that will be used to load required modules within the parent SLURM job"
-	echo "	[pipelineStepOptions]	The text string of any pipeline step specific run options"
+	echo "	[-h]				Print this message"
+	echo "	[pipelineStepScript]		The name of the Nextflow script that will be run"
+	echo "	[runId]				The unique ID associated with the run"
+	echo "	[userEmail]			The email address to be sent notifications of pipeline progress"
+	echo "	[estimatedRuntime]		The estimated number of days the pipeline will take to complete"
+	echo "	[moduleLoadCmd]			The text string that will be used to load required modules within the parent SLURM job"
+	echo "	[pipelineStepOptions]		The text string of any pipeline step specific run options"
+	echo "	[additionalSlurmOptions]	OPTIONAL; The text string of any unqiue additional SLURM submission options"
 	echo ""
 	echo "Usage Examples:"
 	echo '	./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"'
@@ -51,6 +52,7 @@ userEmail=$3
 estimatedRuntime=$4
 moduleLoadCmd=$5
 pipelineStepOptions=$6
+additionalSlurmOptions=${7:-""}
 
 # Create SLURM batch submission script with user-defined parameters
 pipelineStep=$(echo "${pipelineStepScript}" | sed 's|.nf||')
@@ -72,6 +74,10 @@ echo "#SBATCH --export=ALL" >> "${submissionScript}"
 echo "#SBATCH --job-name=slurmsub.${pipelineStep}.${runId}" >> "${submissionScript}"
 echo "#SBATCH --output=slurmsub.${pipelineStep}.${runId}.txt" >> "${submissionScript}"
 echo "#SBATCH --error=slurmsub.${pipelineStep}.${runId}.err" >> "${submissionScript}"
+
+if [[ "${additionalSlurmOptions}" != "" ]]; then
+	echo "#SBATCH ${additionalSlurmOptions}" >> "${submissionScript}"
+fi
 
 echo "" >> "${submissionScript}"
 echo "### ^^^   SLURM sbatch options   ^^^ ###" >> "${submissionScript}"
