@@ -58,10 +58,7 @@ additionalSlurmOptions=${7:-""}
 pipelineStep=$(echo "${pipelineStepScript}" | sed 's|.nf||')
 submissionScript="slurmsub.${pipelineStep}.${runId}.sh"
 
-touch "${submissionScript}"
-chmod +x "${submissionScript}"
-
-echo "#!/bin/bash" >> "${submissionScript}"
+echo "#!/bin/bash" > "${submissionScript}"
 echo "" >> "${submissionScript}"
 echo "#SBATCH --mail-user=${userEmail}" >> "${submissionScript}"
 echo "#SBATCH --mail-type=BEGIN,END,FAIL" >> "${submissionScript}"
@@ -107,5 +104,7 @@ echo "${runCommand}" >> "${submissionScript}"
 
 echo "### ^^^   Nexflow run options and command   ^^^ ###" >> "${submissionScript}"
 echo "############################################################" >> "${submissionScript}"
+
+chmod +x "${submissionScript}"
 
 eval sbatch ${submissionScript}
