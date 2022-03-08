@@ -206,8 +206,8 @@ process gatherInputFastqs_fastqgatherer {
 // then set channel up for both R1 and R2 reads then merge into single channel
 if( params.input_format == "fastq" ) {
 	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
-						    .map{ row -> sample_id = "${row.sample_id}",
-						                 input_R1_fastq = "${row.read_1}",
+						    .map{ row -> sample_id = "${row.sample_id}"
+						                 input_R1_fastq = "${row.read_1}"
 						                 input_R2_fastq = "${row.read_2}"
 						          return[ val("${sample_id}"),
 						                  file("${params.input_dir}/${input_R1_fastq}"),
