@@ -209,7 +209,7 @@ if( params.input_format == "fastq" ) {
 						    .map{ row -> sample_id = "${row.sample_id}"
 						                 input_R1_fastq = "${row.read_1}"
 						                 input_R2_fastq = "${row.read_2}"
-						          return[ val("${sample_id}"),
+						          return[ "${sample_id}",
 						                  file("${params.input_dir}/${input_R1_fastq}"),
 						                  file("${params.input_dir}/${input_R2_fastq}") ] }
 						    .set{ input_fastqs }
