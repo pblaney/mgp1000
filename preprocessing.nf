@@ -183,12 +183,36 @@ if( params.input_format == "bam" ) {
 			   input_mapped_bams_forQaulimap }
 }
 
-// If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
+// FASTQ Pair Gatherer ~ properly pair all input FASTQs and create sample sheet
+process gatherInputFastqs_fastqgatherer {
+	publishDir "${params.output_dir}/preprocessing/", mode: 'copy', pattern: '*.{txt}'
+
+	output:
+	path run_fastq_samplesheet into input_fastq_sample_sheet
+
+	when:
+	params.input_format == "fastq"
+
+	script:
+	run_fastq_samplesheet = "${params.run_id}.fastq.samplesheet.txt"
+	"""
+	fastq_pair_gatherer.pl \
+	"${params.input_dir}" \
+	"${run_fastq_samplesheet}"
+	"""
+}
+
+// If input files are FASTQs, read the input FASTQ sample sheet to set correct FASTQ pairs,
+// then set channel up for both R1 and R2 reads then merge into single channel
 if( params.input_format == "fastq" ) {
-	Channel
-		.fromFilePairs( "${params.input_dir}/*R{1,2}*.f*q*", flat:true )
-		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention, check test samples for example" }
-		.set{ input_fastqs }
+	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
+						    .map{ row -> sample_id = "${row.sample_id}",
+						                 input_R1_fastq = "${row.read_1}",
+						                 input_R2_fastq = "${row.read_2}"
+						          return[ val("${sample_id}"),
+						                  file("${params.input_dir}/${input_R1_fastq}"),
+						                  file("${params.input_dir}/${input_R2_fastq}") ] }
+						    .set{ input_fastqs }
 } else {
 	Channel
 		.empty()
