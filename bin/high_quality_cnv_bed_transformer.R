@@ -64,9 +64,10 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df) {
     
     # Then find all segments that only disagree on allele balance, likely due to called LOH by Control-FREEC  
     } else if(consensus_cnv_alleles_bed_df[i,]$caller_agreement != "no_agreement" &
-    	      consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
+              consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
     
-      if(consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
+      if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "controlfreec") &
+         consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
 
         control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
                                                 pattern = "/",
@@ -85,7 +86,8 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df) {
                                                   "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
                                                   "allele_caller_agreement" = "controlfreec"))
       
-      } else if(consensus_cnv_alleles_bed_df[i,]$sclust_cn != ".") {
+      } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "sclust") &
+                consensus_cnv_alleles_bed_df[i,]$sclust_cn != ".") {
 
         sclust_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
                                          pattern = "/",
