@@ -2299,7 +2299,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -2320,6 +2320,7 @@ process svAndIndelCalling_svaba {
 	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
 	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
 	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
+	svaba_somatic_sv_unclassified_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unclassified.vcf"
 	svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unprocessed.vcf.gz"
 	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
 	sample_renaming_file = "sample_renaming_file.txt"
@@ -2341,9 +2342,10 @@ process svAndIndelCalling_svaba {
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.sv.vcf.gz" "${unfiltered_somatic_sv_vcf}"
 	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
 
-	gunzip -f "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz"
+	gunzip -c "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" > "${svaba_somatic_sv_unclassified_vcf}"
+
 	svaba_sv_classifier.py \
-	"${tumor_normal_sample_id}.svaba.somatic.sv.vcf" \
+	"${svaba_somatic_sv_unclassified_vcf}" \
 	| \
 	bgzip > "${svaba_somatic_sv_vcf}"
 
@@ -2361,7 +2363,7 @@ process filterAndPostprocessSvabaVcf_bcftools {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
 
     output:
     tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forSurvivor
@@ -2391,10 +2393,9 @@ process filterAndPostprocessSvabaVcf_bcftools {
     --samples "${tumor_id}" \
     --output-file "${final_svaba_somatic_sv_vcf}"
 
-    touch "${tumor_normal_sample_id}.svaba.missingmates.txt"
     svaba_interchromosomal_mate_finder.sh \
     "${final_svaba_somatic_sv_vcf}" \
-    "${svaba_somatic_sv_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
+    "${svaba_somatic_sv_unclassified_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
 
     cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
 
