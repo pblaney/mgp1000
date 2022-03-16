@@ -2103,7 +2103,12 @@ process svAndIndelCalling_manta {
 
 	zcat manta/results/variants/somaticSV.vcf.gz \
 	| \
-	grep -E "^#|PASS" \
+	grep -E "^#|PASS" > somaticSV.passonly.vcf
+
+	\${MANTA_DIR}/libexec/convertInversion.py \
+	\${MANTA_DIR}/libexec/samtools \
+	"${reference_genome_fasta_forManta}" \
+	somaticSV.passonly.vcf \
 	| \
 	bgzip > "${manta_somatic_sv_vcf}"
 	tabix "${manta_somatic_sv_vcf}"
