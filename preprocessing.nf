@@ -30,8 +30,8 @@ def helpMessage() {
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
 		--lane_split                   [str]  Determines if input FASTQs are lane split per R1/R2
-											  Available: yes, no
-											  Default: no
+		                                      Available: yes, no
+		                                      Default: no
 		--input_dir                    [str]  Directory that holds BAMs and associated index files
 		                                      Default: input/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
