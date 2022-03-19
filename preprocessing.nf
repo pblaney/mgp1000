@@ -191,7 +191,7 @@ if( params.input_format == "bam" ) {
 if( params.input_format == "fastq" ) {
 	Channel
 		.fromPath( "${params.input_dir}/*R{1,2}*.f*q*")
-		.flatten()
+		.collect()
 		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention, check test samples for example" }
 		.set{ input_fastqs }
 } else {
