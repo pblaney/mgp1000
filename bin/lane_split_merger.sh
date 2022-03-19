@@ -8,15 +8,16 @@ outputDirectory=$2
 mkdir -p "${outputDirectory}"
 find -L "${inputDirectory}" -maxdepth 8 -type f -name "*.fastq.gz" \
 | \
-while read F; 
+while read F
 do 
-	basename $F | sed -E 's|_00[1234].fastq.gz||';
+	basename $F | sed -E 's|_00[1234].fastq.gz||'
 done \
 | \
 sort \
 | \
 uniq \
-| while read P;
+| while read P
 do
-	find -L "${inputDirectory}" -maxdepth 8 -type f -name "${P}_00*.fastq.gz" -exec cat '{}' ';' > "${outputDirectory}/${P}.merged.fastq.gz";
+	find -L "${inputDirectory}" -maxdepth 8 -type f -name "${P}_00*.fastq.gz" -exec cat '{}' ';' > "${P}.merged.fastq.gz"
+	mv "${P}.merged.fastq.gz" "${outputDirectory}"
 done
