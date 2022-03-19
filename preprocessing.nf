@@ -191,7 +191,7 @@ if( params.input_format == "bam" ) {
 process mergeLaneSplitFastqs_mergelane {
 
 	input:
-	path params.input_dir
+	path lane_split_input_dir from "${params.input_dir}"
 
 	output:
 	path lane_merged_input_fastqs into lane_merged_fastq_dir
@@ -203,7 +203,7 @@ process mergeLaneSplitFastqs_mergelane {
 	lane_merged_input_fastqs = "lane_merged_fastqs"
 	"""
 	lane_split_merger.sh \
-	"${params.input_dir}" \
+	"${lane_split_input_dir}" \
 	"${lane_merged_input_fastqs}"
 	"""
 }
