@@ -29,6 +29,9 @@ def helpMessage() {
 		                                      environment
 		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
 		                                      previously completed tasks are skipped while maintaining their output
+		--lane_split                   [str]  Determines if input FASTQs are lane split per R1/R2
+											  Available: yes, no
+											  Default: no
 		--input_dir                    [str]  Directory that holds BAMs and associated index files
 		                                      Default: input/
 		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
@@ -67,6 +70,7 @@ params.input_dir = "${workflow.projectDir}/input"
 params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.input_format = null
+params.lane_split = "no"
 params.email = null
 params.skip_to_qc = "no"
 params.cpus = null
@@ -153,7 +157,7 @@ Channel
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 log.info ''
-log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
 log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
 log.info '################################################'
@@ -183,9 +187,38 @@ if( params.input_format == "bam" ) {
 			   input_mapped_bams_forQaulimap }
 }
 
+// Lane-Split FASTQ Merge ~ for all input lane-split FASTQs, merge into single R1/R2 FASTQ file without altering input
+process mergeLaneSplitFastqs_mergelane {
+
+	output:
+	path lane_merged_input_fastqs into lane_merged_fastq_dir
+
+	when:
+	params.input_format == "fastq" & params.lane_split == "yes"
+
+	script:
+	lane_merged_input_fastqs = "lane_merged_fastqs"
+	"""
+	lane_split_merger.sh \
+	"${params.input_dir}" \
+	"${lane_merged_input_fastqs}"
+	"""
+}
+
+// Depending on if the input FASTQs needed be lane merged before being gathered
+if( params.input_format == "fastq" & params.lane_split == "yes" ) {
+	merged_fastqs_forGathering = lane_merged_fastq_dir
+}
+else {
+	merged_fastqs_forGathering = params.input_dir
+}
+
 // FASTQ Pair Gatherer ~ properly pair all input FASTQs and create sample sheet
 process gatherInputFastqs_fastqgatherer {
 	publishDir "${params.output_dir}/preprocessing/", mode: 'copy', pattern: '*.{txt}'
+
+	input:
+	path merged_fastqs_forGathering
 
 	output:
 	path run_fastq_samplesheet into input_fastq_sample_sheet
@@ -197,7 +230,7 @@ process gatherInputFastqs_fastqgatherer {
 	run_fastq_samplesheet = "${params.run_id}.fastq.samplesheet.txt"
 	"""
 	fastq_pair_gatherer.pl \
-	"${params.input_dir}" \
+	"${merged_fastqs_forGathering}" \
 	"${run_fastq_samplesheet}"
 	"""
 }

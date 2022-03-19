@@ -16,7 +16,7 @@ sub main {
 
 	# Find all the FASTQs in the input directory
 	my $fastq_name_globs = "-name '*_R1_0*.fastq.gz' -or -name '*_R1.fastq.gz'";
-	my $fastq_find_command = "find -L $input_dir -maxdepth 5 -type f $fastq_name_globs | LC_ALL=C sort";
+	my $fastq_find_command = "find -L $input_dir -maxdepth 8 -type f $fastq_name_globs | LC_ALL=C sort";
 	my @input_fastqs = `$fastq_find_command`;
 
 	# Output sample file with paired FASTQs

@@ -423,7 +423,7 @@ if( params.vep_ref_cached == "yes" ) {
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 log.info ''
-log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
 log.info '~~~~~~~~~~~ SOMATIC VARIANT ANALYSIS ~~~~~~~~~~~'
 log.info '################################################'

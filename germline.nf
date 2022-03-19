@@ -237,7 +237,7 @@ if( params.ref_vcf_concatenated == "yes" ) {
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 log.info ''
-log.info '##### Myeloma Genome Project 1000 Pipeline #####'
+log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
 log.info '~~~~~~~~~~~ GERMLINE VARIANT ANALYSIS ~~~~~~~~~~'
 log.info '################################################'
