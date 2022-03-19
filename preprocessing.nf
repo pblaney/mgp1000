@@ -187,11 +187,31 @@ if( params.input_format == "bam" ) {
 			   input_mapped_bams_forQaulimap }
 }
 
+// If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
+if( params.input_format == "fastq" ) {
+	Channel
+		.fromPath( "${params.input_dir}/*R{1,2}*.f*q*", flat: true)
+		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention, check test samples for example" }
+		.set{ input_fastqs }
+} else {
+	Channel
+		.empty()
+		.set{ input_fastqs }
+}
+
+// Depending on if the input FASTQs needed be lane merged before being gathered
+if( params.input_format == "fastq" & params.lane_split == "yes" ) {
+	input_fastqs_forMerging = input_fastqs
+}
+else {
+	input_fastqs_forMerging = Channel.empty()
+}
+
 // Lane-Split FASTQ Merge ~ for all input lane-split FASTQs, merge into single R1/R2 FASTQ file without altering input
 process mergeLaneSplitFastqs_mergelane {
 
 	input:
-	path lane_split_input_dir from "${params.input_dir}"
+	path split_fastqs from input_fastqs_forMerging
 
 	output:
 	path lane_merged_input_fastqs into lane_merged_fastq_dir
@@ -203,17 +223,17 @@ process mergeLaneSplitFastqs_mergelane {
 	lane_merged_input_fastqs = "lane_merged_fastqs"
 	"""
 	lane_split_merger.sh \
-	"${lane_split_input_dir}" \
+	. \
 	"${lane_merged_input_fastqs}"
 	"""
 }
 
-// Depending on if the input FASTQs needed be lane merged before being gathered
+// If input FASTQs were lane merged, set as input for FASTQ gathering
 if( params.input_format == "fastq" & params.lane_split == "yes" ) {
-	merged_fastqs_forGathering = lane_merged_fastq_dir
+	fastqs_forGathering = lane_merged_fastq_dir
 }
 else {
-	merged_fastqs_forGathering = params.input_dir
+	fastqs_forGathering = input_fastqs
 }
 
 // FASTQ Pair Gatherer ~ properly pair all input FASTQs and create sample sheet
@@ -221,7 +241,7 @@ process gatherInputFastqs_fastqgatherer {
 	publishDir "${params.output_dir}/preprocessing/", mode: 'copy', pattern: '*.{txt}'
 
 	input:
-	path merged_fastqs_forGathering
+	path fastqs_forGathering
 
 	output:
 	path run_fastq_samplesheet into input_fastq_sample_sheet
