@@ -191,6 +191,7 @@ if( params.input_format == "bam" ) {
 if( params.input_format == "fastq" ) {
 	Channel
 		.fromPath( "${params.input_dir}/*R{1,2}*.f*q*")
+		.flatten()
 		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention, check test samples for example" }
 		.set{ input_fastqs }
 } else {
@@ -253,7 +254,7 @@ process gatherInputFastqs_fastqgatherer {
 	run_fastq_samplesheet = "${params.run_id}.fastq.samplesheet.txt"
 	"""
 	fastq_pair_gatherer.pl \
-	"${merged_fastqs_forGathering}" \
+	"${fastqs_forGathering}" \
 	"${run_fastq_samplesheet}"
 	"""
 }
