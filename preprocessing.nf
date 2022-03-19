@@ -190,7 +190,7 @@ if( params.input_format == "bam" ) {
 // If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
 if( params.input_format == "fastq" ) {
 	Channel
-		.fromPath( "${params.input_dir}/*R{1,2}*.f*q*", flat: true)
+		.fromPath( "${params.input_dir}/*R{1,2}*.f*q*")
 		.ifEmpty{ error "FASTQ format specified but cannot find files with expected R1/R2 naming convention, check test samples for example" }
 		.set{ input_fastqs }
 } else {
