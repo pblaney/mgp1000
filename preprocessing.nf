@@ -190,6 +190,9 @@ if( params.input_format == "bam" ) {
 // Lane-Split FASTQ Merge ~ for all input lane-split FASTQs, merge into single R1/R2 FASTQ file without altering input
 process mergeLaneSplitFastqs_mergelane {
 
+	input:
+	path params.input_dir
+
 	output:
 	path lane_merged_input_fastqs into lane_merged_fastq_dir
 
