@@ -210,6 +210,7 @@ else {
 
 // Lane-Split FASTQ Merge ~ for all input lane-split FASTQs, merge into single R1/R2 FASTQ file without altering input
 process mergeLaneSplitFastqs_mergelane {
+	publishDir "${input_dir}/laneMergedFastqs", mode: 'symlink', pattern: '*.{fastq.gz}'
 
 	input:
 	path split_fastqs from input_fastqs_forMerging
@@ -261,14 +262,23 @@ process gatherInputFastqs_fastqgatherer {
 
 // If input files are FASTQs, read the input FASTQ sample sheet to set correct FASTQ pairs,
 // then set channel up for both R1 and R2 reads then merge into single channel
-if( params.input_format == "fastq" ) {
+if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
 						    .map{ row -> sample_id = "${row.sample_id}"
 						                 input_R1_fastq = "${row.read_1}"
 						                 input_R2_fastq = "${row.read_2}"
 						          return[ "${sample_id}",
-						                  file("${input_R1_fastq}"),
-						                  file("${input_R2_fastq}") ] }
+						                  file("${params.input_dir}/laneMergedFastqs/${input_R1_fastq}"),
+						                  file("${params.input_dir}/laneMergedFastqs/${input_R2_fastq}") ] }
+						    .set{ paired_input_fastqs }
+} else if( params.input_format == "fastq" & params.lane_split == "no") {
+	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
+						    .map{ row -> sample_id = "${row.sample_id}"
+						                 input_R1_fastq = "${row.read_1}"
+						                 input_R2_fastq = "${row.read_2}"
+						          return[ "${sample_id}",
+						                  file("${params.input_dir}/${input_R1_fastq}"),
+						                  file("${params.input_dir}/${input_R2_fastq}") ] }
 						    .set{ paired_input_fastqs }
 } else {
 	Channel
