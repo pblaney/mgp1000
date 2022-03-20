@@ -269,11 +269,11 @@ if( params.input_format == "fastq" ) {
 						          return[ "${sample_id}",
 						                  file("${params.input_dir}/${input_R1_fastq}"),
 						                  file("${params.input_dir}/${input_R2_fastq}") ] }
-						    .set{ input_fastqs }
+						    .set{ paired_input_fastqs }
 } else {
 	Channel
 		.empty()
-		.set{ input_fastqs }
+		.set{ paired_input_fastqs }
 }
 
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
@@ -341,7 +341,7 @@ if( params.input_format == "bam" ) {
 	input_fastqs_forTrimming = converted_fastqs_forTrimming
 }
 else {
-	input_fastqs_forTrimming = input_fastqs
+	input_fastqs_forTrimming = paired_input_fastqs
 }
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
