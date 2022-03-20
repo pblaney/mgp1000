@@ -268,8 +268,8 @@ if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 						                 input_R1_fastq = "${row.read_1}"
 						                 input_R2_fastq = "${row.read_2}"
 						          return[ "${sample_id}",
-						                  file("${params.input_dir}/laneMergedFastqs/${input_R1_fastq}"),
-						                  file("${params.input_dir}/laneMergedFastqs/${input_R2_fastq}") ] }
+						                  file("${params.output_dir}/preprocessing/laneMergedFastqs/${input_R1_fastq}"),
+						                  file("${params.output_dir}/preprocessing/laneMergedFastqs/${input_R2_fastq}") ] }
 						    .set{ paired_input_fastqs }
 } else if( params.input_format == "fastq" & params.lane_split == "no") {
 	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
