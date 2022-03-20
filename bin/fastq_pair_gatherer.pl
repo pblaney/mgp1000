@@ -15,7 +15,7 @@ sub main {
 	chomp($input_dir);
 
 	# Find all the FASTQs in the input directory
-	my $fastq_name_globs = "-name '*_R1_0*.fastq.gz' -or -name '*_R1.fastq.gz'";
+	my $fastq_name_globs = "-name '*_R1_0*.fastq.gz' -or -name '*_R1.*fastq.gz'";
 	my $fastq_find_command = "find -L $input_dir -maxdepth 8 -type f $fastq_name_globs | LC_ALL=C sort";
 	my @input_fastqs = `$fastq_find_command`;
 
@@ -33,7 +33,7 @@ sub main {
 		# Generate the R2 FASTQ filename based on R1
 		my $read2_fastq = $read1_fastq;
 		$read2_fastq =~ s/(.*)_R1_0([0-9]+.fastq.gz)/${1}_R2_0${2}/;
-		$read2_fastq =~ s/(.*)_R1.fastq.gz/${1}_R2.fastq.gz/;
+		$read2_fastq =~ s/(.*)_R1.fastq.gz/${1}_R2.*fastq.gz/;
 
 		# Remove directory structure from reads
 		$read1_fastq =~ s/.*\///;
