@@ -19,6 +19,7 @@ uniq \
 | \
 while read P
 do
-	find -L "${inputDirectory}" -maxdepth 8 -type f -name "${P}_00*.fastq.gz" -exec cat '{}' ';' > "${P}.merged.fastq.gz"
+	find -L "${inputDirectory}" -maxdepth 8 -type f -name "${P}_00*.fastq.gz" -exec cat '{}' ';' > "${P}.unsorted.merged.fastq.gz"
+	fastq-sort --idn --temporary-directory . "${P}.unsorted.merged.fastq.gz" > "${P}.merged.fastq.gz"
 	mv "${P}.merged.fastq.gz" "${outputDirectory}"
 done
