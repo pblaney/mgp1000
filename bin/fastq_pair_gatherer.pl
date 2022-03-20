@@ -32,8 +32,8 @@ sub main {
 
 		# Generate the R2 FASTQ filename based on R1
 		my $read2_fastq = $read1_fastq;
-		$read2_fastq =~ s/(.*)_R1_0([0-9]+.fastq.gz)/${1}_R2_0${2}/;
-		$read2_fastq =~ s/(.*)_R1.fastq.gz/${1}_R2.*fastq.gz/;
+		$read2_fastq =~ s/(.*)_R1_0([0-9]+.*fastq.gz)/${1}_R2_0${2}/;
+		$read2_fastq =~ s/(.*)_R1\.(.*)fastq.gz/${1}_R2.${2}fastq.gz/;
 
 		# Remove directory structure from reads
 		$read1_fastq =~ s/.*\///;
@@ -42,16 +42,16 @@ sub main {
 		# Extract sample ID to be used as identifier for downstream processes
 		my $sample_id = $read1_fastq;
 		# First remove the trailing .fastq.gz
-		$sample_id =~ s/.fastq.gz//;
+		$sample_id =~ s/\..*fastq.gz//;
 
 		# bcl2fastq2 format (with S sample number)
-		$sample_id =~ s/_S[0-9]{1,4}_L00[0-9]_R1.*//;
+		$sample_id =~ s/_S[0-9]{1,4}_L00[0-9]_R[12]//;
 		# bcl2fastq format with 2 barcodes
-		$sample_id =~ s/_[ACTG]{6,}-[ACTG]{6,}_L00[0-9]_R1.*//;
+		$sample_id =~ s/_[ACTG]{6,}-[ACTG]{6,}_L00[0-9]_R[12]//;
 		# bcl2fastq format with 1 barcode
-		$sample_id =~ s/_[ACTG]{4,}_L00[0-9]_R1.*//;
+		$sample_id =~ s/_[ACTG]{4,}_L00[0-9]_R[12]//;
 		# no barcodes
-		$sample_id =~ s/_L00[0-9]_R[12].*//;
+		$sample_id =~ s/_L00[0-9]_R[12]//;
 		# no barcodes or lane
 		$sample_id =~ s/_R[12]//;
 
