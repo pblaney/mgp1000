@@ -36,7 +36,7 @@ sub main {
 		$read2_fastq =~ s/(.*)_R1\.(.*)fastq.gz/${1}_R2.${2}fastq.gz/;
 
 		# Remove directory structure from reads
-		$read1_fastq; =~ s/.*\///;
+		$read1_fastq =~ s/.*\///;
 		$read2_fastq =~ s/.*\///;
 
 		# Extract sample ID to be used as identifier for downstream processes

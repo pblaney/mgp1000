@@ -21,7 +21,7 @@ while read P
 do
 	find -L "${inputDirectory}" -maxdepth 8 -type f -name "${P}_00*.fastq.gz" -exec cat '{}' ';' > "${P}.unsorted.merged.fastq.gz"
 	gunzip "${P}.unsorted.merged.fastq.gz"
-	fastq-sort --temporary-directory ./tmp --idn "${P}.unsorted.merged.fastq" > "${P}.merged.fastq.gz"
+	fastq-sort --temporary-directory . --idn "${P}.unsorted.merged.fastq" > "${P}.merged.fastq.gz"
 	mv "${P}.merged.fastq.gz" "${outputDirectory}"
 	rm "${P}.unsorted.merged.fastq"
 done
