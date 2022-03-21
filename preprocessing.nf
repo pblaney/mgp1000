@@ -210,7 +210,7 @@ else {
 
 // Lane-Split FASTQ Merge ~ for all input lane-split FASTQs, merge into single R1/R2 FASTQ file without altering input
 process mergeLaneSplitFastqs_mergelane {
-	publishDir "${params.output_dir}/preprocessing/laneMergedFastqs", mode: 'symlink', pattern: '*.{fastq.gz}'
+	publishDir "${params.output_dir}/preprocessing/laneMergedFastqs", mode: 'symlink', pattern: 'lane_merged_fastqs/*.{fastq.gz}'
 
 	input:
 	path split_fastqs from input_fastqs_forMerging
