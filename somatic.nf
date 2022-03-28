@@ -2582,7 +2582,7 @@ process filterAndPostprocessDellyVcf_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-/ ~~~~~~~~~~~~~~~~ IgCaller ~~~~~~~~~~~~~~~~ \\
+// ~~~~~~~~~~~~~~~~ IgCaller ~~~~~~~~~~~~~~~ \\
 // START
 
 // Combine all reference FASTA files into one channel for use in IgCaller process
