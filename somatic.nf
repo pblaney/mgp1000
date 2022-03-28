@@ -136,6 +136,9 @@ def helpMessage() {
 		--delly                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--igcaller                     [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 
 	################################################
 
@@ -167,6 +170,7 @@ params.sclust = "on"
 params.manta = "on"
 params.svaba = "on"
 params.delly = "on"
+params.igcaller = "on"
 params.ascatngs_ploidy = null
 params.ascatngs_purity = null
 params.controlfreec_bp_threshold = 0.8
@@ -219,6 +223,7 @@ Channel
 	       reference_genome_fasta_forStrelkaBcftools;
 	       reference_genome_fasta_forSvabaBcftools;
 	       reference_genome_fasta_forDelly;
+	       reference_genome_fasta_forIgCaller;
 	       reference_genome_fasta_forConsensusSnvMpileup;
 	       reference_genome_fasta_forConsensusIndelMpileup;
 	       reference_genome_fasta_forConsensusSvFpFilter;
@@ -242,6 +247,7 @@ Channel
 	       reference_genome_fasta_index_forStrelkaBcftools;
 	       reference_genome_fasta_index_forSvabaBcftools;
 	       reference_genome_fasta_index_forDelly;
+	       reference_genome_fasta_index_forIgCaller;
 	       reference_genome_fasta_index_forConsensusSnvMpileup;
 	       reference_genome_fasta_index_forConsensusIndelMpileup;
 	       reference_genome_fasta_index_forConsensusCnv;
@@ -268,6 +274,7 @@ Channel
 	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forSvabaBcftools;
 	       reference_genome_fasta_dict_forDelly;
+	       reference_genome_fasta_dict_forIgCaller;
 	       reference_genome_fasta_dict_forConsensusSnvMpileup;
 	       reference_genome_fasta_dict_forConsensusIndelMpileup;
 	       reference_genome_fasta_dict_forAnnotation }
@@ -462,7 +469,8 @@ Channel
 	       tumor_normal_pair_forSclustBamprocess;
 	       tumor_normal_pair_forManta;
 	       tumor_normal_pair_forSvaba;
-	       tumor_normal_pair_forDelly }
+	       tumor_normal_pair_forDelly;
+	       tumor_normal_pair_forIgCaller }
 
 // Combine reference FASTA index and sex identification loci files into one channel for use in alleleCount process
 reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
@@ -506,38 +514,38 @@ process identifySampleSex_allelecount {
 
 // Telomerecat bam2length ~  estimating the average telomere length
 process telomereLengthEstimation_telomerecat {
-     publishDir "${params.output_dir}/somatic/telomerecat", mode: 'copy', pattern: '*.{csv}'
-     tag "${tumor_normal_sample_id}"
+    publishDir "${params.output_dir}/somatic/telomerecat", mode: 'copy', pattern: '*.{csv}'
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forTelomerecat
+    input:
+    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forTelomerecat
 
-     output:
-     path normal_telomere_estimates
-     path tumor_telomere_estimates
+    output:
+    path normal_telomere_estimates
+    path tumor_telomere_estimates
 
-     when:
-     params.telomerecat == "on"
+    when:
+    params.telomerecat == "on"
 
-     script:
-     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-     normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-     tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-     normal_telomere_estimates = "${normal_id}.telomerecat.csv"
-     tumor_telomere_estimates = "${tumor_id}.telomerecat.csv"
-     """
-     telomerecat bam2length \
-     -p ${task.cpus} \
-     -v 1 \
-     --output "${tumor_telomere_estimates}" \
-     "${tumor_bam}"
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+    normal_telomere_estimates = "${normal_id}.telomerecat.csv"
+    tumor_telomere_estimates = "${tumor_id}.telomerecat.csv"
+    """
+    telomerecat bam2length \
+    -p ${task.cpus} \
+    -v 1 \
+    --output "${tumor_telomere_estimates}" \
+    "${tumor_bam}"
 
-     telomerecat bam2length \
-     -p ${task.cpus} \
-     -v 1 \
-     --output "${normal_telomere_estimates}" \
-     "${normal_bam}"
-     """
+    telomerecat bam2length \
+    -p ${task.cpus} \
+    -v 1 \
+    --output "${normal_telomere_estimates}" \
+    "${normal_bam}"
+    """
 }
 
 // TelomereHunter ~ estimate telomere content and composition
@@ -1426,31 +1434,31 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 
 // Copycat ~ capture and bin the read coverage across a genome for CNV and SV support
 process binReadCoverage_copycat {
-     publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv.gz,seg}'
-     tag "${tumor_normal_sample_id}"
+    publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv.gz,seg}'
+    tag "${tumor_normal_sample_id}"
 
-     input:
-     tuple val(tumor_normal_sample_id), path(tumor_bam), path(autosome_sex_chromosome_sizes) from bam_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(autosome_sex_chromosome_sizes) from bam_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
      
-     output:
-     path tumor_copycat_coverage_csv
-     path tumor_copycat_coverage_seg
+    output:
+    path tumor_copycat_coverage_csv
+    path tumor_copycat_coverage_seg
 
-     when:
-     params.copycat == "on"
+    when:
+    params.copycat == "on"
 
-     script:
-     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-     tumor_copycat_coverage_csv = "${tumor_id}.coverage.10kb.csv.gz"
-     tumor_copycat_coverage_seg = "${tumor_id}.coverage.10kb.igv.seg"
-     """
-     copycat.sh \
-     "${tumor_bam}" \
-     "${autosome_sex_chromosome_sizes}" \
-     "${tumor_id}"
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_copycat_coverage_csv = "${tumor_id}.coverage.10kb.csv.gz"
+    tumor_copycat_coverage_seg = "${tumor_id}.coverage.10kb.igv.seg"
+    """
+    copycat.sh \
+    "${tumor_bam}" \
+    "${autosome_sex_chromosome_sizes}" \
+    "${tumor_id}"
 
-     mv "${tumor_id}.coverage.10kb.for_IGV.seg" "${tumor_copycat_coverage_seg}"
-     """
+    mv "${tumor_id}.coverage.10kb.for_IGV.seg" "${tumor_copycat_coverage_seg}"
+    """
 }
 
 // END
@@ -2567,6 +2575,49 @@ process filterAndPostprocessDellyVcf_bcftools {
     --format '%ID\t%PE\t%SR\n' \
     --output "${final_delly_somatic_sv_read_support}" \
     "${final_delly_somatic_sv_vcf}"
+    """
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+/ ~~~~~~~~~~~~~~~~ IgCaller ~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference FASTA files into one channel for use in IgCaller process
+reference_genome_fasta_forIgCaller.combine( reference_genome_fasta_index_forIgCaller )
+	.combine( reference_genome_fasta_dict_forIgCaller )
+	.set{ reference_genome_bundle_forIgCaller }
+
+// IgCaller ~ characterize the immunoglobulin gene rearrangements and oncogenic translocations
+process igRearrangementsAndTranslocations_igcaller {
+    publishDir "${params.output_dir}/somatic/igcaller", mode: 'copy', pattern: '*.{tsv}'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forIgCaller), path(reference_genome_fasta_index_forIgCaller), path(reference_genome_fasta_dict_forIgCaller) from tumor_normal_pair_forIgCaller.combine(reference_genome_bundle_forIgCaller)
+     
+    //output:
+    
+
+    when:
+    params.igcaller == "on"
+
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+    """
+    python3 \${IGCALLER_DIR}/IgCaller_v1.1.py \
+    --inputsFolder \${IGCALLER_DIR}/IgCaller_reference_files/ \
+    --genomeVersion hg38 \
+    --chromosomeAnnotation ucsc \
+    --bamN "${normal_bam}" \
+    --bamT "${tumor_bam}" \
+    --refGenome "${reference_genome_fasta_forIgCaller}" \
+    --outputPath . \
+    --numThreads ${task.cpus}
     """
 }
 
