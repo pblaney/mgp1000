@@ -2635,7 +2635,7 @@ process igRearrangementsAndTranslocations_igcaller {
     mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGL.tsv" "${igcaller_igl_tsv}"
     mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGH.tsv" "${igcaller_igh_tsv}"
     mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_filtered.tsv" "${igcaller_filtered_calls_tsv}"
-    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_oncogeneic_IG_rearrangements.tsv" "${igcaller_oncogenic_rearrangements_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_oncogenic_IG_rearrangements.tsv" "${igcaller_oncogenic_rearrangements_tsv}"
     """
 }
 
