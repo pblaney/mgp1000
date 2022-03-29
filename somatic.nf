@@ -2617,7 +2617,7 @@ process igRearrangementsAndTranslocations_igcaller {
     --bamT "${tumor_bam}" \
     --refGenome "${reference_genome_fasta_forIgCaller}" \
     --outputPath . \
-    --numThreads ${task.cpus}
+    -@ ${task.cpus}
     """
 }
 
