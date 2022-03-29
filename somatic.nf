@@ -2598,8 +2598,13 @@ process igRearrangementsAndTranslocations_igcaller {
     input:
     tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forIgCaller), path(reference_genome_fasta_index_forIgCaller), path(reference_genome_fasta_dict_forIgCaller) from tumor_normal_pair_forIgCaller.combine(reference_genome_bundle_forIgCaller)
      
-    //output:
-    
+    output:
+    path igcaller_csr_tsv
+    path igcaller_igk_tsv
+    path igcaller_igl_tsv
+    path igcaller_igh_tsv
+    path igcaller_filtered_calls_tsv
+    path igcaller_oncogenic_rearrangements_tsv
 
     when:
     params.igcaller == "on"
@@ -2608,6 +2613,12 @@ process igRearrangementsAndTranslocations_igcaller {
     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	igcaller_csr_tsv = "${tumor_normal_sample_id}.igcaller.csr.tsv"
+	igcaller_igk_tsv = "${tumor_normal_sample_id}.igcaller.igk.tsv"
+	igcaller_igl_tsv = "${tumor_normal_sample_id}.igcaller.igl.tsv"
+	igcaller_igh_tsv = "${tumor_normal_sample_id}.igcaller.igh.tsv"
+	igcaller_filtered_calls_tsv = "${tumor_normal_sample_id}.igcallerfiltered.tsv"
+	igcaller_oncogenic_rearrangements_tsv = "${tumor_normal_sample_id}.igcaller.oncogenic.rearrangements.tsv"
     """
     python3 \${IGCALLER_DIR}/IgCaller_v1.1.py \
     --inputsFolder \${IGCALLER_DIR}/IgCaller_reference_files/ \
@@ -2618,6 +2629,13 @@ process igRearrangementsAndTranslocations_igcaller {
     --refGenome "${reference_genome_fasta_forIgCaller}" \
     --outputPath . \
     -@ ${task.cpus}
+
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_CSR.tsv" "${igcaller_csr_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGK.tsv" "${igcaller_igk_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGL.tsv" "${igcaller_igl_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGH.tsv" "${igcaller_igh_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_filtered.tsv" "${igcaller_filtered_calls_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_oncogeneic_IG_rearrangements.tsv" "${igcaller_oncogenic_rearrangements_tsv}"
     """
 }
 
