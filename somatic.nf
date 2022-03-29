@@ -2617,7 +2617,7 @@ process igRearrangementsAndTranslocations_igcaller {
 	igcaller_igk_tsv = "${tumor_normal_sample_id}.igcaller.igk.tsv"
 	igcaller_igl_tsv = "${tumor_normal_sample_id}.igcaller.igl.tsv"
 	igcaller_igh_tsv = "${tumor_normal_sample_id}.igcaller.igh.tsv"
-	igcaller_filtered_calls_tsv = "${tumor_normal_sample_id}.igcallerfiltered.tsv"
+	igcaller_filtered_calls_tsv = "${tumor_normal_sample_id}.igcaller.filtered.tsv"
 	igcaller_oncogenic_rearrangements_tsv = "${tumor_normal_sample_id}.igcaller.oncogenic.rearrangements.tsv"
     """
     python3 \${IGCALLER_DIR}/IgCaller_v1.1.py \
