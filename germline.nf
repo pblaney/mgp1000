@@ -33,7 +33,7 @@ def helpMessage() {
 		                                      previously completed tasks are skipped while maintaining their output
 		--input_dir                    [str]  Directory that holds BAMs and associated index files
 		                                      Default: input/preprocessedBams/
-		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
+		--output_dir                   [str]  Directory that will hold all output files from the germline variant analysis
 		                                      Default: output/
 		--email                        [str]  Email address to send workflow completion/stoppage notification
 		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
@@ -239,7 +239,7 @@ if( params.ref_vcf_concatenated == "yes" ) {
 log.info ''
 log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
-log.info '~~~~~~~~~~~ GERMLINE VARIANT ANALYSIS ~~~~~~~~~~'
+log.info '~~~~~~~~~~~~~~~~~~~ GERMLINE ~~~~~~~~~~~~~~~~~~~'
 log.info '################################################'
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
@@ -831,6 +831,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 	--min-alleles 2 \
 	--max-alleles 2 \
 	--non-ref-ac 2 \
+	--max-missing 1.0 \
 	--plink \
 	--temp . \
 	--out "${hard_filtered_plink_file_prefix}" \

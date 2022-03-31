@@ -432,7 +432,7 @@ if( params.vep_ref_cached == "yes" ) {
 log.info ''
 log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
-log.info '~~~~~~~~~~~ SOMATIC VARIANT ANALYSIS ~~~~~~~~~~~'
+log.info '~~~~~~~~~~~~~~~~~~~ SOMATIC ~~~~~~~~~~~~~~~~~~~'
 log.info '################################################'
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
@@ -2620,7 +2620,7 @@ process igRearrangementsAndTranslocations_igcaller {
 	igcaller_filtered_calls_tsv = "${tumor_normal_sample_id}.igcaller.filtered.tsv"
 	igcaller_oncogenic_rearrangements_tsv = "${tumor_normal_sample_id}.igcaller.oncogenic.rearrangements.tsv"
     """
-    python3 \${IGCALLER_DIR}/IgCaller_v1.1.py \
+    python3 \${IGCALLER_DIR}/IgCaller.py \
     --inputsFolder \${IGCALLER_DIR}/IgCaller_reference_files/ \
     --genomeVersion hg38 \
     --chromosomeAnnotation ucsc \
