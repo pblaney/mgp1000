@@ -12,3 +12,14 @@ input
 *.f*q*
 .DS_Store
 references/.DS_Store
+references/hg38/Homo_sapiens_assembly38.fasta.64.bwt.gz
+references/hg38/Homo_sapiens_assembly38.fasta.64.sa.gz
+references/hg38/Homo_sapiens_assembly38.fasta.gz
+references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi
+references/hg38/Homo_sapiens_assembly38.fasta
+references/hg38/Homo_sapiens_assembly38.fasta.64.bwt
+references/hg38/Homo_sapiens_assembly38.fasta.64.sa
+references/hg38/af-only-gnomad.hg38.vcf.gz
+references/hg38/af-only-gnomad.hg38.vcf.gz.tbi
+references/hg38/homo_sapiens_vep_101_GRCh38/
+*.csv
