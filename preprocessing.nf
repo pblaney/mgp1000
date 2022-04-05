@@ -90,11 +90,6 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 
 if( params.input_format == null ) exit 1, "The run command issued does not have the '--input_format' parameter set. Please set the '--input_format' parameter to either bam or fastq depending on input data."
 
-// Singularity executible on $PATH check
-singularityCheckCmd = "singularity --version"
-checkOutput = singularityCheckCmd.execute().text
-if( !checkOutput =~ /singularity version */ ) exit 1, "Singularity executible 'singularity' is not on $PATH, please load a Singularity module."
-
 // Set channels for reference files
 Channel
 	.fromPath( 'references/trimmomaticContaminants.fa' )
