@@ -2,9 +2,9 @@ nextflow
 .nextflow
 .nextflow.log*
 .nextflow.pid*
-nextflow_report.html*
-timeline_report.html*
-trace.txt*
+nextflow_report.*html*
+timeline_report.*.html*
+trace.*.txt*
 work
 output
 input
@@ -12,9 +12,6 @@ input
 *.f*q*
 .DS_Store
 references/.DS_Store
-references/hg38/Homo_sapiens_assembly38.fasta.64.bwt.gz
-references/hg38/Homo_sapiens_assembly38.fasta.64.sa.gz
-references/hg38/Homo_sapiens_assembly38.fasta.gz
 references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi
 references/hg38/Homo_sapiens_assembly38.fasta
 references/hg38/Homo_sapiens_assembly38.fasta.64.bwt
