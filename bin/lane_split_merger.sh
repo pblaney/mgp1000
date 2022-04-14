@@ -19,6 +19,8 @@ uniq \
 | \
 while read P
 do
-	find -L "${inputDirectory}" -maxdepth 8 -type f -name "${P}_00*.fastq.gz" -exec cat '{}' ';' > "${P}.merged.fastq.gz"
+	splitFiles=$(find -L "${inputDirectory}" -maxdepth 8 -type f -name "${P}_00*.fastq.gz" | sort)
+    mergeCmd="cat ${splitFiles} > ${P}.merged.fastq.gz"
+    eval ${mergeCmd}
 	mv "${P}.merged.fastq.gz" "${outputDirectory}"
 done
