@@ -312,18 +312,20 @@ segment_classification_and_finalization <- function(chained_scored_resolved_df, 
       if(sex_of_sample == "male") {
       
         # Determine type
-        if(final_cnv_segments_df[i,]$consensus_total_cn > 1) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) == 2) {
           segment_type <- "gain"
-        } else if(final_cnv_segments_df[i,]$consensus_total_cn < 1) {
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) > 2) {
+          segment_type <- "amplification"
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) < 1) {
           segment_type <- "deletion"
         } else {
           segment_type <- "neutral"
         }
       
         # Determine allele status
-        if(final_cnv_segments_df[i,]$consensus_major_allele == 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) == 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "hom_del"
-        } else if(final_cnv_segments_df[i,]$consensus_major_allele != 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) != 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "loh"
         } else {
           segment_allele_status <- "het"
@@ -332,18 +334,20 @@ segment_classification_and_finalization <- function(chained_scored_resolved_df, 
       } else if(sex_of_sample == "female") {
       
         # Determine type
-        if(final_cnv_segments_df[i,]$consensus_total_cn > 2) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) == 3) {
           segment_type <- "gain"
-        } else if(final_cnv_segments_df[i,]$consensus_total_cn < 2) {
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) > 3) {
+          segment_type <- "amplification"
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) < 2) {
           segment_type <- "deletion"
         } else {
           segment_type <- "neutral"
         }
       
         # Determine allele status
-        if(final_cnv_segments_df[i,]$consensus_major_allele == 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) == 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "hom_del"
-        } else if(final_cnv_segments_df[i,]$consensus_major_allele != 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) != 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "loh"
         } else {
           segment_allele_status <- "het"
@@ -356,18 +360,20 @@ segment_classification_and_finalization <- function(chained_scored_resolved_df, 
       if(sex_of_sample == "male") {
       
         # Determine type
-        if(final_cnv_segments_df[i,]$consensus_total_cn > 1) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) == 2) {
           segment_type <- "gain"
-        } else if(final_cnv_segments_df[i,]$consensus_total_cn < 1) {
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) > 2) {
+          segment_type <- "amplification"
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) < 1) {
           segment_type <- "deletion"
         } else {
           segment_type <- "neutral"
         }
       
         # Determine allele status
-        if(final_cnv_segments_df[i,]$consensus_major_allele == 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) == 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "hom_del"
-        } else if(final_cnv_segments_df[i,]$consensus_major_allele != 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) != 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "loh"
         } else {
           segment_allele_status <- "het"
@@ -376,16 +382,18 @@ segment_classification_and_finalization <- function(chained_scored_resolved_df, 
       } else if(sex_of_sample == "female") {
       
         # Determine type
-        if(final_cnv_segments_df[i,]$consensus_total_cn > 0) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) == 1) {
           segment_type <- "gain"
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) > 1) {
+          segment_type <- "amplification"
         } else {
           segment_type <- "neutral"
         }
       
         # Determine allele status
-        if(final_cnv_segments_df[i,]$consensus_major_allele == 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) == 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "hom_del"
-        } else if(final_cnv_segments_df[i,]$consensus_major_allele != 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+        } else if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) != 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
           segment_allele_status <- "loh"
         } else {
           segment_allele_status <- "het"
@@ -395,20 +403,20 @@ segment_classification_and_finalization <- function(chained_scored_resolved_df, 
     } else {
     
       # Determine type
-      if(final_cnv_segments_df[i,]$consensus_total_cn == 3) {
+      if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) == 3) {
         segment_type <- "gain"
-      } else if(final_cnv_segments_df[i,]$consensus_total_cn > 3){
+      } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) > 3) {
         segment_type <- "amplification"
-      } else if(final_cnv_segments_df[i,]$consensus_total_cn < 2) {
+      } else if(as.numeric(final_cnv_segments_df[i,]$consensus_total_cn) < 2) {
         segment_type <- "deletion"
       } else {
         segment_type <- "neutral"
       }
     
       # Determine allele status
-      if(final_cnv_segments_df[i,]$consensus_major_allele == 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+      if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) == 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
         segment_allele_status <- "hom_del"
-      } else if(final_cnv_segments_df[i,]$consensus_major_allele != 0 & final_cnv_segments_df[i,]$consensus_minor_allele == 0) {
+      } else if(as.numeric(final_cnv_segments_df[i,]$consensus_major_allele) != 0 & as.numeric(final_cnv_segments_df[i,]$consensus_minor_allele) == 0) {
         segment_allele_status <- "loh"
       } else {
         segment_allele_status <- "het"
