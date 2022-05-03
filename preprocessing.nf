@@ -417,7 +417,6 @@ process fastqQualityControlMetrics_fastqc {
 
 // BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
-	publishDir "${params.output_dir}/preprocessing/alignmentFlagstats", mode: 'copy', pattern: "*${bam_flagstat_log}"
 	tag "${sample_id}"
 
 	input:
@@ -425,40 +424,58 @@ process alignment_bwa {
 
 	output:
 	path bam_aligned into aligned_bams
-	path bam_flagstat_log
+	tuple val(sample_id), path(bam_aligned) into aligned_bam_forFlagstats
 
 	when:
 	params.skip_to_qc == "no"
 
 	script:
 	bam_aligned = "${sample_id}.bam"
-	bam_flagstat_log = "${sample_id}.alignment.flagstat.log"
 	"""
 	bwa mem \
 	-M \
 	-K 100000000 \
 	-v 1 \
-	-t ${task.cpus - 2} \
+	-t ${task.cpus - 1} \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
 	"${fastq_R1}" "${fastq_R2}" \
 	| \
 	sambamba view \
 	--sam-input \
-	--nthreads=${task.cpus - 2} \
+	--nthreads=${task.cpus - 1} \
 	--filter='mapping_quality>=10' \
 	--format=bam \
 	--compression-level=0 \
 	/dev/stdin \
 	| \
 	sambamba sort \
-	--nthreads=${task.cpus - 2} \
+	--nthreads=${task.cpus - 1} \
 	--tmpdir=. \
 	--memory-limit=8GB \
 	--sort-by-name \
 	--out=${bam_aligned} \
 	/dev/stdin
+	"""
+}
 
+// Sambamba flagstat ~ generate read metrics after alignment
+process postAlignmentFlagstats_sambamba {
+	publishDir "${params.output_dir}/preprocessing/alignmentFlagstats", mode: 'copy', pattern: "*${bam_flagstat_log}"
+	tag "${sample_id}"
+
+	input:
+	tuple val(sample_id), path(bam_aligned) from aligned_bam_forFlagstats
+
+	output:
+	path bam_flagstat_log
+
+	when:
+	params.skip_to_qc == "no"
+
+	script:
+	bam_flagstat_log = "${sample_id}.alignment.flagstat.log"
+	"""
 	sambamba flagstat \
 	"${bam_aligned}" > "${bam_flagstat_log}"
 	"""
