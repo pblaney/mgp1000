@@ -3323,14 +3323,14 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 
 	### Prep Sclust files ###
 	# total copy number per segment
-	grep -v 'Sample' "${sclust_allelic_states_file}" \
-	| \
-	cut -f 2-4,6 > "${sclust_somatic_cnv_bed}"
+	sclust_profile_gap_filler.py \
+	<(grep -v 'Sample' "${sclust_allelic_states_file}" | cut -f 2-4,6) \
+	<(head -n 24 "${reference_genome_fasta_index_forConsensusCnv}" | cut -f 2) > "${sclust_somatic_cnv_bed}"
 
 	# major/minor alleles per segment
-	grep -v 'Sample' "${sclust_allelic_states_file}" \
-	| \
-	awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7"/"\$8}' > "${sclust_somatic_alleles_bed}"
+	sclust_profile_gap_filler.py \
+	<(grep -v 'Sample' "${sclust_allelic_states_file}" | awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7"/"\$8}') \
+	<(head -n 24 "${reference_genome_fasta_index_forConsensusCnv}" | cut -f 2) > "${sclust_somatic_alleles_bed}"
 
 
 	### Create consensus total copy number file ###
