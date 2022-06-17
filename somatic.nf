@@ -2076,6 +2076,9 @@ process cnvCalling_accucopy {
   	params.accucopy == "on"
 
   	script:
+  	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
   	accucopy_config_file = "${tumor_normal_sample_id}.accucopy.config"
   	output_dir = "${tumor_normal_sample_id}/"
   	"""
