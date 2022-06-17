@@ -2099,7 +2099,7 @@ process cnvCalling_accucopy {
   	touch "${accucopy_config_file}"
   	echo "read_length	${params.accucopy_read_length}" >> "${accucopy_config_file}"
   	echo "window_size	500" >> "${accucopy_config_file}"
-  	echo "reference_folder_path	/ref_dir" >> "${accucopy_config_file}"
+  	echo "reference_folder_path	\${PWD}/ref_dir" >> "${accucopy_config_file}"
   	echo "samtools_path	/usr/local/bin/samtools" >> "${accucopy_config_file}"
   	echo "caller_path	/usr/local/strelka" >> "${accucopy_config_file}"
   	echo "accucopy_path	/usr/local/Accucopy" >> "${accucopy_config_file}"
