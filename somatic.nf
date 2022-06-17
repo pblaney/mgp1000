@@ -127,6 +127,12 @@ def helpMessage() {
 		                                      issues with QP iterations related errors
 		                                      Available: 1e-6, 1e-5
 		                                      Default: 1e-7
+		--accucopy                     [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
+		--accucopy_read_length         [int]  Manually set the read length to be used for the Accucopy algorithm
+		                                      Available: 85, 100, 101, 150, 151 etc
+		                                      Default: 151
 		--manta                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -179,6 +185,8 @@ params.sclust_minp = 1.5
 params.sclust_maxp = 4.5
 params.sclust_mutclustering = "on"
 params.sclust_lambda = null
+params.accucopy = "on"
+params.accucopy_read_length = 151
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -218,6 +226,7 @@ Channel
 	       reference_genome_fasta_forAscatNgs;
 	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_forControlFreecCalling;
+	       reference_genome_fasta_forAccucopy;
 	       reference_genome_fasta_forManta;
 	       reference_genome_fasta_forStrelka;
 	       reference_genome_fasta_forStrelkaBcftools;
@@ -242,6 +251,7 @@ Channel
 	       reference_genome_fasta_index_forAscatNgs;
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
+	       reference_genome_fasta_index_forAccucopy;
 	       reference_genome_fasta_index_forManta;
 	       reference_genome_fasta_index_forStrelka;
 	       reference_genome_fasta_index_forStrelkaBcftools;
@@ -268,6 +278,7 @@ Channel
 	       reference_genome_fasta_dict_forAscatNgs;
 	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_dict_forControlFreecCalling;
+	       reference_genome_fasta_dict_forAccucopy;
 	       reference_genome_fasta_dict_forManta;
 	       reference_genome_fasta_dict_forStrelka;
 	       reference_genome_fasta_dict_forStrelkaBcftools;
@@ -406,6 +417,14 @@ Channel
 	.set{ dbsnp_known_indel_ref_vcf_index }
 
 Channel
+	.fromPath( 'references/hg38/snp_sites_common_1000_genomes.hg38.gz' )
+	.set{ common_1000G_snps_sites }
+
+Channel
+	.fromPath( 'references/hg38/snp_sites_common_1000_genomes.hg38.gz.tbi' )
+	.set{ common_1000G_snps_sites_index }
+
+Channel
 	.fromPath( 'references/hg38/simple_and_centromeric_repeats.hg38.bed' )
 	.into{ simple_and_centromeric_repeats_bed_forSvaba;
 		   simple_and_centromeric_repeats_bed_forSnvBedFilter;
@@ -467,6 +486,7 @@ Channel
 	       tumor_normal_pair_forMutectPileup;
 	       tumor_normal_pair_forControlFreecSamtoolsMpileup;
 	       tumor_normal_pair_forSclustBamprocess;
+	       tumor_normal_pair_forAccucopy;
 	       tumor_normal_pair_forManta;
 	       tumor_normal_pair_forSvaba;
 	       tumor_normal_pair_forDelly;
@@ -2025,6 +2045,70 @@ process mutationalClustering_sclust {
 	mv "${tumor_normal_sample_id}_mcluster.pdf" "${mutation_clusters_pdf}"
 	mv "${tumor_normal_sample_id}_cluster_assignments.txt" "${cluster_assignment_file}"
 	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~ Accucopy ~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine reference FASTA and 1000 Genomes common SNPs file into one channel for use in Accucopy process
+reference_genome_fasta_forAccucopy.combine( reference_genome_fasta_index_forAccucopy )
+  .combine( reference_genome_fasta_dict_forAccucopy )
+  .combine( common_1000G_snps_sites )
+  .combine( common_1000G_snps_sites_index )
+  .set{ ref_genome_and_snp_sites_forAccucopy }
+
+// Accucopy ~ inference of allele-specific copy number alterations
+process cnvCalling_accucopy {
+  publishDir "${params.output_dir}/somatic/accucopy", mode: 'copy'
+  tag "${tumor_normal_sample_id}"
+
+  input:
+  tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forAccucopy), path(reference_genome_fasta_index_forAccucopy), path(reference_genome_fasta_dict_forAccucopy), path(common_1000G_snps_sites), path(common_1000G_snps_sites_index) from tumor_normal_pair_forAccucopy.combine(ref_genome_and_snp_sites_forAccucopy)
+
+  output:
+  path output_dir
+
+  when:
+  params.accucopy == "on"
+
+  script:
+  accucopy_config_file = "${tumor_normal_sample_id}.accucopy.config"
+  output_dir = "${tumor_normal_sample_id}/"
+  """
+  #if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+  #  cp "${tumor_bam_index}" "${tumor_bam}.bai"
+  #fi
+  #if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+  #  cp "${normal_bam_index}" "${normal_bam}.bai"
+  #fi
+
+  mkdir -p ref_dir/
+  cp "${reference_genome_fasta_forAccucopy}" ref_dir/genome.fa
+  cp "${reference_genome_fasta_index_forAccucopy}" ref_dir/genome.fa.fai
+  cp "${reference_genome_fasta_dict_forAccucopy}" ref_dir/genome.dict
+  cp "${common_1000G_snps_sites}" ref_dir/snp_sites.gz
+  cp "${common_1000G_snps_sites_index}" ref_dir/snp_sites.gz.tbi
+
+  touch "${accucopy_config_file}"
+  echo "read_length ${params.accucopy_read_length}" >> "${accucopy_config_file}"
+  echo "window_size 500" >> "${accucopy_config_file}"
+  echo "reference_folder_path /ref_dir" >> "${accucopy_config_file}"
+  echo "samtools_path /usr/local/bin/samtools" >> "${accucopy_config_file}"
+  echo "caller_path /usr/local/strelka" >> "${accucopy_config_file}"
+  echo "accucopy_path /usr/local/Accucopy" >> "${accucopy_config_file}"
+
+  \${ACCUCOPY_DIR}/main.py \
+  --configure_filepath ${accucopy_config_file} \
+  --tumor_bam "${tumor_bam}" \
+  --normal_bam "${normal_bam}" \
+  --output_dir "${output_dir}" \
+  --nCores "${task.cpus}" \
+  --debug 1
+  """
 }
 
 // END
