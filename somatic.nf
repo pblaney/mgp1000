@@ -2056,59 +2056,59 @@ process mutationalClustering_sclust {
 
 // Combine reference FASTA and 1000 Genomes common SNPs file into one channel for use in Accucopy process
 reference_genome_fasta_forAccucopy.combine( reference_genome_fasta_index_forAccucopy )
-  .combine( reference_genome_fasta_dict_forAccucopy )
-  .combine( common_1000G_snps_sites )
-  .combine( common_1000G_snps_sites_index )
-  .set{ ref_genome_and_snp_sites_forAccucopy }
+	.combine( reference_genome_fasta_dict_forAccucopy )
+	.combine( common_1000G_snps_sites )
+	.combine( common_1000G_snps_sites_index )
+	.set{ ref_genome_and_snp_sites_forAccucopy }
 
 // Accucopy ~ inference of allele-specific copy number alterations
 process cnvCalling_accucopy {
-  publishDir "${params.output_dir}/somatic/accucopy", mode: 'copy'
-  tag "${tumor_normal_sample_id}"
+	publishDir "${params.output_dir}/somatic/accucopy", mode: 'copy'
+  	tag "${tumor_normal_sample_id}"
 
-  input:
-  tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forAccucopy), path(reference_genome_fasta_index_forAccucopy), path(reference_genome_fasta_dict_forAccucopy), path(common_1000G_snps_sites), path(common_1000G_snps_sites_index) from tumor_normal_pair_forAccucopy.combine(ref_genome_and_snp_sites_forAccucopy)
+  	input:
+  	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forAccucopy), path(reference_genome_fasta_index_forAccucopy), path(reference_genome_fasta_dict_forAccucopy), path(common_1000G_snps_sites), path(common_1000G_snps_sites_index) from tumor_normal_pair_forAccucopy.combine(ref_genome_and_snp_sites_forAccucopy)
 
-  output:
-  path output_dir
+  	output:
+  	path output_dir
 
-  when:
-  params.accucopy == "on"
+  	when:
+  	params.accucopy == "on"
 
-  script:
-  accucopy_config_file = "${tumor_normal_sample_id}.accucopy.config"
-  output_dir = "${tumor_normal_sample_id}/"
-  """
-  #if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
-  #  cp "${tumor_bam_index}" "${tumor_bam}.bai"
-  #fi
-  #if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
-  #  cp "${normal_bam_index}" "${normal_bam}.bai"
-  #fi
+  	script:
+  	accucopy_config_file = "${tumor_normal_sample_id}.accucopy.config"
+  	output_dir = "${tumor_normal_sample_id}/"
+  	"""
+  	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
+    	cp "${tumor_bam_index}" "${tumor_bam}.bai"
+  	fi
+  	if [[ ! "${normal_bam_index}" =~ .bam.bai\$ ]]; then
+    	cp "${normal_bam_index}" "${normal_bam}.bai"
+  	fi
 
-  mkdir -p ref_dir/
-  cp "${reference_genome_fasta_forAccucopy}" ref_dir/genome.fa
-  cp "${reference_genome_fasta_index_forAccucopy}" ref_dir/genome.fa.fai
-  cp "${reference_genome_fasta_dict_forAccucopy}" ref_dir/genome.dict
-  cp "${common_1000G_snps_sites}" ref_dir/snp_sites.gz
-  cp "${common_1000G_snps_sites_index}" ref_dir/snp_sites.gz.tbi
+  	mkdir -p ref_dir/
+  	cp "${reference_genome_fasta_forAccucopy}" ref_dir/genome.fa
+  	cp "${reference_genome_fasta_index_forAccucopy}" ref_dir/genome.fa.fai
+  	cp "${reference_genome_fasta_dict_forAccucopy}" ref_dir/genome.dict
+  	cp "${common_1000G_snps_sites}" ref_dir/snp_sites.gz
+  	cp "${common_1000G_snps_sites_index}" ref_dir/snp_sites.gz.tbi
 
-  touch "${accucopy_config_file}"
-  echo "read_length ${params.accucopy_read_length}" >> "${accucopy_config_file}"
-  echo "window_size 500" >> "${accucopy_config_file}"
-  echo "reference_folder_path /ref_dir" >> "${accucopy_config_file}"
-  echo "samtools_path /usr/local/bin/samtools" >> "${accucopy_config_file}"
-  echo "caller_path /usr/local/strelka" >> "${accucopy_config_file}"
-  echo "accucopy_path /usr/local/Accucopy" >> "${accucopy_config_file}"
+  	touch "${accucopy_config_file}"
+  	echo "read_length	${params.accucopy_read_length}" >> "${accucopy_config_file}"
+  	echo "window_size	500" >> "${accucopy_config_file}"
+  	echo "reference_folder_path	/ref_dir" >> "${accucopy_config_file}"
+  	echo "samtools_path	/usr/local/bin/samtools" >> "${accucopy_config_file}"
+  	echo "caller_path	/usr/local/strelka" >> "${accucopy_config_file}"
+  	echo "accucopy_path	/usr/local/Accucopy" >> "${accucopy_config_file}"
 
-  \${ACCUCOPY_DIR}/main.py \
-  --configure_filepath ${accucopy_config_file} \
-  --tumor_bam "${tumor_bam}" \
-  --normal_bam "${normal_bam}" \
-  --output_dir "${output_dir}" \
-  --nCores "${task.cpus}" \
-  --debug 1
-  """
+  	\${ACCUCOPY_DIR}/main.py \
+  	--configure_filepath ${accucopy_config_file} \
+  	--tumor_bam "${tumor_bam}" \
+  	--normal_bam "${normal_bam}" \
+  	--output_dir "${output_dir}" \
+  	--nCores "${task.cpus}" \
+  	--debug 1
+  	"""
 }
 
 // END
