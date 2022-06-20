@@ -2070,7 +2070,15 @@ process cnvCalling_accucopy {
   	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forAccucopy), path(reference_genome_fasta_index_forAccucopy), path(reference_genome_fasta_dict_forAccucopy), path(common_1000G_snps_sites), path(common_1000G_snps_sites_index) from tumor_normal_pair_forAccucopy.combine(ref_genome_and_snp_sites_forAccucopy)
 
   	output:
-  	path output_dir
+  	path accucopy_config_file
+  	path accucopy_run_summary
+  	path accucopy_detailed_run_status_log
+  	path accucopy_cnv_profile
+  	path accucopy_cnv_png
+  	path accucopy_tre_png
+  	path accucopy_het_snps
+  	path accucopy_segments
+  	path "${tumor_normal_sample_id}/chr*.ratio.*.csv.gz"
 
   	when:
   	params.accucopy == "on"
@@ -2080,7 +2088,13 @@ process cnvCalling_accucopy {
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
   	accucopy_config_file = "${tumor_normal_sample_id}.accucopy.config"
-  	output_dir = "${tumor_normal_sample_id}/"
+  	accucopy_run_summary = "${tumor_normal_sample_id}/${tumor_normal_sample_id}.accucopy.summary.txt"
+	accucopy_detailed_run_status_log = "${tumor_normal_sample_id}/${tumor_normal_sample_id}.accucopy.status.txt"
+	accucopy_cnv_profile = "${tumor_normal_sample_id}/${tumor_normal_sample_id}.accucopy.cnv.txt"
+	accucopy_cnv_png = "${tumor_normal_sample_id}/${tumor_normal_sample_id}.accucopy.cnv.png"
+	accucopy_tre_png = "${tumor_normal_sample_id}/${tumor_normal_sample_id}.accucopy.tre.png"
+	accucopy_het_snps = "${tumor_normal_sample_id}/${tumor_normal_sample_id}.accucopy.het.snps.txt.gz"
+	accucopy_segments = "${tumor_normal_sample_id}/${tumor_normal_sample_id}.accucopy.segments.txt.gz"
   	"""
   	if [[ ! "${tumor_bam_index}" =~ .bam.bai\$ ]]; then
     	cp "${tumor_bam_index}" "${tumor_bam}.bai"
@@ -2108,9 +2122,17 @@ process cnvCalling_accucopy {
   	--configure_filepath ${accucopy_config_file} \
   	--tumor_bam "${tumor_bam}" \
   	--normal_bam "${normal_bam}" \
-  	--output_dir "${output_dir}" \
+  	--output_dir "${tumor_normal_sample_id}/" \
   	--nCores "${task.cpus}" \
   	--debug 1
+
+  	mv "${tumor_normal_sample_id}/infer.out.tsv" "${accucopy_run_summary}"
+	mv "${tumor_normal_sample_id}/infer.status.txt" "${accucopy_detailed_run_status_log}"
+	mv "${tumor_normal_sample_id}/cnv.output.tsv" "${accucopy_cnv_profile}"
+	mv "${tumor_normal_sample_id}/plot.cnv.png" "${accucopy_cnv_png}"
+	mv "${tumor_normal_sample_id}/plot.tre.png" "${accucopy_tre_png}"
+	mv "${tumor_normal_sample_id}/het_snp.tsv.gz" "${accucopy_het_snps}"
+	mv "${tumor_normal_sample_id}/all_segments.tsv.gz" "${accucopy_segments}"
   	"""
 }
 
