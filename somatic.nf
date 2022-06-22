@@ -2070,7 +2070,7 @@ process cnvCalling_accucopy {
   	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forAccucopy), path(reference_genome_fasta_index_forAccucopy), path(reference_genome_fasta_dict_forAccucopy), path(common_1000G_snps_sites), path(common_1000G_snps_sites_index) from tumor_normal_pair_forAccucopy.combine(ref_genome_and_snp_sites_forAccucopy)
 
   	output:
-  	path accucopy_config_file
+  	path "${tumor_normal_sample_id}/${accucopy_config_file}"
   	path accucopy_run_summary
   	path accucopy_detailed_run_status_log
   	path accucopy_cnv_profile
@@ -2126,6 +2126,7 @@ process cnvCalling_accucopy {
   	--nCores "${task.cpus}" \
   	--debug 1
 
+  	cp "${accucopy_config_file}" "${tumor_normal_sample_id}/${accucopy_config_file}"
   	mv "${tumor_normal_sample_id}/infer.out.tsv" "${accucopy_run_summary}"
 	mv "${tumor_normal_sample_id}/infer.status.txt" "${accucopy_detailed_run_status_log}"
 	mv "${tumor_normal_sample_id}/cnv.output.tsv" "${accucopy_cnv_profile}"
@@ -3390,7 +3391,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
 	when:
-	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
+	params.ascatngs == "on" && params.controlfreec == "on" && params.sclust == "on"
 
 	script:
 	ascat_somatic_cnv_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.bed"
@@ -3484,7 +3485,7 @@ process highQualityTransformConsensusCnvs_tidyverse {
     tuple val(tumor_normal_sample_id), path(hq_consensus_cnv_bed) into hq_consensus_cnv_bed_forAnnotation
 
     when:
-    params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
+    params.ascatngs == "on" && params.controlfreec == "on" && params.sclust == "on"
 
     script:
     hq_consensus_cnv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.bed"
@@ -3541,7 +3542,7 @@ process annotateConsensusCnvCalls_annotsv {
     path hq_consensus_cnv_annotated_bed
 
     when:
-    params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on"
+    params.ascatngs == "on" && params.controlfreec == "on" && params.sclust == "on"
 
     script:
     hq_consensus_cnv_annotated_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.annotated.bed"
