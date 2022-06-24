@@ -2070,7 +2070,7 @@ process cnvCalling_accucopy {
   	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forAccucopy), path(reference_genome_fasta_index_forAccucopy), path(reference_genome_fasta_dict_forAccucopy), path(common_1000G_snps_sites), path(common_1000G_snps_sites_index) from tumor_normal_pair_forAccucopy.combine(ref_genome_and_snp_sites_forAccucopy)
 
   	output:
-  	tuple val(tumor_normal_sample_id), path(accucopy_cnv_profile) into accucopy_cnv_profile_forPostprocessing
+  	tuple val(tumor_normal_sample_id), path(accucopy_cnv_profile) into accucopy_cnv_profile_forConsensusPrep
   	path "${tumor_normal_sample_id}/${accucopy_config_file}"
   	path accucopy_run_summary
   	path accucopy_detailed_run_status_log
@@ -2137,12 +2137,12 @@ process cnvCalling_accucopy {
   	"""
 }
 
-// Accucopy Postprocessing ~ extract and prepare CNV output for consensus
-process cnvPostprocessing_accucopy {
+// Accucopy Consensus CNV Prep ~ extract and prepare CNV output for consensus
+process consensusCnvPrep_accucopy {
   	tag "${tumor_normal_sample_id}"
 
   	input:
-  	tuple val(tumor_normal_sample_id), path(accucopy_cnv_profile) from accucopy_cnv_profile_forPostprocessing
+  	tuple val(tumor_normal_sample_id), path(accucopy_cnv_profile) from accucopy_cnv_profile_forConsensusPrep
 
   	output:
   	tuple val(tumor_normal_sample_id), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed)
