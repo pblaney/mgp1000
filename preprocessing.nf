@@ -436,21 +436,21 @@ process alignment_bwa {
 	-M \
 	-K 100000000 \
 	-v 1 \
-	-t ${task.cpus} \
+	-t ${task.cpus - 2} \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
 	"${fastq_R1}" "${fastq_R2}" \
 	| \
 	sambamba view \
 	--sam-input \
-	--nthreads=${task.cpus} \
+	--nthreads=${task.cpus - 2} \
 	--filter='mapping_quality>=10' \
 	--format=bam \
 	--compression-level=0 \
 	/dev/stdin \
 	| \
 	sambamba sort \
-	--nthreads=${task.cpus} \
+	--nthreads=${task.cpus - 2} \
 	--tmpdir=. \
 	--memory-limit=8GB \
 	--sort-by-name \
