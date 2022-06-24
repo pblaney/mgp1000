@@ -1503,7 +1503,7 @@ process cnvCalling_ascatngs {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(reference_genome_fasta_forAscatNgs), path(reference_genome_fasta_index_forAscatNgs), path(reference_genome_fasta_dict_forAscatNgs), path(snp_gc_corrections) from bams_and_sex_of_sample_forAscatNgs.combine(reference_genome_and_snpgc_forAscatNgs)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) into final_ascat_cnv_profile_forConsensus
+	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) into final_ascat_cnv_profile_forConsensusPrep
 	tuple val(tumor_normal_sample_id), path(ascat_run_statistics) into ascat_output_forConsensusMetadata
 	path ascat_cnv_profile_vcf
 	path ascat_cnv_profile_vcf_index
@@ -1565,6 +1565,35 @@ process cnvCalling_ascatngs {
 	echo "segment_number,chromosome,start_position,end_position,normal_total_copy_number,normal_minor_copy_number,tumor_total_copy_number,tumor_minor_copy_number" >> "${ascat_cnv_profile_final}"
 	cat "${tumor_id}.copynumber.caveman.csv" >> "${ascat_cnv_profile_final}"
 	"""
+}
+
+// ascatNGS Consensus CNV Prep ~ extract and prepare CNV output for consensus
+process consensusCnvPrep_ascatngs {
+  	tag "${tumor_normal_sample_id}"
+
+  	input:
+  	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) from final_ascat_cnv_profile_forConsensusPrep
+
+  	output:
+  	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed)
+
+  	when:
+  	params.ascatngs == "on"
+
+  	script:
+  	ascat_somatic_cnv_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.bed"
+  	ascat_somatic_alleles_bed = "${tumor_normal_sample_id}.ascat.somatic.alleles.bed"
+  	"""
+  	# total copy number per segment
+  	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
+  	| \
+  	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${ascat_somatic_cnv_bed}"
+
+  	# major/minor alleles per segment
+  	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
+  	| \
+  	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7-\$8"/"\$8}' > "${ascat_somatic_alleles_bed}"
+  	"""
 }
 
 // END
@@ -3413,17 +3442,15 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forConsensusCnv) from final_ascat_cnv_profile_forConsensus.join(final_control_freec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).combine(reference_genome_fasta_index_forConsensusCnv)
+	tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forConsensusCnv) from final_control_freec_cnv_profile_forConsensus.join(final_sclust_cnv_profile_forConsensus).combine(reference_genome_fasta_index_forConsensusCnv)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
 	when:
-	params.ascatngs == "on" && params.controlfreec == "on" && params.sclust == "on"
+	params.controlfreec == "on" && params.sclust == "on"
 
 	script:
-	ascat_somatic_cnv_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.bed"
-	ascat_somatic_alleles_bed = "${tumor_normal_sample_id}.ascat.somatic.alleles.bed"
 	control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
 	control_freec_somatic_alleles_bed = "${tumor_normal_sample_id}.controlfreec.somatic.alleles.bed"
 	sclust_somatic_cnv_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.bed"
@@ -3434,18 +3461,6 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	consensus_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.alleles.bed"
 	consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.alleles.merged.bed"
 	"""
-	### Prep ASCAT files ###
-	# total copy number per segment
-	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
-	| \
-	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${ascat_somatic_cnv_bed}"
-
-	# major/minor alleles per segment
-	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
-	| \
-	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7-\$8"/"\$8}' > "${ascat_somatic_alleles_bed}"
-
-
 	### Prep Control-FREEC files ###
 	control_freec_cnv_and_allele_preparer.sh \
 	"${tumor_normal_sample_id}" \
