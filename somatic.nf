@@ -2070,10 +2070,10 @@ process cnvCalling_accucopy {
   	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forAccucopy), path(reference_genome_fasta_index_forAccucopy), path(reference_genome_fasta_dict_forAccucopy), path(common_1000G_snps_sites), path(common_1000G_snps_sites_index) from tumor_normal_pair_forAccucopy.combine(ref_genome_and_snp_sites_forAccucopy)
 
   	output:
+  	tuple val(tumor_normal_sample_id), path(accucopy_cnv_profile) into accucopy_cnv_profile_forPostprocessing
   	path "${tumor_normal_sample_id}/${accucopy_config_file}"
   	path accucopy_run_summary
   	path accucopy_detailed_run_status_log
-  	path accucopy_cnv_profile
   	path accucopy_cnv_png
   	path accucopy_tre_png
   	path accucopy_het_snps
@@ -2134,6 +2134,34 @@ process cnvCalling_accucopy {
 	mv "${tumor_normal_sample_id}/plot.tre.png" "${accucopy_tre_png}"
 	mv "${tumor_normal_sample_id}/het_snp.tsv.gz" "${accucopy_het_snps}"
 	mv "${tumor_normal_sample_id}/all_segments.tsv.gz" "${accucopy_segments}"
+  	"""
+}
+
+// Accucopy Postprocessing ~ extract and prepare CNV output for consensus
+process cnvPostprocessing_accucopy {
+  	tag "${tumor_normal_sample_id}"
+
+  	input:
+  	tuple val(tumor_normal_sample_id), path(accucopy_cnv_profile) from accucopy_cnv_profile_forPostprocessing
+
+  	output:
+  	tuple val(tumor_normal_sample_id), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed)
+  	tuple val(tumor_normal_sample_id), path(accucopy_subclones_file)
+
+  	when:
+  	params.accucopy == "on"
+
+  	script:
+  	accucopy_somatic_cnv_bed = "${tumor_normal_sample_id}.accucopy.somatic.cnv.bed"
+  	accucopy_somatic_alleles_bed = "${tumor_normal_sample_id}.accucopy.somatic.alleles.bed"
+  	accucopy_subclones_file = "${tumor_normal_sample_id}.accucopy.subclones.txt"
+  	"""
+  	accucopy_cnv_profile_postprocessor.sh \
+  	"${accucopy_cnv_profile}" \
+  	"${tumor_normal_sample_id}" \
+  	"${accucopy_subclones_file}" \
+  	"${accucopy_somatic_cnv_bed}" \
+  	"${accucopy_somatic_alleles_bed}"
   	"""
 }
 
