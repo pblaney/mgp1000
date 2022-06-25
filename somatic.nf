@@ -3491,17 +3491,15 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forConsensusCnv) from final_control_freec_cnv_profile_forConsensus.join(final_sclust_cnv_profile_forConsensus).combine(reference_genome_fasta_index_forConsensusCnv)
+	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forConsensusCnv) from final_sclust_cnv_profile_forConsensus.combine(reference_genome_fasta_index_forConsensusCnv)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
 	when:
-	params.controlfreec == "on" && params.sclust == "on"
+	params.sclust == "on"
 
 	script:
-	control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
-	control_freec_somatic_alleles_bed = "${tumor_normal_sample_id}.controlfreec.somatic.alleles.bed"
 	sclust_somatic_cnv_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.bed"
 	sclust_somatic_alleles_bed = "${tumor_normal_sample_id}.sclust.somatic.alleles.bed"
 	merged_cnv_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.bed"
@@ -3510,19 +3508,6 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	consensus_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.alleles.bed"
 	consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.alleles.merged.bed"
 	"""
-	### Prep Control-FREEC files ###
-	control_freec_cnv_and_allele_preparer.sh \
-	"${tumor_normal_sample_id}" \
-	"${control_freec_cnv_profile_final}" \
-	"${control_freec_bedgraph}" \
-	"${reference_genome_fasta_index_forConsensusCnv}"
-
-	control_freec_segment_refiner.py \
-	"${tumor_normal_sample_id}.controlfreec.complete.cnv.alleles.merged.bed" \
-	"${control_freec_somatic_alleles_bed}" \
-	"${control_freec_somatic_cnv_bed}"
-
-
 	### Prep Sclust files ###
 	# total copy number per segment
 	sclust_profile_gap_filler.py \
