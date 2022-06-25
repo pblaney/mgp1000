@@ -1745,6 +1745,7 @@ process cnvCalling_controlfreec {
 	control_freec_bedgraph = "${tumor_normal_sample_id}.controlfreec.ratio.bedGraph"
 	"""
 	unzip -q "${mappability_track_zip}"
+	gemFile=\$(ls -1 *.gem)
 	sex=\$(cut -d ' ' -f 2 "${sex_of_sample_forControlFreecCalling}")
 
 	touch "${control_freec_config_file}"
@@ -1756,7 +1757,7 @@ process cnvCalling_controlfreec {
 	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${control_freec_config_file}"
 	echo "contaminationAdjustment = TRUE" >> "${control_freec_config_file}"
 	echo "forceGCcontentNormalization = 1" >> "${control_freec_config_file}"
-	echo "gemMappabilityFile = \${PWD}/out100m2_hg38.gem" >> "${control_freec_config_file}"
+	echo "gemMappabilityFile = \${PWD}/${gemFile}" >> "${control_freec_config_file}"
 	echo "minimalSubclonePresence = 20" >> "${control_freec_config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${control_freec_config_file}"
 	echo "ploidy = ${control_freec_ploidy}" >> "${control_freec_config_file}"
