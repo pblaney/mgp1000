@@ -3483,6 +3483,9 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+
+/*
+
 // ~~~~~~~~~~ CONSENSUS CNV BED ~~~~~~~~~~~~ \\
 // START
 
@@ -3491,7 +3494,7 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forConsensusCnv) from final_sclust_cnv_profile_forConsensus.combine(reference_genome_fasta_index_forConsensusCnv)
+	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file) from final_sclust_cnv_profile_forConsensus
 
 	output:
 	tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
@@ -3677,6 +3680,9 @@ process mergeSubclonalCnvCalls {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+*/
+
 
 
 // ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
