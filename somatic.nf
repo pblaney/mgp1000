@@ -49,6 +49,9 @@ def helpMessage() {
 		                                      done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
+		--read_length                  [int]  Manually set the read length to be used for the Accucopy algorithm and mappability track for Control-FREEC
+		                                      Available: 85, 100, 101, 150, 151 etc
+		                                      Default: 100
 		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes that allow for multithreading
 		                                      Available: 2, 4, 8, 16, etc.
 		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
@@ -130,9 +133,6 @@ def helpMessage() {
 		--accucopy                     [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
-		--accucopy_read_length         [int]  Manually set the read length to be used for the Accucopy algorithm
-		                                      Available: 85, 100, 101, 150, 151 etc
-		                                      Default: 151
 		--manta                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -163,6 +163,7 @@ params.email = null
 params.mutect_ref_vcf_concatenated = "yes"
 params.annotsv_ref_cached = "yes"
 params.vep_ref_cached = "yes"
+params.read_length = 100
 params.telomerecat = "on"
 params.telomerehunter = "on"
 params.conpair = "on"
@@ -186,7 +187,6 @@ params.sclust_maxp = 4.5
 params.sclust_mutclustering = "on"
 params.sclust_lambda = null
 params.accucopy = "on"
-params.accucopy_read_length = 151
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -251,6 +251,7 @@ Channel
 	       reference_genome_fasta_index_forAscatNgs;
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
+	       reference_genome_fasta_index_forControlFreecConsensusPrep;
 	       reference_genome_fasta_index_forAccucopy;
 	       reference_genome_fasta_index_forManta;
 	       reference_genome_fasta_index_forStrelka;
@@ -260,7 +261,6 @@ Channel
 	       reference_genome_fasta_index_forIgCaller;
 	       reference_genome_fasta_index_forConsensusSnvMpileup;
 	       reference_genome_fasta_index_forConsensusIndelMpileup;
-	       reference_genome_fasta_index_forConsensusCnv;
 	       reference_genome_fasta_index_forConsensusSvFpFilter;
 	       reference_genome_fasta_index_forAnnotation }
 
@@ -398,8 +398,16 @@ Channel
 	.set{ common_dbsnp_ref_vcf_index }
 
 Channel
+	.fromPath( 'references/hg38/mappability_track_85m2.hg38.zip' )
+	.set{ mappability_track_85kmer_zip }
+
+Channel
 	.fromPath( 'references/hg38/mappability_track_100m2.hg38.zip' )
-	.set{ mappability_track_zip }
+	.set{ mappability_track_100kmer_zip }
+
+Channel
+	.fromPath( 'references/hg38/mappability_track_150m2.hg38.zip' )
+	.set{ mappability_track_150kmer_zip }
 
 Channel
 	.fromPath( ['references/hg38/Homo_sapiens_assembly38.fasta', 'references/hg38/Homo_sapiens_assembly38.fasta.fai',
@@ -461,6 +469,8 @@ log.info ''
 log.info "~~~ Output Directory ~~~	${params.output_dir}"
 log.info ''
 log.info "~~~ Run Report File ~~~		nextflow_report.${params.run_id}.html"
+log.info ''
+log.info "~~~ Read Length ~~~		${params.read_length}"
 log.info ''
 log.info '################################################'
 log.info ''
@@ -1682,6 +1692,15 @@ process mergeMpileupsForControlFreec_samtools {
 	"""
 }
 
+// Set the mappability track for Control-FREEC based on user-defined read length
+if( params.read_length < 100 ) {
+  	mappability_track_zip = mappability_track_85kmer_zip
+} else if( params.read_length < 150 ) {
+  	mappability_track_zip = mappability_track_100kmer_zip
+} else {
+  	mappability_track_zip = mappability_track_150kmer_zip
+}
+
 // Combine mpileup input files with the sample sex identity then all reference files into one channel for use in Control-FREEC
 tumor_normal_pileups_forControlFreecCalling.join( sex_of_sample_forControlFreecCalling )
 	.set{ tumor_normal_pileups_and_sex_ident }
@@ -1782,7 +1801,7 @@ process cnvPredictionPostProcessing_controlfreec {
 	tuple val(tumor_normal_sample_id), path(cnv_profile_raw), path(cnv_ratio_file), path(baf_file), path(control_freec_bedgraph) from cnv_calling_files_forControlFreecPostProcessing
 
 	output:
-	tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final) into final_control_freec_cnv_profile_forConsensus
+	tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final) into final_control_freec_cnv_profile_forConsensusPrep
 	path ratio_graph_png
 	path ratio_log2_graph_png
 	path baf_graph_png
@@ -1807,6 +1826,36 @@ process cnvPredictionPostProcessing_controlfreec {
 
 	perl \${CONTROLFREEC_DIR}/scripts/freec2bed.pl -f "${cnv_ratio_file}" > "${control_freec_cnv_ratio_bed_file}"
 	"""
+}
+
+// Control-FREEC Consensus CNV Prep ~ extract and prepare CNV output for consensus
+process consensusCnvPrep_controlfreec {
+  tag "${tumor_normal_sample_id}"
+
+  input:
+  tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(reference_genome_fasta_index_forControlFreecConsensusPrep) into final_control_freec_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forControlFreecConsensusPrep)
+
+  output:
+  tuple val(tumor_normal_sample_id), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed)
+
+  when:
+  params.controlfreec == "on"
+
+  script:
+  control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
+  control_freec_somatic_alleles_bed = "${tumor_normal_sample_id}.controlfreec.somatic.alleles.bed"
+  """
+  control_freec_cnv_and_allele_preparer.sh \
+  "${tumor_normal_sample_id}" \
+  "${control_freec_cnv_profile_final}" \
+  "${control_freec_bedgraph}" \
+  "${reference_genome_fasta_index_forControlFreecConsensusPrep}"
+
+  control_freec_segment_refiner.py \
+  "${tumor_normal_sample_id}.controlfreec.complete.cnv.alleles.merged.bed" \
+  "${control_freec_somatic_alleles_bed}" \
+  "${control_freec_somatic_cnv_bed}"
+  """
 }
 
 // END
@@ -2140,7 +2189,7 @@ process cnvCalling_accucopy {
   	cp "${common_1000G_snps_sites_index}" ref_dir/snp_sites.gz.tbi
 
   	touch "${accucopy_config_file}"
-  	echo "read_length	${params.accucopy_read_length}" >> "${accucopy_config_file}"
+  	echo "read_length	${params.read_length}" >> "${accucopy_config_file}"
   	echo "window_size	500" >> "${accucopy_config_file}"
   	echo "reference_folder_path	\${PWD}/ref_dir" >> "${accucopy_config_file}"
   	echo "samtools_path	/usr/local/bin/samtools" >> "${accucopy_config_file}"
