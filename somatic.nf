@@ -1757,7 +1757,7 @@ process cnvCalling_controlfreec {
 	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${control_freec_config_file}"
 	echo "contaminationAdjustment = TRUE" >> "${control_freec_config_file}"
 	echo "forceGCcontentNormalization = 1" >> "${control_freec_config_file}"
-	echo "gemMappabilityFile = \${PWD}/${gemFile}" >> "${control_freec_config_file}"
+	echo "gemMappabilityFile = \${PWD}/\${gemFile}" >> "${control_freec_config_file}"
 	echo "minimalSubclonePresence = 20" >> "${control_freec_config_file}"
 	echo "maxThreads = ${task.cpus}" >> "${control_freec_config_file}"
 	echo "ploidy = ${control_freec_ploidy}" >> "${control_freec_config_file}"
