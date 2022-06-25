@@ -1833,7 +1833,7 @@ process consensusCnvPrep_controlfreec {
   tag "${tumor_normal_sample_id}"
 
   input:
-  tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(reference_genome_fasta_index_forControlFreecConsensusPrep) into final_control_freec_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forControlFreecConsensusPrep)
+  tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(reference_genome_fasta_index_forControlFreecConsensusPrep) from final_control_freec_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forControlFreecConsensusPrep)
 
   output:
   tuple val(tumor_normal_sample_id), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed)
