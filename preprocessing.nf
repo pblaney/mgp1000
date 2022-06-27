@@ -499,18 +499,18 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx${task.memory.toGiga() - 4}G -Djava.io.tmpdir=. -XX:ParallelGCThreads=2 -XX:-UseGCOverheadLimit" \
+	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
-	--MAX_RECORDS_IN_RAM 4000000 \
+	--MAX_RECORDS_IN_RAM 2000000 \
 	--ASSUME_SORTED true \
 	--TMP_DIR . \
 	--INPUT "${bam_aligned}" \
 	--OUTPUT "${bam_fixed_mate_unsorted}"
 
 	gatk SortSam \
-	--java-options "-Xmx${task.memory.toGiga() - 4}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx24576m -Djava.io.tmpdir=." \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--SORT_ORDER coordinate \
