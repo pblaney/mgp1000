@@ -30,7 +30,9 @@ awk 'BEGIN {OFS="\t"} {print "chr"$1,$2,$3,$4}' \
 sort -k1,1V -k2,2n > "${subclonalOutput}"
 
 # Round the subclonal segments to generate the likely clonal total copy number per segment
-paste <(cut -f 1-3 "${subclonalOutput}") <(printf "%.0f\n" $(cut -f 4 "${subclonalOutput}")) > "${sampleId}.accucopy.subclonal.rounded.bed"
+paste <(cut -f 1-3 "${subclonalOutput}") <(printf "%.0f\n" $(cut -f 4 "${subclonalOutput}")) \
+| \
+sed 's|\-1|0|' > "${sampleId}.accucopy.subclonal.rounded.bed"
 
 # Read each segment and output the infered major/minor alleles of the subclonal calls
 # The inference will only be performed for rounded total CN of 0 or 1
