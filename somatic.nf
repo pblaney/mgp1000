@@ -2147,7 +2147,7 @@ process consensusCnvPrep_sclust {
   # total copy number per segment
   sclust_profile_gap_filler.py \
   <(grep -v 'Sample' "${sclust_allelic_states_file}" | cut -f 2-4,6) \
-  <(head -n 24 "${reference_genome_fasta_index_forSclustConsensusPrep}" | cut -f 2) > "${sclust_somatic_cnv_bed}"
+  <(head -n 24 "${reference_genome_fasta_index_forSclustConsensusCnv}" | cut -f 2) > "${sclust_somatic_cnv_bed}"
 
   # major/minor alleles per segment
   sclust_profile_gap_filler.py \
