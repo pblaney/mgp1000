@@ -56,4 +56,6 @@ sort -k1,1V -k2,2n > "${sampleId}.accucopy.cnv.alleles.bed"
 # so they can be incorporated in the consensus mechanism
 awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4}' "${sampleId}.accucopy.cnv.alleles.bed" > "${finalCnvBed}"
 
-awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$5"/"$6}' "${sampleId}.accucopy.cnv.alleles.bed" > "${finalAllelesBed}"
+awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$5"/"$6}' "${sampleId}.accucopy.cnv.alleles.bed" \
+| \
+sed 's|\.\/\.|.|' > "${finalAllelesBed}"
