@@ -35,17 +35,18 @@ paste <(cut -f 1-3 "${subclonalOutput}") <(printf "%.0f\n" $(cut -f 4 "${subclon
 sed 's|\-1|0|' > "${sampleId}.accucopy.subclonal.rounded.bed"
 
 # Read each segment and output the infered major/minor alleles of the subclonal calls
-# The inference will only be performed for rounded total CN of 0 or 1
+# The inference will assume heterozygosity with a single minor allele
 while read -r subclonalSegment
 	do
     	roundedCn=$(echo ${subclonalSegment} | cut -d ' ' -f 4)
+    	hetAssumptionCn=(( $roundedCn - 1 ))
 
     	if [[ ${roundedCn} == 0 ]]; then
       		awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,"0","0"}' <(echo ${subclonalSegment})
     	elif [[ ${roundedCn} == 1 ]]; then
       		awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,"1","0"}' <(echo ${subclonalSegment})
     	else
-      		awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,".","."}' <(echo ${subclonalSegment})
+      		awk -v inferredCn="$hetAssumptionCn" 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,inferredCn,"1"}' <(echo ${subclonalSegment})
     	fi
   	done < "${sampleId}.accucopy.subclonal.rounded.bed" 1> "${sampleId}.accucopy.subclonal.rounded.alleles.bed"
 
