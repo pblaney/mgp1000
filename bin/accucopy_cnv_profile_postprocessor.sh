@@ -39,7 +39,7 @@ sed 's|\-1|0|' > "${sampleId}.accucopy.subclonal.rounded.bed"
 while read -r subclonalSegment
 	do
     	roundedCn=$(echo ${subclonalSegment} | cut -d ' ' -f 4)
-    	hetAssumptionCn=(( $roundedCn - 1 ))
+    	hetAssumptionCn=$(( $roundedCn - 1 ))
 
     	if [[ ${roundedCn} == 0 ]]; then
       		awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4,"0","0"}' <(echo ${subclonalSegment})
