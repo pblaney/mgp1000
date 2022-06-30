@@ -3699,7 +3699,7 @@ process highQualityTransformConsensusCnvs_tidyverse {
 
 
 
-/*
+
 
 // AnnotSV ~ download the reference files used for AnnotSV annotation, if needed
 process downloadAnnotsvAnnotationReferences_annotsv {
@@ -3768,6 +3768,8 @@ process annotateConsensusCnvCalls_annotsv {
     sort -k1,1V -k2,2n >> "${hq_consensus_cnv_annotated_bed}"
     """
 }
+
+/*
 
 // Merge subclonal CNV segment calls, simple concatenation of per tool output
 process mergeSubclonalCnvCalls {
