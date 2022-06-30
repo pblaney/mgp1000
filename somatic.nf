@@ -3589,7 +3589,7 @@ process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	### Merge both consensus CNV and called alleles per segment ###
   	paste "${four_way_consensus_cnv_bed}" <(cut -f 4-10 "${four_way_consensus_alleles_bed}") \
   	| \
-  	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$10,\$11,\$5,\$12,\$6,\$13,\$7,\$14,\$8,\$15,\$9,\$16}}' > "${four_way_consensus_merged_cnv_alleles_bed}"
+  	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$10,\$11,\$5,\$12,\$6,\$13,\$7,\$14,\$8,\$15,\$9,\$16}' > "${four_way_consensus_merged_cnv_alleles_bed}"
   	"""
 }
 
