@@ -1586,7 +1586,7 @@ process consensusCnvPrep_ascatngs {
   	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) from final_ascat_cnv_profile_forConsensusPrep
 
   	output:
-  	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed)
+  	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed) into final_ascat_cnv_profile_forConsensus
 
   	when:
   	params.ascatngs == "on"
@@ -1838,7 +1838,7 @@ process consensusCnvPrep_controlfreec {
   	tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(reference_genome_fasta_index_forControlFreecConsensusPrep) from final_control_freec_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forControlFreecConsensusPrep)
 
   	output:
-  	tuple val(tumor_normal_sample_id), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed)
+  	tuple val(tumor_normal_sample_id), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed) into final_controlfreec_cnv_profile_forConsensus
 
   	when:
   	params.controlfreec == "on"
@@ -2135,7 +2135,7 @@ process consensusCnvPrep_sclust {
   	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forSclustConsensusCnv) from final_sclust_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forSclustConsensusCnv)
 
   	output:
-  	tuple val(tumor_normal_sample_id), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed)
+  	tuple val(tumor_normal_sample_id), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed) into final_sclust_cnv_profile_forConsensus
 
   	when:
   	params.sclust == "on" && params.mutect == "on"
@@ -2258,7 +2258,7 @@ process consensusCnvPrep_accucopy {
   	tuple val(tumor_normal_sample_id), path(accucopy_cnv_profile) from accucopy_cnv_profile_forConsensusPrep
 
   	output:
-  	tuple val(tumor_normal_sample_id), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed)
+  	tuple val(tumor_normal_sample_id), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) into final_accucopy_cnv_profile_forConsensus
   	tuple val(tumor_normal_sample_id), path(accucopy_subclones_file)
 
   	when:
