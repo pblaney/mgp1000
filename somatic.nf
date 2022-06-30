@@ -1832,32 +1832,32 @@ process cnvPredictionPostProcessing_controlfreec {
 
 // Control-FREEC Consensus CNV Prep ~ extract and prepare CNV output for consensus
 process consensusCnvPrep_controlfreec {
-  tag "${tumor_normal_sample_id}"
+  	tag "${tumor_normal_sample_id}"
 
-  input:
-  tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(reference_genome_fasta_index_forControlFreecConsensusPrep) from final_control_freec_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forControlFreecConsensusPrep)
+  	input:
+  	tuple val(tumor_normal_sample_id), path(control_freec_bedgraph), path(control_freec_cnv_profile_final), path(reference_genome_fasta_index_forControlFreecConsensusPrep) from final_control_freec_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forControlFreecConsensusPrep)
 
-  output:
-  tuple val(tumor_normal_sample_id), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed)
+  	output:
+  	tuple val(tumor_normal_sample_id), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed)
 
-  when:
-  params.controlfreec == "on"
+  	when:
+  	params.controlfreec == "on"
 
-  script:
-  control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
-  control_freec_somatic_alleles_bed = "${tumor_normal_sample_id}.controlfreec.somatic.alleles.bed"
-  """
-  control_freec_cnv_and_allele_preparer.sh \
-  "${tumor_normal_sample_id}" \
-  "${control_freec_cnv_profile_final}" \
-  "${control_freec_bedgraph}" \
-  "${reference_genome_fasta_index_forControlFreecConsensusPrep}"
+  	script:
+  	control_freec_somatic_cnv_bed = "${tumor_normal_sample_id}.controlfreec.somatic.cnv.bed"
+  	control_freec_somatic_alleles_bed = "${tumor_normal_sample_id}.controlfreec.somatic.alleles.bed"
+  	"""
+  	control_freec_cnv_and_allele_preparer.sh \
+  	"${tumor_normal_sample_id}" \
+  	"${control_freec_cnv_profile_final}" \
+  	"${control_freec_bedgraph}" \
+  	"${reference_genome_fasta_index_forControlFreecConsensusPrep}"
 
-  control_freec_segment_refiner.py \
-  "${tumor_normal_sample_id}.controlfreec.complete.cnv.alleles.merged.bed" \
-  "${control_freec_somatic_alleles_bed}" \
-  "${control_freec_somatic_cnv_bed}"
-  """
+  	control_freec_segment_refiner.py \
+  	"${tumor_normal_sample_id}.controlfreec.complete.cnv.alleles.merged.bed" \
+  	"${control_freec_somatic_alleles_bed}" \
+  	"${control_freec_somatic_cnv_bed}"
+  	"""
 }
 
 // END
@@ -2129,35 +2129,35 @@ process mutationalClustering_sclust {
 
 // Sclust Consensus CNV Prep ~ extract and prepare CNV output for consensus
 process consensusCnvPrep_sclust {
-  tag "${tumor_normal_sample_id}"
+  	tag "${tumor_normal_sample_id}"
 
-  input:
-  tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forSclustConsensusCnv) from final_sclust_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forSclustConsensusCnv)
+  	input:
+  	tuple val(tumor_normal_sample_id), path(sclust_allelic_states_file), path(reference_genome_fasta_index_forSclustConsensusCnv) from final_sclust_cnv_profile_forConsensusPrep.combine(reference_genome_fasta_index_forSclustConsensusCnv)
 
-  output:
-  tuple val(tumor_normal_sample_id), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed)
+  	output:
+  	tuple val(tumor_normal_sample_id), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed)
 
-  when:
-  params.sclust == "on" && params.mutect == "on"
+  	when:
+  	params.sclust == "on" && params.mutect == "on"
 
-  script:
-  sclust_somatic_cnv_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.bed"
-  sclust_somatic_alleles_bed = "${tumor_normal_sample_id}.sclust.somatic.alleles.bed"
-  """
-  # total copy number per segment
-  sclust_profile_gap_filler.py \
-  <(grep -v 'Sample' "${sclust_allelic_states_file}" | cut -f 2-4,6) \
-  <(head -n 24 "${reference_genome_fasta_index_forSclustConsensusCnv}" | cut -f 2) \
-  | \
-  sort -k1,1V -k2,2n > "${sclust_somatic_cnv_bed}"
+  	script:
+  	sclust_somatic_cnv_bed = "${tumor_normal_sample_id}.sclust.somatic.cnv.bed"
+  	sclust_somatic_alleles_bed = "${tumor_normal_sample_id}.sclust.somatic.alleles.bed"
+  	"""
+  	# total copy number per segment
+  	sclust_profile_gap_filler.py \
+  	<(grep -v 'Sample' "${sclust_allelic_states_file}" | cut -f 2-4,6) \
+  	<(head -n 24 "${reference_genome_fasta_index_forSclustConsensusCnv}" | cut -f 2) \
+  	| \
+  	sort -k1,1V -k2,2n > "${sclust_somatic_cnv_bed}"
 
-  # major/minor alleles per segment
-  sclust_profile_gap_filler.py \
-  <(grep -v 'Sample' "${sclust_allelic_states_file}" | awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7"/"\$8}') \
-  <(head -n 24 "${reference_genome_fasta_index_forSclustConsensusCnv}" | cut -f 2) \
-  | \
-  sort -k1,1V -k2,2n > "${sclust_somatic_alleles_bed}"
-  """
+  	# major/minor alleles per segment
+  	sclust_profile_gap_filler.py \
+  	<(grep -v 'Sample' "${sclust_allelic_states_file}" | awk 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7"/"\$8}') \
+  	<(head -n 24 "${reference_genome_fasta_index_forSclustConsensusCnv}" | cut -f 2) \
+  	| \
+  	sort -k1,1V -k2,2n > "${sclust_somatic_alleles_bed}"
+  	"""
 }
 
 // END
@@ -3519,10 +3519,91 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 
 
 
-/*
+
 
 // ~~~~~~~~~~ CONSENSUS CNV BED ~~~~~~~~~~~~ \\
 // START
+
+// Determine which CNV consensus mechanism to use based on number of tools included, either 3 or 4 
+if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on" ) {
+
+  	cnv_output_forFourWayConsensus = final_ascat_cnv_profile_forConsensus.join(final_controlfreec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).join(final_accucopy_cnv_profile_forConsensus)
+  
+  	cnv_output_forThreeWayConsensus = Channel.empty()
+
+} else if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on" ) {
+  
+  	cnv_output_forFourWayConsensus = Channel.empty()
+
+  	cnv_output_forThreeWayConsensus = final_ascat_cnv_profile_forConsensus.join(final_controlfreec_cnv_profile_forConsensus).join(final_accucopy_cnv_profile_forConsensus)
+
+} else {
+  
+  	cnv_output_forFourWayConsensus = Channel.empty()
+
+  	cnv_output_forThreeWayConsensus = Channel.empty()
+}
+
+// BEDtools unionbedg 4-way ~ transform CNV output into BED files then generate merged CNV segment file
+process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
+  	tag "${tumor_normal_sample_id}"
+
+  	input:
+  	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) from cnv_output_forFourWayConsensus
+
+  	output:
+  	tuple val(tumor_normal_sample_id), path(four_way_consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
+
+  	when:
+  	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
+
+  	script:
+  	four_way_merged_cnv_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.bed"
+  	four_way_merged_alleles_bed = "${tumor_normal_sample_id}.merged.somatic.alleles.bed"
+  	four_way_consensus_cnv_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.bed"
+  	four_way_consensus_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.alleles.bed"
+  	four_way_consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.alleles.merged.bed"
+  	"""
+  	### Create consensus total copy number file ###
+  	bedtools unionbedg \
+  	-filler . \
+  	-i "${ascat_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${sclust_somatic_cnv_bed}" "${accucopy_somatic_cnv_bed}" \
+  	-header \
+  	-names ascat_total_cn controlfreec_total_cn sclust_total_cn accucopy_total_cn > "${four_way_merged_cnv_bed}"
+
+  	four_way_consensus_cnv_generator.py \
+  	<(grep -v 'chrom' "${four_way_merged_cnv_bed}") \
+  	"${four_way_consensus_cnv_bed}"
+
+  	### Create consensus major and minor allele file ###
+  	bedtools unionbedg \
+  	-filler . \
+  	-i "${ascat_somatic_alleles_bed}" "${control_freec_somatic_alleles_bed}" "${sclust_somatic_alleles_bed}" "${accucopy_somatic_alleles_bed}" \
+  	-header \
+  	-names ascat_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles accucopy_major_minor_alleles > "${four_way_merged_alleles_bed}"
+
+  	four_way_consensus_allele_generator.py \
+  	<(grep -v 'chrom' "${four_way_merged_alleles_bed}") \
+  	"${four_way_consensus_alleles_bed}"
+
+  	### Merge both consensus CNV and called alleles per segment ###
+  	paste "${four_way_consensus_cnv_bed}" <(cut -f 4-10 "${four_way_consensus_alleles_bed}") \
+  	| \
+  	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$10,\$11,\$5,\$12,\$6,\$13,\$7,\$14,\$8,\$15,\$9,\$16}}' > "${four_way_consensus_merged_cnv_alleles_bed}"
+  	"""
+}
+
+
+
+
+
+
+
+
+
+
+
+/*
 
 // BEDtools unionbedg ~ transform CNV output into BED files then generate merged CNV segment file
 process mergeAndGenerateConsensusCnvCalls_bedtools {
