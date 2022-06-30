@@ -17,7 +17,7 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df) {
 
   agreement_resolved_cnv_df <-  tibble()
 
-  # Resolve all no agreement segments using Control-FREEC, Sclust, then ascatNgs hierarchy
+  # Resolve all no agreement segments using Control-FREEC, Sclust, Accucopy then ascatNgs hierarchy
   for(i in 1:nrow(consensus_cnv_alleles_bed_df)) {
   
     # First find segments with full disagreement
@@ -60,6 +60,24 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df) {
                                                   "consensus_minor_allele" = sclust_minor_allele,
                                                   "caller_agreement" = "sclust",
                                                   "allele_caller_agreement" = "sclust"))
+
+      } else if(consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+
+        accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                           pattern = "/",
+                                           simplify = T)[1]
+        accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                           pattern = "/",
+                                           simplify = T)[2]
+        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$accucopy_cn,
+                                                  "consensus_major_allele" = accucopy_major_allele,
+                                                  "consensus_minor_allele" = accucopy_minor_allele,
+                                                  "caller_agreement" = "accucopy",
+                                                  "allele_caller_agreement" = "accucopy"))
       }
     
     # Then find all segments that only disagree on allele balance, likely due to called LOH by Control-FREEC  
@@ -104,6 +122,26 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df) {
                                                   "consensus_minor_allele" = sclust_minor_allele,
                                                   "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
                                                   "allele_caller_agreement" = "sclust"))
+
+      } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "accucopy") &
+                consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+
+        accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                           pattern = "/",
+                                           simplify = T)[1]
+        accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                           pattern = "/",
+                                           simplify = T)[2]
+        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                  "consensus_major_allele" = accucopy_major_allele,
+                                                  "consensus_minor_allele" = accucopy_minor_allele,
+                                                  "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                  "allele_caller_agreement" = "accucopy"))
+
       }
 
     } else {
