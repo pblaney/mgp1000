@@ -3552,7 +3552,7 @@ process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) from cnv_output_forFourWayConsensus
 
   	output:
-  	tuple val(tumor_normal_sample_id), val(consensus_mechanism), path(four_way_consensus_merged_cnv_alleles_bed) into four_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+  	tuple val(tumor_normal_sample_id), val(four_way_consensus_mechanism), path(four_way_consensus_merged_cnv_alleles_bed) into four_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
   	when:
   	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
