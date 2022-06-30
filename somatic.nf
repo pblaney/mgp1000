@@ -3552,12 +3552,13 @@ process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) from cnv_output_forFourWayConsensus
 
   	output:
-  	tuple val(tumor_normal_sample_id), path(four_way_consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
+  	tuple val(tumor_normal_sample_id), val(consensus_mechanism), path(four_way_consensus_merged_cnv_alleles_bed) into consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
   	when:
   	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
 
   	script:
+  	four_way_consensus_mechanism = "four_way"
   	four_way_merged_cnv_bed = "${tumor_normal_sample_id}.merged.somatic.cnv.bed"
   	four_way_merged_alleles_bed = "${tumor_normal_sample_id}.merged.somatic.alleles.bed"
   	four_way_consensus_cnv_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.bed"
@@ -3652,18 +3653,35 @@ process mergeAndGenerateConsensusCnvCalls_bedtools {
 	"""
 }
 
+*/
+
+
+// Set the input for the high-quality consensus CNV BED transform process based on 3 or 4 way mechanism
+if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on" ) {
+  
+  consensus_cnv_and_allele_bed_forConsensusCnvTransform = four_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+
+} else if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on" ) {
+  
+  consensus_cnv_and_allele_bed_forConsensusCnvTransform = three_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+
+} else {
+  
+  consensus_cnv_and_allele_bed_forConsensusCnvTransform = Channel.empty()
+}
+
 // Tidyverse ~ transform consensus CNV BED file to concise high quality format
 process highQualityTransformConsensusCnvs_tidyverse {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(consensus_merged_cnv_alleles_bed), path(sample_sex) from consensus_cnv_and_allele_bed_forConsensusCnvTransform.join(sex_of_sample_forConsensusCnvTransform)
+    tuple val(tumor_normal_sample_id), val(consensus_mechanism), path(consensus_merged_cnv_alleles_bed), path(sample_sex) from consensus_cnv_and_allele_bed_forConsensusCnvTransform.join(sex_of_sample_forConsensusCnvTransform)
 
     output:
     tuple val(tumor_normal_sample_id), path(hq_consensus_cnv_bed) into hq_consensus_cnv_bed_forAnnotation
 
     when:
-    params.ascatngs == "on" && params.controlfreec == "on" && params.sclust == "on"
+    params.ascatngs == "on" && params.controlfreec == "on" && params.accucopy == "on"
 
     script:
     hq_consensus_cnv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.bed"
@@ -3674,9 +3692,14 @@ process highQualityTransformConsensusCnvs_tidyverse {
 	${workflow.projectDir}/bin/high_quality_cnv_bed_transformer.R \
     "${consensus_merged_cnv_alleles_bed}" \
     \${sex} \
-    "${hq_consensus_cnv_bed}"
+    "${hq_consensus_cnv_bed}" \
+    "${consensus_mechanism}"
     """
 }
+
+
+
+/*
 
 // AnnotSV ~ download the reference files used for AnnotSV annotation, if needed
 process downloadAnnotsvAnnotationReferences_annotsv {

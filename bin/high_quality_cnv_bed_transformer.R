@@ -13,151 +13,257 @@ suppressPackageStartupMessages(library(tidyverse))
 #########################
 #####   Functions   #####
 
-segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df) {
+segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consensus_mechanism) {
 
   agreement_resolved_cnv_df <-  tibble()
 
-  # Resolve all no agreement segments using Control-FREEC, Sclust, Accucopy then ascatNgs hierarchy
-  for(i in 1:nrow(consensus_cnv_alleles_bed_df)) {
+  # First, check which consensus mechanism was used: three_way or four_way
+  if(consensus_mechanism == "four_way") {
+
+    # Resolve all no agreement segments using Control-FREEC, Sclust, Accucopy, then ascatNgs hierarchy
+    for(i in 1:nrow(consensus_cnv_alleles_bed_df)) {
   
-    # First find segments with full disagreement
-    if(consensus_cnv_alleles_bed_df[i,]$caller_agreement == "no_agreement" &
-       consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
+      # First find segments with full disagreement
+      if(consensus_cnv_alleles_bed_df[i,]$caller_agreement == "no_agreement" &
+         consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
     
-      if(consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
+        if(consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
 
-        control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
-                                                pattern = "/",
-                                                simplify = T)[1]
-        control_freec_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
-                                                pattern = "/",
-                                                simplify = T)[2]
+          control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[1]
+          control_freec_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[2]
 
-        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$controlfreec_cn,
-                                                  "consensus_major_allele" = control_freec_major_allele,
-                                                  "consensus_minor_allele" = control_freec_minor_allele,
-                                                  "caller_agreement" = "controlfreec",
-                                                  "allele_caller_agreement" = "controlfreec"))
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$controlfreec_cn,
+                                                    "consensus_major_allele" = control_freec_major_allele,
+                                                    "consensus_minor_allele" = control_freec_minor_allele,
+                                                    "caller_agreement" = "controlfreec",
+                                                    "allele_caller_agreement" = "controlfreec"))
 
-      } else if(consensus_cnv_alleles_bed_df[i,]$sclust_cn != ".") {
+        } else if(consensus_cnv_alleles_bed_df[i,]$sclust_cn != ".") {
 
-        sclust_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
-                                         pattern = "/",
-                                         simplify = T)[1]
-        sclust_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
-                                         pattern = "/",
-                                         simplify = T)[2]
-        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$sclust_cn,
-                                                  "consensus_major_allele" = sclust_major_allele,
-                                                  "consensus_minor_allele" = sclust_minor_allele,
-                                                  "caller_agreement" = "sclust",
-                                                  "allele_caller_agreement" = "sclust"))
-
-      } else if(consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
-
-        accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          sclust_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
                                            pattern = "/",
                                            simplify = T)[1]
-        accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          sclust_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
                                            pattern = "/",
                                            simplify = T)[2]
-        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$accucopy_cn,
-                                                  "consensus_major_allele" = accucopy_major_allele,
-                                                  "consensus_minor_allele" = accucopy_minor_allele,
-                                                  "caller_agreement" = "accucopy",
-                                                  "allele_caller_agreement" = "accucopy"))
-      }
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$sclust_cn,
+                                                    "consensus_major_allele" = sclust_major_allele,
+                                                    "consensus_minor_allele" = sclust_minor_allele,
+                                                    "caller_agreement" = "sclust",
+                                                    "allele_caller_agreement" = "sclust"))
+
+        } else if(consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+
+          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[1]
+          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[2]
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$accucopy_cn,
+                                                    "consensus_major_allele" = accucopy_major_allele,
+                                                    "consensus_minor_allele" = accucopy_minor_allele,
+                                                    "caller_agreement" = "accucopy",
+                                                    "allele_caller_agreement" = "accucopy"))
+        }
     
-    # Then find all segments that only disagree on allele balance, likely due to called LOH by Control-FREEC  
-    } else if(consensus_cnv_alleles_bed_df[i,]$caller_agreement != "no_agreement" &
-              consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
+        # Then find all segments that only disagree on allele balance, likely due to called LOH by Control-FREEC  
+      } else if(consensus_cnv_alleles_bed_df[i,]$caller_agreement != "no_agreement" &
+                consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
     
-      if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "controlfreec") &
-         consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
+        if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "controlfreec") &
+           consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
 
-        control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
-                                                pattern = "/",
-                                                simplify = T)[1]
-        control_freec_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
-                                                pattern = "/",
-                                                simplify = T)[2]
+          control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[1]
+          control_freec_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[2]
       
-        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
-                                                  "consensus_major_allele" = control_freec_major_allele,
-                                                  "consensus_minor_allele" = control_freec_minor_allele,
-                                                  "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
-                                                  "allele_caller_agreement" = "controlfreec"))
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                    "consensus_major_allele" = control_freec_major_allele,
+                                                    "consensus_minor_allele" = control_freec_minor_allele,
+                                                    "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                    "allele_caller_agreement" = "controlfreec"))
       
-      } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "sclust") &
-                consensus_cnv_alleles_bed_df[i,]$sclust_cn != ".") {
+        } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "sclust") &
+                  consensus_cnv_alleles_bed_df[i,]$sclust_cn != ".") {
 
-        sclust_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
-                                         pattern = "/",
-                                         simplify = T)[1]
-        sclust_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
-                                         pattern = "/",
-                                         simplify = T)[2]
-        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
-                                                  "consensus_major_allele" = sclust_major_allele,
-                                                  "consensus_minor_allele" = sclust_minor_allele,
-                                                  "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
-                                                  "allele_caller_agreement" = "sclust"))
-
-      } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "accucopy") &
-                consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
-
-        accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          sclust_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
                                            pattern = "/",
                                            simplify = T)[1]
-        accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          sclust_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$sclust_alleles,
                                            pattern = "/",
                                            simplify = T)[2]
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                    "consensus_major_allele" = sclust_major_allele,
+                                                    "consensus_minor_allele" = sclust_minor_allele,
+                                                    "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                    "allele_caller_agreement" = "sclust"))
+
+        } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "accucopy") &
+                  consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+
+          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[1]
+          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[2]
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                    "consensus_major_allele" = accucopy_major_allele,
+                                                    "consensus_minor_allele" = accucopy_minor_allele,
+                                                    "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                    "allele_caller_agreement" = "accucopy"))
+        }
+
+      } else {
+
         agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
                                            tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
                                                   "start" = consensus_cnv_alleles_bed_df[i,]$start,
                                                   "end" = consensus_cnv_alleles_bed_df[i,]$end,
                                                   "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
-                                                  "consensus_major_allele" = accucopy_major_allele,
-                                                  "consensus_minor_allele" = accucopy_minor_allele,
+                                                  "consensus_major_allele" = consensus_cnv_alleles_bed_df[i,]$consensus_major_allele,
+                                                  "consensus_minor_allele" = consensus_cnv_alleles_bed_df[i,]$consensus_minor_allele,
                                                   "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
-                                                  "allele_caller_agreement" = "accucopy"))
-
+                                                  "allele_caller_agreement" = consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement))
       }
+    }
 
-    } else {
+  } else if(consensus_mechanism == "three_way") {
 
-      agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                         tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
-                                                "consensus_major_allele" = consensus_cnv_alleles_bed_df[i,]$consensus_major_allele,
-                                                "consensus_minor_allele" = consensus_cnv_alleles_bed_df[i,]$consensus_minor_allele,
-                                                "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
-                                                "allele_caller_agreement" = consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement))
+    # Resolve all no agreement segments using Control-FREEC, Accucopy, then ascatNgs hierarchy
+    for(i in 1:nrow(consensus_cnv_alleles_bed_df)) {
+
+      # First find segments with full disagreement
+      if(consensus_cnv_alleles_bed_df[i,]$caller_agreement == "no_agreement" &
+         consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
+    
+        if(consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
+
+          control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[1]
+          control_freec_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[2]
+
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$controlfreec_cn,
+                                                    "consensus_major_allele" = control_freec_major_allele,
+                                                    "consensus_minor_allele" = control_freec_minor_allele,
+                                                    "caller_agreement" = "controlfreec",
+                                                    "allele_caller_agreement" = "controlfreec"))
+
+        } else if(consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+
+          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[1]
+          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[2]
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$accucopy_cn,
+                                                    "consensus_major_allele" = accucopy_major_allele,
+                                                    "consensus_minor_allele" = accucopy_minor_allele,
+                                                    "caller_agreement" = "accucopy",
+                                                    "allele_caller_agreement" = "accucopy"))
+        }
+    
+        # Then find all segments that only disagree on allele balance, likely due to called LOH by Control-FREEC  
+      } else if(consensus_cnv_alleles_bed_df[i,]$caller_agreement != "no_agreement" &
+                consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement == "no_agreement") {
+    
+        if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "controlfreec") &
+           consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
+
+          control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[1]
+          control_freec_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
+                                                  pattern = "/",
+                                                  simplify = T)[2]
+      
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                    "consensus_major_allele" = control_freec_major_allele,
+                                                    "consensus_minor_allele" = control_freec_minor_allele,
+                                                    "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                    "allele_caller_agreement" = "controlfreec"))
+      
+        } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "accucopy") &
+                  consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+
+          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[1]
+          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+                                             pattern = "/",
+                                             simplify = T)[2]
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                    "consensus_major_allele" = accucopy_major_allele,
+                                                    "consensus_minor_allele" = accucopy_minor_allele,
+                                                    "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                    "allele_caller_agreement" = "accucopy"))
+        }
+      } else {
+
+        agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                           tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                  "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                  "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                  "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                  "consensus_major_allele" = consensus_cnv_alleles_bed_df[i,]$consensus_major_allele,
+                                                  "consensus_minor_allele" = consensus_cnv_alleles_bed_df[i,]$consensus_minor_allele,
+                                                  "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                  "allele_caller_agreement" = consensus_cnv_alleles_bed_df[i,]$allele_caller_agreement))
+      }
     }
   }
-  
   return(agreement_resolved_cnv_df)
 }
 
@@ -486,6 +592,7 @@ input_args <- commandArgs(trailingOnly = T)
 
 sample_sex <- input_args[2]
 output_bed_filename <- input_args[3]
+mechansim <- input_args[4]
 
 print("Reading input consensus merged CNV and allele BED file.....")
 consensus_cnv_alleles_bed_file <- read_delim(file = input_args[1],
@@ -494,7 +601,7 @@ consensus_cnv_alleles_bed_file <- read_delim(file = input_args[1],
                                             col_types = "cccccccccccccc")
 
 print("Resolving all segments with no agreement between callers.....")
-resolved_cnv_alleles <- segment_disagreement_resolution(consensus_cnv_alleles_bed_df = consensus_cnv_alleles_bed_file)
+resolved_cnv_alleles <- segment_disagreement_resolution(consensus_cnv_alleles_bed_df = consensus_cnv_alleles_bed_file, consensus_mechanism = mechansim)
 
 print("Scoring each segment based on length and caller agreement.....")
 scored_resolved_cnv_alleles <- score_segments(resolved_cnv_alleles_df = resolved_cnv_alleles)
