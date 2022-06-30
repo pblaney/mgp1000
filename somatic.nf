@@ -3753,7 +3753,7 @@ process mergeSubclonalCnvCalls {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file), path(sclust_subclones_file), path() from control_freec_subclones_forConsensusSubclones.join(sclust_subclones_forConsensusSubclones).join(accucopy_subclones_forConsensusSubclones)
+	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file), path(sclust_subclones_file), path(accucopy_subclones_file) from control_freec_subclones_forConsensusSubclones.join(sclust_subclones_forConsensusSubclones).join(accucopy_subclones_forConsensusSubclones)
 
 	output:
 	path consensus_subclonal_cnv_file
