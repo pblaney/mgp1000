@@ -1539,41 +1539,41 @@ process downloadBattenbergReferences_battenberg {
   	mkdir -p RT_correction_hg38/
 
   	# GC Correction
-  	wget -O GC_correction_hg38_chr.zip --retry 10 "https://www.dropbox.com/sh/bize1n830t0mgzb/AADQD4DTJOF75YmhBDDoQ9nla/GC_correction_hg38?dl=0&lst=" && \
+  	wget -O GC_correction_hg38_chr.zip --retry 10 "https://www.dropbox.com/sh/bize1n830t0mgzb/AADQD4DTJOF75YmhBDDoQ9nla/GC_correction_hg38?dl=0&lst="
   	unzip GC_correction_hg38_chr.zip
-  	mv 1000G_GC_chr*.txt.gz GC_correction_hg38/ && \
+  	mv 1000G_GC_chr*.txt.gz GC_correction_hg38/
   	rm GC_correction_hg38_chr.zip
 
   	# RT Correction
-  	wget -O RT_correction_hg38.zip --retry 10 "https://www.dropbox.com/sh/bize1n830t0mgzb/AABZ2uM13YMYB_q6X1pP1McJa/RT_correction_hg38?dl=0&lst=" && \
+  	wget -O RT_correction_hg38.zip --retry 10 "https://www.dropbox.com/sh/bize1n830t0mgzb/AABZ2uM13YMYB_q6X1pP1McJa/RT_correction_hg38?dl=0&lst="
   	unzip RT_correction_hg38.zip
-  	mv 1000G_RT_chr*.txt.gz RT_correction_hg38/ && \
+  	mv 1000G_RT_chr*.txt.gz RT_correction_hg38/
   	rm RT_correction_hg38.zip
 
   	# Shapeit2
-  	wget -O shapeit2_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=shapeit2_chr.zip&type_of_work=Dataset" && \
+  	wget -O shapeit2_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=shapeit2_chr.zip&type_of_work=Dataset"
   	unzip -q shapeit2_chr.zip
   	rm shapeit2_chr.zip
 
   	# Impute
-  	wget -O imputation_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=imputation_chr.zip&type_of_work=Dataset" && \
+  	wget -O imputation_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=imputation_chr.zip&type_of_work=Dataset"
   	unzip -q imputation_chr.zip
-  	mv impute_info.txt imputation/ && \
+  	mv impute_info.txt imputation/
   	rm imputation_chr.zip 
 
   	# 1000G
-  	wget -O 1000G_loci_hg38_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=1000G_loci_hg38_chr.zip&type_of_work=Dataset" && \
+  	wget -O 1000G_loci_hg38_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=1000G_loci_hg38_chr.zip&type_of_work=Dataset"
   	unzip 1000G_loci_hg38_chr.zip
-  	rm 1000G_loci_hg38_chr.zip && \
-  	sed -E -i 's|^X|chrX|' 1kg.phase3.v5a_GRCh38nounref_loci_chrX.txt
+  	rm 1000G_loci_hg38_chr.zip
+  	sed -E -i 's|^X|chrX|' 1000G_loci_hg38/1kg.phase3.v5a_GRCh38nounref_loci_chrX.txt
 
   	# Probloci
-  	wget -O probloci_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=probloci_chr.zip&type_of_work=Dataset" && \
+  	wget -O probloci_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=probloci_chr.zip&type_of_work=Dataset"
   	unzip probloci_chr.zip
   	rm probloci_chr.zip
 
   	# Beagle5
-  	wget -O beagle_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=beagle_chr.zip&type_of_work=Dataset" && \
+  	wget -O beagle_chr.zip --retry 10 "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=beagle_chr.zip&type_of_work=Dataset"
   	unzip beagle_chr.zip
   	mv beagle/ beagle5/ && \
   	cd beagle5/ && \
