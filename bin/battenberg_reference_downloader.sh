@@ -6,7 +6,7 @@ battenbergRefDownload() {
 
 	# GC Correction
 	wget -q -O GC_correction_hg38_chr.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AADQD4DTJOF75YmhBDDoQ9nla/GC_correction_hg38?dl=0&lst=" && \
-  	unzip GC_correction_hg38_chr.zip && \
+  	unzip GC_correction_hg38_chr.zip
 	mv 1000G_GC_chr*.txt.gz GC_correction_hg38/ && \
 	rm GC_correction_hg38_chr.zip
 
@@ -40,6 +40,7 @@ battenbergRefDownload() {
 
   	# Beagle5
   	wget -q -O beagle_chr.zip "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=beagle_chr.zip&type_of_work=Dataset" && \
+  	unzip beagle_chr.zip
   	mv beagle/ beagle5/ && \
   	cd beagle5/ && \
   	mkdir -p tmp/ && \
