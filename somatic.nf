@@ -391,7 +391,7 @@ if( params.battenberg == "on" && params.battenberg_ref_cached == "yes" ) {
 	Channel
 		.fromPath( 'references/hg38/battenberg_references/', checkIfExists: true )
 		.ifEmpty{ error "The run command issued has the '--battenberg_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--battenberg_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
-		.set{ battenberg_ref_dir_preProcess }
+		.set{ battenberg_ref_dir_preDownloaded }
 }
 
 Channel
@@ -1525,7 +1525,7 @@ process downloadBattenbergReferences_battenberg {
   	publishDir "references/hg38", mode: 'copy'
 
   	output:
-  	path battenberg_references into battenberg_ref_dir_preDownloaded
+  	path battenberg_references into battenberg_ref_dir_fromProcess
 
   	when:
   	params.battenberg == "on" && params.battenberg_ref_cached == "no"
@@ -1590,7 +1590,7 @@ if( params.battenberg_ref_cached == "yes" ) {
 	battenberg_ref_dir = battenberg_ref_dir_preDownloaded
 }
 else {
-	battenberg_ref_dir = battenberg_ref_dir_preProcess
+	battenberg_ref_dir = battenberg_ref_dir_fromProcess
 }
 
 
