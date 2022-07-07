@@ -1578,7 +1578,7 @@ process downloadBattenbergReferences_battenberg {
   	cd beagle5/ && \
   	mkdir -p tmp/ && \
   	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz tmp/ && \
-  	for i in {1..22} X; do zcat tmp/chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz | sed -E 's|^'${i}'|chr'${i}'|' | gzip > chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz; done && \
+  	for i in {1..22} X; do zcat tmp/chr\${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz | sed -E 's|^'\${i}'|chr'\${i}'|' | gzip > chr\${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz; done && \
   	rm -rf tmp/ && \
   	cd ../
   	"""
