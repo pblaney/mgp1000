@@ -39,6 +39,11 @@ def helpMessage() {
 		                                      need to be done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
+		--battenberg_ref_cached        [str]  Indicates whether or not the reference files used for Battenberg have been downloaded/cached
+		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
+		                                      done for every separate run after the first
+		                                      Available: yes, no
+		                                      Default: yes
 		--annotsv_ref_cached           [str]  Indicates whether or not the AnnotSV reference files used for annotation have been downloaded/cached
 		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
 		                                      done for every separate run after the first
@@ -87,6 +92,9 @@ def helpMessage() {
 		                                      Available: off, on
 		                                      Default: on
 		--copycat                      [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
+		--battenberg                   [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
 		--ascatngs                     [str]  Indicates whether or not to use this tool
@@ -161,6 +169,7 @@ params.run_id = null
 params.sample_sheet = null
 params.email = null
 params.mutect_ref_vcf_concatenated = "yes"
+params.battenberg_ref_cached = "yes"
 params.annotsv_ref_cached = "yes"
 params.vep_ref_cached = "yes"
 params.read_length = 100
@@ -171,6 +180,7 @@ params.varscan = "on"
 params.mutect = "on"
 params.strelka = "on"
 params.copycat = "on"
+params.battenberg = "on"
 params.ascatngs = "on"
 params.controlfreec = "on"
 params.sclust = "on"
@@ -376,6 +386,13 @@ Channel
 Channel
 	.fromPath( 'references/hg38/small_exac_common_3.hg38.vcf.gz.tbi' )
 	.set{ exac_common_sites_ref_vcf_index }
+
+if( params.battenberg == "on" && params.battenberg_ref_cached == "yes" ) {
+	Channel
+		.fromPath( 'references/hg38/battenberg_references/', checkIfExists: true )
+		.ifEmpty{ error "The run command issued has the '--battenberg_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--battenberg_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
+		.set{ battenberg_ref_dir_preProcess }
+}
 
 Channel
 	.fromPath( 'references/hg38/SnpGcCorrections.hg38.tsv' )
@@ -1494,6 +1511,107 @@ process binReadCoverage_copycat {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+
+
+
+// ~~~~~~~~~~~~~~~ Battenberg ~~~~~~~~~~~~~~ \\
+// START
+
+// Battenberg ~ download the reference files needed to run Battenberg
+process downloadBattenbergReferences_battenberg {
+  	publishDir "references/hg38", mode: 'copy'
+
+  	output:
+  	path battenberg_references into battenberg_ref_dir_preDownloaded
+
+  	when:
+  	params.battenberg == "on" && params.battenberg_ref_cached == "no"
+
+  	script:
+  	battenberg_references = "battenberg_references"
+  	"""
+  	mkdir -p "${battenberg_references}"
+  	cd "${battenberg_references}/"
+  	mkdir -p GC_correction_hg38/
+  	mkdir -p RT_correction_hg38/
+
+  	# GC Correction
+  	curl -o GC_correction_hg38_chr.zip --retry 10 https://www.dropbox.com/sh/bize1n830t0mgzb/AADQD4DTJOF75YmhBDDoQ9nla/GC_correction_hg38?dl=0&lst= && \
+  	unzip GC_correction_hg38_chr.zip && \
+  	mv 1000G_GC_chr*.txt.gz GC_correction_hg38/ && \
+  	rm GC_correction_hg38_chr.zip
+
+  	# RT Correction
+  	curl -o RT_correction_hg38.zip --retry 10 https://www.dropbox.com/sh/bize1n830t0mgzb/AABZ2uM13YMYB_q6X1pP1McJa/RT_correction_hg38?dl=0&lst= && \
+  	unzip RT_correction_hg38.zip && \
+  	mv 1000G_RT_chr*.txt.gz RT_correction_hg38/ && \
+  	rm RT_correction_hg38.zip
+
+  	# Shapeit2
+  	curl -o shapeit2_chr.zip --retry 10 https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=shapeit2_chr.zip&type_of_work=Dataset && \
+  	unzip -q shapeit2_chr.zip && \
+  	rm shapeit2_chr.zip
+
+  	# Impute
+  	curl -o imputation_chr.zip --retry 10 https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=imputation_chr.zip&type_of_work=Dataset && \
+  	unzip -q imputation_chr.zip && \
+  	mv impute_info.txt imputation/ && \
+  	rm imputation_chr.zip 
+
+  	# 1000G
+  	curl -o 1000G_loci_hg38_chr.zip --retry 10 https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=1000G_loci_hg38_chr.zip&type_of_work=Dataset && \
+  	unzip 1000G_loci_hg38_chr.zip && \
+  	rm 1000G_loci_hg38_chr.zip && \
+  	sed -E -i 's|^X|chrX|' 1kg.phase3.v5a_GRCh38nounref_loci_chrX.txt
+
+  	# Probloci
+  	curl -o probloci_chr.zip --retry 10  https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=probloci_chr.zip&type_of_work=Dataset && \
+  	unzip probloci_chr.zip && \
+  	rm probloci_chr.zip
+
+  	# Beagle5
+  	curl -o beagle_chr.zip --retry 10 https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=beagle_chr.zip&type_of_work=Dataset && \
+  	mv beagle/ beagle5/ && \
+  	cd beagle5/ && \
+  	mkdir -p tmp/ && \
+  	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz tmp/ && \
+  	for i in {1..22} X; do zcat tmp/chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz | sed -E 's|^'${i}'|chr'${i}'|' | gzip > chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz; done && \
+  	rm -rf tmp/ && \
+  	cd ../
+  	"""
+}
+
+// Depending on whether the reference files used for Battenberg was pre-downloaded, set the input
+// channel for the Battenberg process
+if( params.battenberg_ref_cached == "yes" ) {
+	battenberg_ref_dir = battenberg_ref_dir_preDownloaded
+}
+else {
+	battenberg_ref_dir = battenberg_ref_dir_preProcess
+}
+
+
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // ~~~~~~~~~~~~~~~~ ascatNGS ~~~~~~~~~~~~~~~ \\
