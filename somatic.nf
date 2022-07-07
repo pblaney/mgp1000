@@ -1538,7 +1538,7 @@ process downloadBattenbergReferences_battenberg {
   	mkdir -p GC_correction_hg38/
   	mkdir -p RT_correction_hg38/
 
-  	./battenberg_reference_downloader.sh
+  	battenberg_reference_downloader.sh
 
 
   	# GC Correction
