@@ -1605,7 +1605,7 @@ process cnvCalling_battenberg {
 
   	cp "${output_dir}/${tumor_id}_subclones.txt" "${battenberg_cnv_profile}"
   	cp "${output_dir}/${tumor_id}_rho_and_psi.txt" "${battenberg_rho_and_psi}"
-  	cp "${output_dir}/${tumor_id}_purity_and_ploidy.txt" "${battenberg_purity_and_ploidy}"
+  	cp "${output_dir}/${tumor_id}_purity_ploidy.txt" "${battenberg_purity_and_ploidy}"
   	cp "${output_dir}/${tumor_id}_copynumberprofile.png" "${battenberg_cnv_profile_png}"
   	"""
 }
