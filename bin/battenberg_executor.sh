@@ -22,7 +22,7 @@ minDepth=$8
 sed -E 's|\$\{REF_PATH\}|'${PWD}'/battenberg_reference|g' battenberg_reference/impute_info.txt > battenberg_reference/imputation/impute_info.txt
 
 # Get name of Beagle5 JAR file
-BEAGLEJAR=$(ls "${PWD}/battenberg_reference/beagle5/beagle.*.jar" | sed -E 's|\/.*\/||')
+BEAGLEJAR=$(ls "battenberg_reference/beagle5/beagle.*.jar" | sed -E 's|\/.*\/||')
 
 # Second, update the path of the Beagle5 base directory
 cat /opt/battenberg/inst/example/battenberg_wgs.R | \
