@@ -1532,7 +1532,7 @@ process downloadBattenbergReferences_battenberg {
   	params.battenberg == "on" && params.battenberg_ref_cached == "no"
 
   	script:
-  	battenberg_references = "battenberg_references"
+  	battenberg_references = "battenberg_reference"
   	"""
   	mkdir -p "${battenberg_references}"
   	cd "${battenberg_references}/"
