@@ -32,13 +32,4 @@ sed 's|MIN_NORMAL_DEPTH = 10|MIN_NORMAL_DEPTH = '${minDepth}'|' > battenberg_wgs
 mkdir -p "${outputDir}"
 
 # Execute Battenberg command
-Rscript battenberg_wgs.R \
---analysis_type paried \
---tumourname "${tumorId}" \
---normalname "${normalId}" \
---tb "${PWD}/${tumorBam}" \
---nb "${PWD}/${normalBam}" \
---sex "${sex}" \
---output "${outputDir}" \
---cpu "${cpus}" \
---ref_genome_build hg38
+Rscript battenberg_wgs.R -a paried -t "${tumorId}" -n "${normalId}" --tb "${PWD}/${tumorBam}" -nb "${PWD}/${normalBam}" --sex "${sex}" -o "${outputDir}" --cpu "${cpus}" -g hg38
