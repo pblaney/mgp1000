@@ -49,18 +49,11 @@ with open(input_args[1]) as control_freec_mapped_alleles:
 
             else:
                 # Use known total copy number value to determine the heterozygous major/minor allele assignment
-                cn_per_allele = int(int(control_freec_segment_obj.total_cn) / 2)
-                is_unbalanced = round(math.fmod(int(control_freec_segment_obj.total_cn), 2))
-
-                if is_unbalanced == 0:
-                    balanced_heterozygous_inferred_alleles = '/'.join((str(cn_per_allele), str(cn_per_allele)))
-                    balanced_heterozygous_inferred_allele_tup = (control_freec_segment_obj.chrom, control_freec_segment_obj.start, control_freec_segment_obj.end, balanced_heterozygous_inferred_alleles)
-                    control_freec_alleles_bed.write('{0}\n'.format(output_segment_writer(balanced_heterozygous_inferred_allele_tup)))
-
-                elif is_unbalanced == 1:
-                    unbalanced_heterozygous_inferred_alleles = '/'.join((str(cn_per_allele + is_unbalanced), str(cn_per_allele)))
-                    unbalanced_heterozygous_inferred_allele_tup = (control_freec_segment_obj.chrom, control_freec_segment_obj.start, control_freec_segment_obj.end, unbalanced_heterozygous_inferred_alleles)
-                    control_freec_alleles_bed.write('{0}\n'.format(output_segment_writer(unbalanced_heterozygous_inferred_allele_tup)))
+                # Assumption will be that if segment is not sure to call homozygous, there must be at least one minor allele
+                inferred_het_cn = int(int(control_freec_segment_obj.total_cn) - 1)
+                heterozygous_inferred_alleles = '/'.join((str(inferred_het_cn), str(1)))
+                heterozygous_inferred_allele_tup = (control_freec_segment_obj.chrom, control_freec_segment_obj.start, control_freec_segment_obj.end, heterozygous_inferred_alleles)
+                control_freec_alleles_bed.write('{0}\n'.format(output_segment_writer(heterozygous_inferred_allele_tup)))
 
         else:
             # Convert the 'AB' convention to numeric '1/1' allele format
