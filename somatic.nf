@@ -1561,7 +1561,7 @@ process cnvCalling_battenberg {
   	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(battenberg_references) from bams_and_sex_of_sample_forBattenberg.combine(battenberg_ref_dir)
 
   	output:
-  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile)
+  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) into final_battenberg_cnv_profile_forConsensusPrep
   	tuple path(battenberg_rho_and_psi), path(battenberg_purity_and_ploidy), path(battenberg_cnv_profile_png)
   	path "${output_dir}/*.tumour.png"
   	path "${output_dir}/*.germline.png"
@@ -1610,23 +1610,35 @@ process cnvCalling_battenberg {
   	"""
 }
 
+// Battenberg Consensus CNV Prep ~ extract and prepare CNV output for consensus
+process consensusCnvPrep_battenberg {
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
+
+    output:
+    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed) into final_battenberg_cnv_profile_forConsensus
+    tuple val(tumor_normal_sample_id), path(battenberg_subclones_file) into battenberg_subclones_forConsensusSubclones
+
+    when:
+    params.battenberg == "on"
+
+    script:
+    battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
+    battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
+    battenberg_subclones_file = "${tumor_normal_sample_id}.battenberg.subclones.txt"
+    """
+    battenberg_clonal_and_subclonal_extractor.py \
+    <(grep -v 'startpos' "${battenberg_cnv_profile}" | cut -f 1-3,8-13) \
+    "${battenberg_somatic_cnv_bed}" \
+    "${battenberg_somatic_alleles_bed}" \
+    "${battenberg_subclones_file}"
+    """
+}
+
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // ~~~~~~~~~~~~~~~~ ascatNGS ~~~~~~~~~~~~~~~ \\
