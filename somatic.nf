@@ -1598,9 +1598,9 @@ process cnvCalling_battenberg {
   	"${normal_id}" \
   	"${tumor_bam}" \
   	"${normal_bam}" \
-  	"\${sex}"" \
+  	"\${sex}" \
   	"${output_dir}" \
-  	"${task.cpus}"" \
+  	"${task.cpus}" \
   	"${params.battenberg_min_depth}"
 
   	cp "${output_dir}/${tumor_id}_subclones.txt" "${battenberg_cnv_profile}"
