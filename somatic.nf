@@ -1591,7 +1591,7 @@ process cnvCalling_battenberg {
   	battenberg_purity_and_ploidy = "${tumor_normal_sample_id}.battenberg.purity.ploidy.txt"
   	battenberg_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.cnv.png"
   	"""
-  	sex=\$(cut -d ' ' -f 2 "${sample_sex}")
+  	sex=\$(cut -d ' ' -f 1 "${sample_sex}")
 
   	battenberg_executor.sh \
   	"${tumor_id}" \
