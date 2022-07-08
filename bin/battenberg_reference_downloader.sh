@@ -40,6 +40,7 @@ battenbergRefDownload() {
   	# Beagle5
   	wget -q -O beagle_chr.zip "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=beagle_chr.zip&type_of_work=Dataset" && \
   	unzip beagle_chr.zip
+  	rm beagle_chr.zip && \
   	mv beagle/ beagle5/ && \
   	cd beagle5/ && \
   	mkdir -p tmp/ && \
