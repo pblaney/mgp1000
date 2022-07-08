@@ -22,30 +22,26 @@ minDepth=$8
 sed -E 's|\$\{REF_PATH\}|'${PWD}'/battenberg_reference|g' battenberg_reference/impute_info.txt > battenberg_reference/imputation/impute_info.txt
 
 # Get name of Beagle5 JAR file
-BEAGLEJAR=$(ls "${PWD}/battenberg_reference/beagle5/beagle*.jar" | sed -E 's|\/.*\/||')
+BEAGLEJAR=$(ls "${PWD}/battenberg_reference/beagle5/beagle.*.jar" | sed -E 's|\/.*\/||')
 
 # Second, update the path of the Beagle5 base directory
 cat /opt/battenberg/inst/example/battenberg_wgs.R | \
 sed 's|BEAGLE_BASEDIR = \".*|BEAGLE_BASEDIR = \"'${PWD}'/battenberg_reference\"|' | \
 sed 's|beagle.*.jar|'${BEAGLEJAR}'|' | \
-sed 's|CHROM_COORD_FILE = \".*|CHROM_COORD_FILE = \"/opt/battenberg/chromosome_coordinates_hg38.txt\"|' > battenberg_wgs.R
+sed 's|CHROM_COORD_FILE = \".*|CHROM_COORD_FILE = \"/opt/battenberg/chromosome_coordinates_hg38.txt\"|' | \
+sed 's|MIN_NORMAL_DEPTH = 10|MIN_NORMAL_DEPTH = '${minDepth}'|' > battenberg_wgs.R
 
 # Make user-defined directory for output
 mkdir -p "${outputDir}"
 
 # Execute Battenberg command
-cmd="
 Rscript battenberg_wgs.R \
 --analysis_type paried \
---tumourname ${tumorId} \
---normalname ${normalId} \
---tb ${PWD}/${tumorBam} \
---nb ${PWD}/${normalBam} \
---sex ${sex} \
---output ${outputDir} \
---cpu ${cpus} \
---ref_genome_build hg38 \
---min_depth ${minDepth}
-"
-echo "${cmd}"
-eval ${cmd}
+--tumourname "${tumorId}" \
+--normalname "${normalId}" \
+--tb "${PWD}/${tumorBam}" \
+--nb "${PWD}/${normalBam}" \
+--sex "${sex}" \
+--output "${outputDir}" \
+--cpu "${cpus}" \
+--ref_genome_build hg38
