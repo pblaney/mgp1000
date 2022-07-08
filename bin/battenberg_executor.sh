@@ -21,13 +21,10 @@ minDepth=$8
 # Update the path to the reference files for use
 sed -E 's|\$\{REF_PATH\}|'${PWD}'/battenberg_reference|g' battenberg_reference/impute_info.txt > battenberg_reference/imputation/impute_info.txt
 
-# Get name of Beagle5 JAR file
-BEAGLEJAR=$(ls "battenberg_reference/beagle5/beagle.*.jar" | sed -E 's|\/.*\/||')
-
 # Second, update the path of the Beagle5 base directory
 cat /opt/battenberg/inst/example/battenberg_wgs.R | \
 sed 's|BEAGLE_BASEDIR = \".*|BEAGLE_BASEDIR = \"'${PWD}'/battenberg_reference\"|' | \
-sed 's|beagle.*.jar|'${BEAGLEJAR}'|' | \
+sed 's|beagle.*.jar|beagle.08Feb22.fa4.jar|' | \
 sed 's|CHROM_COORD_FILE = \".*|CHROM_COORD_FILE = \"/opt/battenberg/chromosome_coordinates_hg38.txt\"|' | \
 sed 's|MIN_NORMAL_DEPTH = 10|MIN_NORMAL_DEPTH = '${minDepth}'|' > battenberg_wgs.R
 
