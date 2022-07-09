@@ -3772,35 +3772,35 @@ process fourWayMergeSubclonalCnvCalls {
 	tuple val(tumor_normal_sample_id), path(battenberg_subclones_file), path(control_freec_subclones_file), path(sclust_subclones_file), path(accucopy_subclones_file) from subclone_output_forFourWayConsensus
 
 	output:
-	path consensus_subclonal_cnv_file
+	path four_way_consensus_subclonal_cnv_file
 
 	when:
 	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
 
 	script:
-	consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
+	four_way_consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
 	"""
-	touch "${consensus_subclonal_cnv_file}"
+	touch "${four_way_consensus_subclonal_cnv_file}"
 
-	echo "### Battenberg ###" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
-	cat "${battenberg_subclones_file}" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
+	echo "### Battenberg ###" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
+	cat "${battenberg_subclones_file}" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
 
-	echo "### Control-FREEC ###" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
-	cat "${control_freec_subclones_file}" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
+	echo "### Control-FREEC ###" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
+	cat "${control_freec_subclones_file}" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
 
-	echo "### Sclust ###" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
-	cut -f 2-11 "${sclust_subclones_file}" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
+	echo "### Sclust ###" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
+	cut -f 2-11 "${sclust_subclones_file}" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
 
-	echo "### Accucopy ###" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
-	cat "${accucopy_subclones_file}" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
+	echo "### Accucopy ###" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
+	cat "${accucopy_subclones_file}" >> "${four_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${four_way_consensus_subclonal_cnv_file}"
 	"""
 }
 
@@ -3813,30 +3813,30 @@ process threeWayMergeSubclonalCnvCalls {
 	tuple val(tumor_normal_sample_id), path(battenberg_subclones_file), path(control_freec_subclones_file), path(accucopy_subclones_file) from subclone_output_forThreeWayConsensus
 
 	output:
-	path consensus_subclonal_cnv_file
+	path three_way_consensus_subclonal_cnv_file
 
 	when:
 	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on"
 
 	script:
-	consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
+	three_way_consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
 	"""
-	touch "${consensus_subclonal_cnv_file}"
+	touch "${three_way_consensus_subclonal_cnv_file}"
 
-	echo "### Battenberg ###" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
-	cat "${battenberg_subclones_file}" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
+	echo "### Battenberg ###" >> "${three_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
+	cat "${battenberg_subclones_file}" >> "${three_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
 
 	echo "### Control-FREEC ###" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
-	cat "${control_freec_subclones_file}" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
+	cat "${control_freec_subclones_file}" >> "${three_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
 
 	echo "### Accucopy ###" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
-	cat "${accucopy_subclones_file}" >> "${consensus_subclonal_cnv_file}"
-	echo "" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
+	cat "${accucopy_subclones_file}" >> "${three_way_consensus_subclonal_cnv_file}"
+	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
 	"""
 }
 
