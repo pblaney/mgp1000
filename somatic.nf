@@ -1565,7 +1565,7 @@ process cnvCalling_battenberg {
   	tuple path(battenberg_rho_and_psi), path(battenberg_purity_and_ploidy), path(battenberg_cnv_profile_png)
   	path "${output_dir}/*.tumour.png"
   	path "${output_dir}/*.germline.png"
-  	path "${output_dir}/*_distanc.png"
+  	path "${output_dir}/*_distance.png"
   	path "${output_dir}/*_coverage.png"
   	path "${output_dir}/*_alleleratio.png"
   	path "${output_dir}/*_BattenbergProfile_*.png"
