@@ -1568,7 +1568,7 @@ process cnvCalling_battenberg {
   	path "${output_dir}/*_distance.png"
   	path "${output_dir}/*_coverage.png"
   	path "${output_dir}/*_alleleratio.png"
-  	path "${output_dir}/*_BattenbergProfile_*.png"
+  	path "${output_dir}/*_BattenbergProfile_subclones.png"
   	path "${output_dir}/*chr*_heterozygousData.png"
   	path "${output_dir}/*_nonroundedprofile.png"
   	path "${output_dir}/*_segment_chr*.png"
@@ -1578,6 +1578,7 @@ process cnvCalling_battenberg {
   	path "${output_dir}/*_subclones_alternatives.txt"
   	path "${output_dir}/*_subclones_chr*.png"
   	path "${output_dir}/*_totalcn_chrom_plot.png"
+  	path "${output_dir}/*_copynumberprofile.png"
 
   	when:
   	params.battenberg == "on"
@@ -1606,7 +1607,7 @@ process cnvCalling_battenberg {
   	cp "${output_dir}/${tumor_id}_subclones.txt" "${battenberg_cnv_profile}"
   	cp "${output_dir}/${tumor_id}_rho_and_psi.txt" "${battenberg_rho_and_psi}"
   	cp "${output_dir}/${tumor_id}_purity_ploidy.txt" "${battenberg_purity_and_ploidy}"
-  	cp "${output_dir}/${tumor_id}_copynumberprofile.png" "${battenberg_cnv_profile_png}"
+  	cp "${output_dir}/${tumor_id}_BattenbergProfile_average.png" "${battenberg_cnv_profile_png}"
   	"""
 }
 
