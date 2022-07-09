@@ -43,7 +43,7 @@ with open(input_args[1]) as battenberg_cn_profile:
 
         # Identify the clonal output determined by the highest state fraction of the two, then separately write output to
         # total CN and allele files for consensus
-        if battenberg_segment_obj.state2_fraction == "NA":
+        if battenberg_segment_obj.state2_fraction == "NA" and battenberg_segment_obj.state1_maj_allele != "NA":
             full_clonal_total_cn = str(sum([int(battenberg_segment_obj.state1_maj_allele), int(battenberg_segment_obj.state1_min_allele)]))
             full_clonal_cn_tuple = (battenberg_segment_obj.chrom, battenberg_segment_obj.start, battenberg_segment_obj.end,
                                     full_clonal_total_cn)
