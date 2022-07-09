@@ -99,20 +99,7 @@ def helpMessage() {
 		                                      Default: on
 		--battenberg_min_depth         [int]  Manually set the minimum read depth in the normal sample for SNP filtering in BAF calculations
 		                                      Available: 3, 5, 7, 10
-		                                      Default: 10                               
-		--ascatngs                     [str]  Indicates whether or not to use this tool
-		                                      Available: off, on
-		                                      Default: on
-		--ascatngs_ploidy              [int]  Manually set the ploidy value to be used for the ascatNgs algorithm, this is best used when
-		                                      re-running the analysis for specific samples with significant outlier output identified via the
-		                                      sunrise plot, setting this also requires setting --ascatngs_purity
-		                                      Available: 2, 3, 4, etc.
-		                                      Default: estimated internally by tool
-		--ascatngs_purity            [float]  Manually set the purity value to be used for the ascatNgs algorithm, this is best used when
-		                                      re-running the analysis for specific samples with significant outlier output identified via the
-		                                      sunrise plot, setting this also requires setting --ascatngs_ploidy
-		                                      Available: 0.2, 0.5, 0.8, etc.
-		                                      Default: estimated internally by tool
+		                                      Default: 10
 		--controlfreec                 [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -184,7 +171,6 @@ params.mutect = "on"
 params.strelka = "on"
 params.copycat = "on"
 params.battenberg = "on"
-params.ascatngs = "on"
 params.controlfreec = "on"
 params.sclust = "on"
 params.manta = "on"
@@ -192,8 +178,6 @@ params.svaba = "on"
 params.delly = "on"
 params.igcaller = "on"
 params.battenberg_min_depth = 10
-params.ascatngs_ploidy = null
-params.ascatngs_purity = null
 params.controlfreec_bp_threshold = 0.8
 params.controlfreec_ploidy = 2
 params.sclust_minp = 1.5
@@ -218,9 +202,6 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 
 if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
-// Print preemptive error message if either ascatNGS ploidy or purity is set while the other is not
-if( (params.ascatngs_ploidy && !params.ascatngs_purity) || (!params.ascatngs_ploidy && params.ascatngs_purity) ) exit 1, "User must define both ascatNGS ploidy and purity or leave both at default value"
-
 // Print preemptive error message if Sclust is set while Mutect2 is not
 if( params.sclust == "on" && params.mutect == "off" ) exit 1, "Sclust requires output from Mutect2 to run so both must be turned on"
 
@@ -237,7 +218,6 @@ Channel
 	       reference_genome_fasta_forMutectCalling;
 	       reference_genome_fasta_forMutectFilter;
 	       reference_genome_fasta_forMutectBcftools;
-	       reference_genome_fasta_forAscatNgs;
 	       reference_genome_fasta_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_forControlFreecCalling;
 	       reference_genome_fasta_forAccucopy;
@@ -262,7 +242,6 @@ Channel
 	       reference_genome_fasta_index_forMutectCalling;
 	       reference_genome_fasta_index_forMutectFilter;
 	       reference_genome_fasta_index_forMutectBcftools;
-	       reference_genome_fasta_index_forAscatNgs;
 	       reference_genome_fasta_index_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_index_forControlFreecCalling;
 	       reference_genome_fasta_index_forControlFreecConsensusPrep;
@@ -290,7 +269,6 @@ Channel
 	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
 	       reference_genome_fasta_dict_forMutectFilter;
 	       reference_genome_fasta_dict_forMutectBcftools;
-	       reference_genome_fasta_dict_forAscatNgs;
 	       reference_genome_fasta_dict_forControlFreecSamtoolsMpileup;
 	       reference_genome_fasta_dict_forControlFreecCalling;
 	       reference_genome_fasta_dict_forAccucopy;
@@ -541,7 +519,6 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam) into bam_forCopycat
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forBattenberg
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forAscatNgs
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusIndelMpileup
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forConsensusCnvTransform
@@ -1636,121 +1613,6 @@ process consensusCnvPrep_battenberg {
     "${battenberg_somatic_alleles_bed}" \
     "${battenberg_subclones_file}"
     """
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~~~ ascatNGS ~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all reference files into one channel for us in AscatNGS
-reference_genome_fasta_forAscatNgs.combine( reference_genome_fasta_index_forAscatNgs )
-	.combine( reference_genome_fasta_dict_forAscatNgs )
-	.combine( snp_gc_corrections )
-	.set{ reference_genome_and_snpgc_forAscatNgs }
-
-// ascatNGS ~  identifying somatically acquired copy-number alterations
-process cnvCalling_ascatngs {
-	publishDir "${params.output_dir}/somatic/ascatNgs", mode: 'copy', pattern: '*.{png,csv,vcf.gz,txt,tbi}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(reference_genome_fasta_forAscatNgs), path(reference_genome_fasta_index_forAscatNgs), path(reference_genome_fasta_dict_forAscatNgs), path(snp_gc_corrections) from bams_and_sex_of_sample_forAscatNgs.combine(reference_genome_and_snpgc_forAscatNgs)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) into final_ascat_cnv_profile_forConsensusPrep
-	tuple val(tumor_normal_sample_id), path(ascat_run_statistics) into ascat_output_forConsensusMetadata
-	path ascat_cnv_profile_vcf
-	path ascat_cnv_profile_vcf_index
-	path ascat_profile_png
-	path ascat_raw_profile_png
-	path sunrise_png
-	path aspcf_png
-	path germline_png
-	path tumor_png
-
-	when:
-	params.ascatngs == "on"
-
-	script:
-	ascat_ploidy_and_purity = (params.ascatngs_ploidy && params.ascatngs_purity) ? "-ploidy ${params.ascatngs_ploidy} -purity ${params.ascatngs_purity}" : ""
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	ascat_profile_png = "${tumor_normal_sample_id}.ascat.profile.png"
-	ascat_raw_profile_png = "${tumor_normal_sample_id}.ascat.raw.profile.png"
-	sunrise_png = "${tumor_normal_sample_id}.ascat.sunrise.png"
-	aspcf_png = "${tumor_normal_sample_id}.ascat.aspcf.png"
-	germline_png = "${tumor_normal_sample_id}.ascat.germline.png"
-	tumor_png = "${tumor_normal_sample_id}.ascat.tumor.png"
-	ascat_cnv_profile_final = "${tumor_normal_sample_id}.ascat.cnv.csv"
-	ascat_cnv_profile_vcf = "${tumor_normal_sample_id}.ascat.vcf.gz"
-	ascat_cnv_profile_vcf_index = "${ascat_cnv_profile_vcf}.tbi"
-	ascat_run_statistics = "${tumor_normal_sample_id}.ascat.runstatistics.txt"
-	"""
-	sex=\$(cut -d ' ' -f 2 "${sample_sex}")
-
-	ascat.pl \
-	-outdir . \
-	-tumour "${tumor_bam}" \
-	-t_name "${tumor_id}" \
-	-normal "${normal_bam}" \
-	-n_name "${normal_id}" \
-	-reference "${reference_genome_fasta_forAscatNgs}" \
-	-snp_gc "${snp_gc_corrections}" \
-	-protocol WGS \
-	-gender "\${sex}" \
-	-genderChr chrY \
-	-species Homo_sapiens \
-	-assembly GRCh38 \
-	-cpus "${task.cpus}" \
-	-nobigwig \
-	${ascat_ploidy_and_purity}
-
-	mv "${tumor_id}.ASCATprofile.png" "${ascat_profile_png}"
-	mv "${tumor_id}.rawprofile.png" "${ascat_raw_profile_png}"
-	mv "${tumor_id}.sunrise.png" "${sunrise_png}"
-	mv "${tumor_id}.ASPCF.png" "${aspcf_png}"
-	mv "${tumor_id}.germline.png" "${germline_png}"
-	mv "${tumor_id}.tumour.png" "${tumor_png}"
-	mv "${tumor_id}.copynumber.caveman.vcf.gz" "${ascat_cnv_profile_vcf}"
-	mv "${tumor_id}.copynumber.caveman.vcf.gz.tbi" "${ascat_cnv_profile_vcf_index}"
-	mv "${tumor_id}.samplestatistics.txt" "${ascat_run_statistics}"
-
-	touch "${ascat_cnv_profile_final}"
-	echo "segment_number,chromosome,start_position,end_position,normal_total_copy_number,normal_minor_copy_number,tumor_total_copy_number,tumor_minor_copy_number" >> "${ascat_cnv_profile_final}"
-	cat "${tumor_id}.copynumber.caveman.csv" >> "${ascat_cnv_profile_final}"
-	"""
-}
-
-// ascatNGS Consensus CNV Prep ~ extract and prepare CNV output for consensus
-process consensusCnvPrep_ascatngs {
-  	tag "${tumor_normal_sample_id}"
-
-  	input:
-  	tuple val(tumor_normal_sample_id), path(ascat_cnv_profile_final) from final_ascat_cnv_profile_forConsensusPrep
-
-  	output:
-  	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed) into final_ascat_cnv_profile_forConsensus
-
-  	when:
-  	params.ascatngs == "on"
-
-  	script:
-  	ascat_somatic_cnv_bed = "${tumor_normal_sample_id}.ascat.somatic.cnv.bed"
-  	ascat_somatic_alleles_bed = "${tumor_normal_sample_id}.ascat.somatic.alleles.bed"
-  	"""
-  	# total copy number per segment
-  	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
-  	| \
-  	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7}' > "${ascat_somatic_cnv_bed}"
-
-  	# major/minor alleles per segment
-  	grep -v 'segment_number' "${ascat_cnv_profile_final}" \
-  	| \
-  	awk -F, 'BEGIN {OFS="\t"} {print \$2,\$3,\$4,\$7-\$8"/"\$8}' > "${ascat_somatic_alleles_bed}"
-  	"""
 }
 
 // END
@@ -3668,18 +3530,15 @@ process repeatsAndStrandBiasFilterIndels_vcftools {
 // START
 
 // Determine which CNV consensus mechanism to use based on number of tools included, either 3 or 4 
-if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on" ) {
-
-  	cnv_output_forFourWayConsensus = final_ascat_cnv_profile_forConsensus.join(final_controlfreec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).join(final_accucopy_cnv_profile_forConsensus)
+if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on" ) {
+  	cnv_output_forFourWayConsensus = final_battenberg_cnv_profile_forConsensus.join(final_controlfreec_cnv_profile_forConsensus).join(final_sclust_cnv_profile_forConsensus).join(final_accucopy_cnv_profile_forConsensus)
   	cnv_output_forThreeWayConsensus = Channel.empty()
 
-} else if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on" ) {
-  
+} else if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on" ) {
   	cnv_output_forFourWayConsensus = Channel.empty()
-  	cnv_output_forThreeWayConsensus = final_ascat_cnv_profile_forConsensus.join(final_controlfreec_cnv_profile_forConsensus).join(final_accucopy_cnv_profile_forConsensus)
+  	cnv_output_forThreeWayConsensus = final_battenberg_cnv_profile_forConsensus.join(final_controlfreec_cnv_profile_forConsensus).join(final_accucopy_cnv_profile_forConsensus)
 
 } else {
-  
   	cnv_output_forFourWayConsensus = Channel.empty()
   	cnv_output_forThreeWayConsensus = Channel.empty()
 }
@@ -3689,13 +3548,13 @@ process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	tag "${tumor_normal_sample_id}"
 
   	input:
-  	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) from cnv_output_forFourWayConsensus
+  	tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed), path(sclust_somatic_cnv_bed), path(sclust_somatic_alleles_bed), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) from cnv_output_forFourWayConsensus
 
   	output:
   	tuple val(tumor_normal_sample_id), val(four_way_consensus_mechanism), path(four_way_consensus_merged_cnv_alleles_bed) into four_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
   	when:
-  	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
+  	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
 
   	script:
   	four_way_consensus_mechanism = "four_way"
@@ -3708,9 +3567,9 @@ process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	### Create consensus total copy number file ###
   	bedtools unionbedg \
   	-filler . \
-  	-i "${ascat_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${sclust_somatic_cnv_bed}" "${accucopy_somatic_cnv_bed}" \
+  	-i "${battenberg_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${sclust_somatic_cnv_bed}" "${accucopy_somatic_cnv_bed}" \
   	-header \
-  	-names ascat_total_cn controlfreec_total_cn sclust_total_cn accucopy_total_cn > "${four_way_merged_cnv_bed}"
+  	-names battenberg_total_cn controlfreec_total_cn sclust_total_cn accucopy_total_cn > "${four_way_merged_cnv_bed}"
 
   	four_way_consensus_cnv_generator.py \
   	<(grep -v 'chrom' "${four_way_merged_cnv_bed}") \
@@ -3719,9 +3578,9 @@ process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	### Create consensus major and minor allele file ###
   	bedtools unionbedg \
   	-filler . \
-  	-i "${ascat_somatic_alleles_bed}" "${control_freec_somatic_alleles_bed}" "${sclust_somatic_alleles_bed}" "${accucopy_somatic_alleles_bed}" \
+  	-i "${battenberg_somatic_alleles_bed}" "${control_freec_somatic_alleles_bed}" "${sclust_somatic_alleles_bed}" "${accucopy_somatic_alleles_bed}" \
   	-header \
-  	-names ascat_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles accucopy_major_minor_alleles > "${four_way_merged_alleles_bed}"
+  	-names battenberg_major_minor_alleles controlfreec_major_minor_alleles sclust_major_minor_alleles accucopy_major_minor_alleles > "${four_way_merged_alleles_bed}"
 
   	four_way_consensus_allele_generator.py \
   	<(grep -v 'chrom' "${four_way_merged_alleles_bed}") \
@@ -3739,13 +3598,13 @@ process threeWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	tag "${tumor_normal_sample_id}"
 
   	input:
-  	tuple val(tumor_normal_sample_id), path(ascat_somatic_cnv_bed), path(ascat_somatic_alleles_bed), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) from cnv_output_forThreeWayConsensus
+  	tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed), path(control_freec_somatic_cnv_bed), path(control_freec_somatic_alleles_bed), path(accucopy_somatic_cnv_bed), path(accucopy_somatic_alleles_bed) from cnv_output_forThreeWayConsensus
 
   	output:
   	tuple val(tumor_normal_sample_id), val(three_way_consensus_mechanism), path(three_way_consensus_merged_cnv_alleles_bed) into three_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
   	when:
-  	params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on"
+  	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on"
 
   	script:
   	three_way_consensus_mechanism = "three_way"
@@ -3758,9 +3617,9 @@ process threeWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	### Create consensus total copy number file ###
   	bedtools unionbedg \
   	-filler . \
-  	-i "${ascat_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${accucopy_somatic_cnv_bed}" \
+  	-i "${battenberg_somatic_cnv_bed}" "${control_freec_somatic_cnv_bed}" "${accucopy_somatic_cnv_bed}" \
   	-header \
-  	-names ascat_total_cn controlfreec_total_cn accucopy_total_cn > "${three_way_merged_cnv_bed}"
+  	-names battenberg_total_cn controlfreec_total_cn accucopy_total_cn > "${three_way_merged_cnv_bed}"
 
   	three_way_consensus_cnv_generator.py \
   	<(grep -v 'chrom' "${three_way_merged_cnv_bed}") \
@@ -3769,9 +3628,9 @@ process threeWayMergeAndGenerateConsensusCnvCalls_bedtools {
   	### Create consensus major and minor allele file ###
   	bedtools unionbedg \
   	-filler . \
-  	-i "${ascat_somatic_alleles_bed}" "${control_freec_somatic_alleles_bed}" "${accucopy_somatic_alleles_bed}" \
+  	-i "${battenberg_somatic_alleles_bed}" "${control_freec_somatic_alleles_bed}" "${accucopy_somatic_alleles_bed}" \
   	-header \
-  	-names ascat_major_minor_alleles controlfreec_major_minor_alleles accucopy_major_minor_alleles > "${three_way_merged_alleles_bed}"
+  	-names battenberg_major_minor_alleles controlfreec_major_minor_alleles accucopy_major_minor_alleles > "${three_way_merged_alleles_bed}"
 
   	three_way_consensus_allele_generator.py \
   	<(grep -v 'chrom' "${three_way_merged_alleles_bed}") \
@@ -3785,17 +3644,14 @@ process threeWayMergeAndGenerateConsensusCnvCalls_bedtools {
 }
 
 // Set the input for the high-quality consensus CNV BED transform process based on 3 or 4 way mechanism
-if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on" ) {
-  
-  consensus_cnv_and_allele_bed_forConsensusCnvTransform = four_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on" ) {
+  	consensus_cnv_and_allele_bed_forConsensusCnvTransform = four_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
-} else if( params.ascatngs == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on" ) {
-  
-  consensus_cnv_and_allele_bed_forConsensusCnvTransform = three_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+} else if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on" ) {
+  	consensus_cnv_and_allele_bed_forConsensusCnvTransform = three_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
 } else {
-  
-  consensus_cnv_and_allele_bed_forConsensusCnvTransform = Channel.empty()
+  	consensus_cnv_and_allele_bed_forConsensusCnvTransform = Channel.empty()
 }
 
 // Tidyverse ~ transform consensus CNV BED file to concise high quality format
@@ -3809,7 +3665,7 @@ process highQualityTransformConsensusCnvs_tidyverse {
     tuple val(tumor_normal_sample_id), path(hq_consensus_cnv_bed) into hq_consensus_cnv_bed_forAnnotation
 
     when:
-    params.ascatngs == "on" && params.controlfreec == "on" && params.accucopy == "on"
+    params.battenberg == "on" && params.controlfreec == "on" && params.accucopy == "on"
 
     script:
     hq_consensus_cnv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.bed"
@@ -3867,7 +3723,7 @@ process annotateConsensusCnvCalls_annotsv {
     path hq_consensus_cnv_annotated_bed
 
     when:
-    params.ascatngs == "on" && params.controlfreec == "on" && params.sclust == "on"
+    params.battenberg == "on" && params.controlfreec == "on" && params.sclust == "on"
 
     script:
     hq_consensus_cnv_annotated_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.annotated.bed"
@@ -3893,32 +3749,93 @@ process annotateConsensusCnvCalls_annotsv {
     """
 }
 
-// Merge subclonal CNV segment calls, simple concatenation of per tool output
-process mergeSubclonalCnvCalls {
+// Determine which subclone consensus mechanism to use based on number of tools included, either 3 or 4 
+if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on" ) {
+    subclone_output_forFourWayConsensus = battenberg_subclones_forConsensusSubclones.join(control_freec_subclones_forConsensusSubclones).join(sclust_subclones_forConsensusSubclones).join(accucopy_subclones_forConsensusSubclones)
+    subclone_output_forThreeWayConsensus = Channel.empty()
+
+} else if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on" ) {
+    subclone_output_forFourWayConsensus = Channel.empty()
+    subclone_output_forThreeWayConsensus = battenberg_subclones_forConsensusSubclones.join(control_freec_subclones_forConsensusSubclones).join(accucopy_subclones_forConsensusSubclones)
+
+} else {
+    subclone_output_forFourWayConsensus = Channel.empty()
+    subclone_output_forThreeWayConsensus = Channel.empty()
+}
+
+// 4-way merge four subclone CNV segment calls, simple concatenation of per tool output
+process fourWayMergeSubclonalCnvCalls {
 	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(control_freec_subclones_file), path(sclust_subclones_file), path(accucopy_subclones_file) from control_freec_subclones_forConsensusSubclones.join(sclust_subclones_forConsensusSubclones).join(accucopy_subclones_forConsensusSubclones)
+	tuple val(tumor_normal_sample_id), path(battenberg_subclones_file), path(control_freec_subclones_file), path(sclust_subclones_file), path(accucopy_subclones_file) from subclone_output_forFourWayConsensus
 
 	output:
 	path consensus_subclonal_cnv_file
 
 	when:
-	params.controlfreec == "on" && params.sclust == "on" && params.accucopy == "on"
+	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
 
 	script:
 	consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
 	"""
 	touch "${consensus_subclonal_cnv_file}"
 
+	echo "### Battenberg ###" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	cat "${battenberg_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+
 	echo "### Control-FREEC ###" >> "${consensus_subclonal_cnv_file}"
 	echo "" >> "${consensus_subclonal_cnv_file}"
 	cat "${control_freec_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
 
 	echo "### Sclust ###" >> "${consensus_subclonal_cnv_file}"
 	echo "" >> "${consensus_subclonal_cnv_file}"
 	cut -f 2-11 "${sclust_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+
+	echo "### Accucopy ###" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	cat "${accucopy_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	"""
+}
+
+// 3-way merge four subclone CNV segment calls, simple concatenation of per tool output
+process threeWayMergeSubclonalCnvCalls {
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(battenberg_subclones_file), path(control_freec_subclones_file), path(accucopy_subclones_file) from subclone_output_forThreeWayConsensus
+
+	output:
+	path consensus_subclonal_cnv_file
+
+	when:
+	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on"
+
+	script:
+	consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
+	"""
+	touch "${consensus_subclonal_cnv_file}"
+
+	echo "### Battenberg ###" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	cat "${battenberg_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+
+	echo "### Control-FREEC ###" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	cat "${control_freec_subclones_file}" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+
+	echo "### Accucopy ###" >> "${consensus_subclonal_cnv_file}"
+	echo "" >> "${consensus_subclonal_cnv_file}"
+	cat "${accucopy_subclones_file}" >> "${consensus_subclonal_cnv_file}"
 	echo "" >> "${consensus_subclonal_cnv_file}"
 	"""
 }
@@ -4220,13 +4137,13 @@ process mergeMetadataOutput {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(sample_sex), path(conpair_concordance_file), path(conpair_contamination_file), path(mutect_contamination_file), path(ascat_run_statistics), path(control_freec_run_info), path(sclust_cnv_summary_file) from allelecount_output_forConsensusMetadata.join(conpair_output_forConsensusMetadata).join(mutect_output_forConsensusMetadata).join(ascat_output_forConsensusMetadata).join(control_freec_output_forConsensusMetadata).join(sclust_output_forConsensusMetadata)
+	tuple val(tumor_normal_sample_id), path(sample_sex), path(conpair_concordance_file), path(conpair_contamination_file), path(mutect_contamination_file), path(control_freec_run_info), path(sclust_cnv_summary_file) from allelecount_output_forConsensusMetadata.join(conpair_output_forConsensusMetadata).join(mutect_output_forConsensusMetadata).join(control_freec_output_forConsensusMetadata).join(sclust_output_forConsensusMetadata)
 
 	output:
 	path consensus_metadata_file
 
 	when:
-	params.conpair == "on" && params.mutect == "on" && params.ascatngs == "on" && params.sclust == "on"
+	params.conpair == "on" && params.mutect == "on" && params.sclust == "on"
 
 	script:
 	consensus_metadata_file = "${tumor_normal_sample_id}.consensus.somatic.metadata.txt"
@@ -4251,12 +4168,6 @@ process mergeMetadataOutput {
 	echo "" >> "${consensus_metadata_file}"
 	echo "cross-sample"
 	cut -f 2,3 "${mutect_contamination_file}" >> "${consensus_metadata_file}"
-	echo "" >> "${consensus_metadata_file}"
-
-	echo "### ascatNGS ###" >> "${consensus_metadata_file}"
-	echo "" >> "${consensus_metadata_file}"
-	grep 'NormalContamination' "${ascat_run_statistics}" >> "${consensus_metadata_file}"
-	grep 'Ploidy' "${ascat_run_statistics}" >> "${consensus_metadata_file}"
 	echo "" >> "${consensus_metadata_file}"
 
 	echo "### Control-FREEC ###" >> "${consensus_metadata_file}"

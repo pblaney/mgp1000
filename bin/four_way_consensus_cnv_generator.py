@@ -11,16 +11,16 @@ class CopyNumberSegment(object):
 
     def __init__(self, cn_segment_line):
         """Parse merged copy number segment file to construct object"""
-        chrom, start, end, ascat_cn, controlfreec_cn, sclust_cn, accucopy_cn = cn_segment_line.rstrip().split('\t')
+        chrom, start, end, battenberg_cn, controlfreec_cn, sclust_cn, accucopy_cn = cn_segment_line.rstrip().split('\t')
         self.chrom = chrom
         self.start  = start
         self.end = end
-        self.ascat_cn = ascat_cn
+        self.battenberg_cn = battenberg_cn
         self.controlfreec_cn = controlfreec_cn
         self.sclust_cn = sclust_cn
         self.accucopy_cn = accucopy_cn
-        self.na_count = (ascat_cn, controlfreec_cn, sclust_cn, accucopy_cn).count('.')
-        self.segments_dict = {"ascat": ascat_cn,
+        self.na_count = (battenberg_cn, controlfreec_cn, sclust_cn, accucopy_cn).count('.')
+        self.segments_dict = {"battenberg": battenberg_cn,
                               "controlfreec": controlfreec_cn,
                               "sclust": sclust_cn,
                               "accucopy": accucopy_cn}
@@ -35,7 +35,7 @@ consensus_cnv_bed = open(input_args[2], 'w')
 
 header = ("chrom", "start", "end",
           "consensus_cn", "caller_agreement",
-          "ascat_cn", "controlfreec_cn", "sclust_cn", "accucopy_cn")
+          "battenberg_cn", "controlfreec_cn", "sclust_cn", "accucopy_cn")
 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(header)))
 
 with open(input_args[1]) as merged_copy_number_file:
@@ -49,7 +49,7 @@ with open(input_args[1]) as merged_copy_number_file:
             single_caller_cn = [(key,value) for (key,value) in copy_num_obj.segments_dict.items() if value != '.'][0]
             single_caller_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                       single_caller_cn[1], single_caller_cn[0],
-                                      copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                      copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
             consensus_cnv_bed.write('{0}\n'.format(consensus_writer(single_caller_cn_tuple)))
 
         elif copy_num_obj.na_count == 2:
@@ -60,13 +60,13 @@ with open(input_args[1]) as merged_copy_number_file:
                 double_caller_agreement_cn_callers = ','.join([double_caller_cn[0][0], double_caller_cn[1][0]])
                 double_caller_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                     double_caller_cn[0][1], double_caller_agreement_cn_callers,
-                                                    copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                    copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(double_caller_agreement_cn_tuple)))
 
             else:
                 double_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                        "-", "no_agreement",
-                                                       copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                       copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(double_caller_no_agreement_cn_tuple)))
 
         # If 3 tools generated a call for the segment, determine if the calls match
@@ -85,7 +85,7 @@ with open(input_args[1]) as merged_copy_number_file:
                 triple_caller_full_agreement_cn_callers = ','.join(*triple_caller_cn_dict.values())
                 triple_caller_full_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                          *triple_caller_cn_dict, triple_caller_full_agreement_cn_callers,
-                                                         copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                         copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(triple_caller_full_agreement_cn_tuple)))
 
             # Catch segments with split agreement where 2/3 tools agree
@@ -97,21 +97,21 @@ with open(input_args[1]) as merged_copy_number_file:
                     triple_caller_partial_agreement_pair1_cn_callers = ','.join(triple_partial_agreement_cn_callers[0])
                     triple_caller_partial_agreement_pair1_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                       triple_partial_agreement_cn[0], triple_caller_partial_agreement_pair1_cn_callers,
-                                                                      copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                                      copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(triple_caller_partial_agreement_pair1_cn_tuple)))
 
                 else:
                     triple_caller_partial_agreement_pair2_cn_callers = ','.join(triple_partial_agreement_cn_callers[1])
                     triple_caller_partial_agreement_pair2_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                       triple_partial_agreement_cn[1], triple_caller_partial_agreement_pair2_cn_callers,
-                                                                      copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                                      copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(triple_caller_partial_agreement_pair2_cn_tuple)))
 
             # Catch segment with no agreement between the 3 tools
             else:
                 triple_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                        "-", "no_agreement",
-                                                       copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                       copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(triple_caller_no_agreement_cn_tuple)))
 
         # If 4 tools generated a call for the segment, determine if the calls match
@@ -129,7 +129,7 @@ with open(input_args[1]) as merged_copy_number_file:
                 quad_caller_full_agreement_cn_callers = ','.join(*quad_caller_cn_dict.values())
                 quad_caller_full_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                        *quad_caller_cn_dict, quad_caller_full_agreement_cn_callers,
-                                                       copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                       copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_caller_full_agreement_cn_tuple)))
 
             # Catch segments with split agreement
@@ -141,14 +141,14 @@ with open(input_args[1]) as merged_copy_number_file:
                     quad_partial_agreement_pair1_cn_callers = ','.join(quad_partial_agreement_cn_callers[0])
                     quad_partial_agreement_pair1_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                              quad_partial_agreement_cn[0], quad_partial_agreement_pair1_cn_callers,
-                                                             copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                             copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_partial_agreement_pair1_cn_tuple)))
 
                 elif len(quad_partial_agreement_cn_callers[0]) < len(quad_partial_agreement_cn_callers[1]):
                     quad_partial_agreement_pair2_cn_callers = ','.join(quad_partial_agreement_cn_callers[1])
                     quad_partial_agreement_pair2_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                              quad_partial_agreement_cn[1], quad_partial_agreement_pair2_cn_callers,
-                                                             copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                             copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_partial_agreement_pair2_cn_tuple)))
 
                 # For segments with split 2 vs 2 agreement, prioritize the set with Control-FREEC
@@ -157,14 +157,14 @@ with open(input_args[1]) as merged_copy_number_file:
                         quad_even_split_agreement_pair1_cn_callers = ','.join(quad_partial_agreement_cn_callers[0])
                         quad_even_split_agreement_pair1_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                     quad_partial_agreement_cn[0], quad_even_split_agreement_pair1_cn_callers,
-                                                                    copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                                    copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                         consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_even_split_agreement_pair1_cn_tuple)))
 
                     elif re.search(r"controlfreec", ','.join(quad_partial_agreement_cn_callers[1])):
                         quad_even_split_agreement_pair2_cn_callers = ','.join(quad_partial_agreement_cn_callers[1])
                         quad_even_split_agreement_pair2_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                     quad_partial_agreement_cn[1], quad_even_split_agreement_pair2_cn_callers,
-                                                                    copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                                    copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                         consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_even_split_agreement_pair2_cn_tuple)))
 
             # Catch segments with lesser split agreement
@@ -176,28 +176,28 @@ with open(input_args[1]) as merged_copy_number_file:
                     quad_lesser_partial_agreement_pair1_cn_callers = ','.join(quad_lesser_partial_agreement_cn_callers[0])
                     quad_lesser_partial_agreement_pair1_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                     quad_lesser_partial_agreement_cn[0], quad_lesser_partial_agreement_pair1_cn_callers,
-                                                                    copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                                    copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_lesser_partial_agreement_pair1_cn_tuple)))
 
                 elif len(quad_lesser_partial_agreement_cn_callers[1]) > len(quad_lesser_partial_agreement_cn_callers[0]) and len(quad_lesser_partial_agreement_cn_callers[1]) > len(quad_lesser_partial_agreement_cn_callers[2]):
                     quad_lesser_partial_agreement_pair2_cn_callers = ','.join(quad_lesser_partial_agreement_cn_callers[1])
                     quad_lesser_partial_agreement_pair2_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                     quad_lesser_partial_agreement_cn[1], quad_lesser_partial_agreement_pair2_cn_callers,
-                                                                    copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                                    copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_lesser_partial_agreement_pair2_cn_tuple)))
 
                 elif len(quad_lesser_partial_agreement_cn_callers[2]) > len(quad_lesser_partial_agreement_cn_callers[0]) and len(quad_lesser_partial_agreement_cn_callers[2]) > len(quad_lesser_partial_agreement_cn_callers[1]):
                     quad_lesser_partial_agreement_pair3_cn_callers = ','.join(quad_lesser_partial_agreement_cn_callers[2])
                     quad_lesser_partial_agreement_pair3_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                     quad_lesser_partial_agreement_cn[2], quad_lesser_partial_agreement_pair3_cn_callers,
-                                                                    copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                                    copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_lesser_partial_agreement_pair3_cn_tuple)))
 
             # Catch segments with no agreement between all 4 tools
             elif len(quad_caller_cn_dict.keys()) == 4:
                 quad_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                      "-", "no_agreement",
-                                                     copy_num_obj.ascat_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
+                                                     copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.accucopy_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_caller_no_agreement_cn_tuple)))
 
 consensus_cnv_bed.close()
