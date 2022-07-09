@@ -58,7 +58,7 @@ with open(input_args[1]) as battenberg_cn_profile:
                                             '/'.join([battenberg_segment_obj.state1_maj_allele, battenberg_segment_obj.state1_min_allele]))
                 clonal_allele_output.write('{0}\n'.format(output_writer(full_clonal_allele_tuple)))
 
-            elif int(battenberg_segment_obj.state1_fraction) > int(battenberg_segment_obj.state2_fraction):
+            elif float(battenberg_segment_obj.state1_fraction) > float(battenberg_segment_obj.state2_fraction):
 
                 state1_clonal_total_cn = str(sum([int(battenberg_segment_obj.state1_maj_allele), int(battenberg_segment_obj.state1_min_allele)]))
                 state1_clonal_cn_tuple = (battenberg_segment_obj.chrom, battenberg_segment_obj.start, battenberg_segment_obj.end,
@@ -74,7 +74,7 @@ with open(input_args[1]) as battenberg_cn_profile:
                                           battenberg_segment_obj.state2_maj_allele, battenberg_segment_obj.state2_min_allele, str(battenberg_segment_obj.state2_fraction))
                 subclonal_output.write('{0}\n'.format(output_writer(state2_subclonal_tuple)))
 
-            elif int(battenberg_segment_obj.state2_fraction) > int(battenberg_segment_obj.state1_fraction):
+            elif float(battenberg_segment_obj.state2_fraction) > float(battenberg_segment_obj.state1_fraction):
 
                 state2_clonal_total_cn = str(sum([int(battenberg_segment_obj.state2_maj_allele), int(battenberg_segment_obj.state2_min_allele)]))
                 state2_clonal_cn_tuple = (battenberg_segment_obj.chrom, battenberg_segment_obj.start, battenberg_segment_obj.end,
