@@ -82,6 +82,8 @@ with open(input_args[1]) as battenberg_cn_profile:
             state1_subclonal_tuple = (battenberg_segment_obj.chrom, battenberg_segment_obj.start, battenberg_segment_obj.end,
                                       battenberg_segment_obj.state1_maj_allele, battenberg_segment_obj.state2_min_allele, str(battenberg_segment_obj.state1_fraction))
             subclonal_output.write('{0}\n'.format(output_writer(state1_subclonal_tuple)))
+        else:
+            continue
 
 clonal_cn_output.close()
 clonal_allele_output.close()
