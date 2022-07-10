@@ -2768,18 +2768,16 @@ process svAndIndelCalling_delly {
 	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf"
 
 	bcftools isec \
-	--nfiles 1 \
 	--complement \
 	--write 1 \
-	--output-type v \
+	--output-type u \
 	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
 	"${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" \
 	| \
 	bcftools filter \
-	--output-type v \
+	--output-type z \
 	--include 'FILTER="PASS"' \
-	| \
-	bgzip > "${delly_germline_sv_vcf}"
+	--output "${delly_germline_sv_vcf}"
 
 	tabix "${delly_germline_sv_vcf}"
 
