@@ -2245,7 +2245,7 @@ process cnvCalling_accucopy {
   	--normal_bam "${normal_bam}" \
   	--output_dir "${tumor_normal_sample_id}/" \
   	--nCores "${task.cpus}" \
-  	--debug 1 
+  	--debug 1 \
   	--clean
 
   	cp "${accucopy_config_file}" "${tumor_normal_sample_id}/${accucopy_config_file}"
