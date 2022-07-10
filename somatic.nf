@@ -3723,7 +3723,7 @@ process annotateConsensusCnvCalls_annotsv {
     path hq_consensus_cnv_annotated_bed
 
     when:
-    params.battenberg == "on" && params.controlfreec == "on" && params.sclust == "on"
+    params.battenberg == "on" && params.controlfreec == "on" && params.accucopy == "on"
 
     script:
     hq_consensus_cnv_annotated_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.annotated.bed"
@@ -3775,7 +3775,7 @@ process fourWayMergeSubclonalCnvCalls {
 	path four_way_consensus_subclonal_cnv_file
 
 	when:
-	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.accucopy == "on"
+	params.battenberg == "on" && params.controlfreec == "on" && params.sclust == "on" && params.accucopy == "on"
 
 	script:
 	four_way_consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
@@ -3816,7 +3816,7 @@ process threeWayMergeSubclonalCnvCalls {
 	path three_way_consensus_subclonal_cnv_file
 
 	when:
-	params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.accucopy == "on"
+	params.battenberg == "on" && params.controlfreec == "on" && params.sclust == "off" && params.accucopy == "on"
 
 	script:
 	three_way_consensus_subclonal_cnv_file = "${tumor_normal_sample_id}.consensus.somatic.cnv.subclonal.txt"
