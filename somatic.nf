@@ -3828,12 +3828,12 @@ process threeWayMergeSubclonalCnvCalls {
 	cat "${battenberg_subclones_file}" >> "${three_way_consensus_subclonal_cnv_file}"
 	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
 
-	echo "### Control-FREEC ###" >> "${consensus_subclonal_cnv_file}"
+	echo "### Control-FREEC ###" >> "${three_way_consensus_subclonal_cnv_file}"
 	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
 	cat "${control_freec_subclones_file}" >> "${three_way_consensus_subclonal_cnv_file}"
 	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
 
-	echo "### Accucopy ###" >> "${consensus_subclonal_cnv_file}"
+	echo "### Accucopy ###" >> "${three_way_consensus_subclonal_cnv_file}"
 	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
 	cat "${accucopy_subclones_file}" >> "${three_way_consensus_subclonal_cnv_file}"
 	echo "" >> "${three_way_consensus_subclonal_cnv_file}"
