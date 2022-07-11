@@ -2243,19 +2243,20 @@ process cnvCalling_accucopy {
   	--configure_filepath ${accucopy_config_file} \
   	--tumor_bam "${tumor_bam}" \
   	--normal_bam "${normal_bam}" \
-  	--output_dir "${tumor_normal_sample_id}/" \
+  	--output_dir "${tumor_normal_sample_id}_results/" \
+  	--snp_output_dir "${tumor_normal_sample_id}_results/"
   	--nCores "${task.cpus}" \
   	--debug 1 \
-  	--clean
+  	--clean 1
 
   	cp "${accucopy_config_file}" "${tumor_normal_sample_id}/${accucopy_config_file}"
-  	mv "${tumor_normal_sample_id}/infer.out.tsv" "${accucopy_run_summary}"
-	mv "${tumor_normal_sample_id}/infer.status.txt" "${accucopy_detailed_run_status_log}"
-	mv "${tumor_normal_sample_id}/cnv.output.tsv" "${accucopy_cnv_profile}"
-	mv "${tumor_normal_sample_id}/plot.cnv.png" "${accucopy_cnv_png}"
-	mv "${tumor_normal_sample_id}/plot.tre.png" "${accucopy_tre_png}"
-	mv "${tumor_normal_sample_id}/het_snp.tsv.gz" "${accucopy_het_snps}"
-	mv "${tumor_normal_sample_id}/all_segments.tsv.gz" "${accucopy_segments}"
+  	mv "${tumor_normal_sample_id}_results/infer.out.tsv" "${accucopy_run_summary}"
+	mv "${tumor_normal_sample_id}_results/infer.status.txt" "${accucopy_detailed_run_status_log}"
+	mv "${tumor_normal_sample_id}_results/cnv.output.tsv" "${accucopy_cnv_profile}"
+	mv "${tumor_normal_sample_id}_results/plot.cnv.png" "${accucopy_cnv_png}"
+	mv "${tumor_normal_sample_id}_results/plot.tre.png" "${accucopy_tre_png}"
+	mv "${tumor_normal_sample_id}_results/het_snp.tsv.gz" "${accucopy_het_snps}"
+	mv "${tumor_normal_sample_id}_results/all_segments.tsv.gz" "${accucopy_segments}"
   	"""
 }
 
