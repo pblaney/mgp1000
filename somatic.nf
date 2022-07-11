@@ -2244,7 +2244,7 @@ process cnvCalling_accucopy {
   	--tumor_bam "${tumor_bam}" \
   	--normal_bam "${normal_bam}" \
   	--output_dir "${tumor_normal_sample_id}_results" \
-  	--snp_output_dir "${tumor_normal_sample_id}_results" \
+  	--snp_output_dir "${tumor_normal_sample_id}_results/strelka_run" \
   	--max_no_of_peaks_for_logL 5 \
   	--nCores "${task.cpus}" \
   	--debug 1 \
