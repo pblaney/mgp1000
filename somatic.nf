@@ -2248,7 +2248,7 @@ process cnvCalling_accucopy {
   	--max_no_of_peaks_for_logL 5 \
   	--nCores "${task.cpus}" \
   	--debug 1 \
-  	--clean 1
+  	--clean
 
   	cp "${accucopy_config_file}" "${tumor_normal_sample_id}/${accucopy_config_file}"
   	mv "${tumor_normal_sample_id}_results/infer.out.tsv" "${accucopy_run_summary}"
