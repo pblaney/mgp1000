@@ -2240,8 +2240,12 @@ process cnvCalling_facets {
     input:
     tuple val(tumor_normal_sample_id), path(facets_snp_pileup) from snp_pileup_forFacets
 
-    //output:
-
+    output:
+    tuple val(tumor_normal_sample_id), path(facets_cnv_profile)
+    tuple val(tumor_normal_sample_id), path(facets_purity_ploidy)
+    path facets_run_log
+    path facets_cnv_pdf
+    path facets_spider_qc_pdf
 
     when:
     params.facets == "on"
@@ -2262,11 +2266,11 @@ process cnvCalling_facets {
     300 \
     ${params.facets_min_depth}
 
-    # mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
-    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_stats.txt" "${facets_purity_ploidy}"
-    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV.txt" "${facets_cnv_profile}"
-    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV.pdf" "${facets_cnv_pdf}"
-    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV_spider.pdf" "${facets_spider_qc_pdf}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_stats.txt" "${facets_purity_ploidy}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV.txt" "${facets_cnv_profile}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV.pdf" "${facets_cnv_pdf}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV_spider.pdf" "${facets_spider_qc_pdf}"
     """
 }
 
