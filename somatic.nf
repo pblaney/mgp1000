@@ -2216,7 +2216,7 @@ process snpPileup_facets {
     script:
     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
     normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-    tumor_normal_sample_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
     facets_snp_pileup = "${tumor_normal_sample_id}.facets.snp_pileup.csv.gz"
     """
     snp-pileup \
@@ -2274,8 +2274,30 @@ process cnvCalling_facets {
     """
 }
 
+// FACETS ~ fraction and copy number estimate from tumor/normal sequencing
+process consensusCnvPrep_facets {
+    tag "${tumor_normal_sample_id}"
 
+    input:
+    tuple val(tumor_normal_sample_id), path(facets_cnv_profile) from facets_cnv_profile_forConsensusPrep
 
+    output:
+    tuple val(tumor_normal_sample_id), path(facets_somatic_cnv_bed), path(facets_somatic_alleles_bed) into final_facets_cnv_profile_forConsensus
+
+    when:
+    params.facets == "on"
+
+    script:
+    facets_somatic_cnv_bed = "${tumor_normal_sample_id}.facets.somatic.cnv.bed"
+    facets_somatic_alleles_bed = "${tumor_normal_sample_id}.facets.somatic.alleles.bed"
+    """
+    facets_cnv_profile_postprocesser.sh \
+    "${facets_cnv_profile}" \
+    "${tumor_normal_sample_id}" \
+    "${facets_somatic_cnv_bed}" \
+    "${facets_somatic_alleles_bed}"
+    """
+}
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
