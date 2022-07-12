@@ -128,6 +128,9 @@ def helpMessage() {
 		                                      issues with QP iterations related errors
 		                                      Available: 1e-6, 1e-5
 		                                      Default: 1e-7
+		--facets                       [str]  Indicates whether or not to use this tool
+		                                      Available: off, on
+		                                      Default: on
 		--accucopy                     [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
@@ -173,6 +176,8 @@ params.copycat = "on"
 params.battenberg = "on"
 params.controlfreec = "on"
 params.sclust = "on"
+params.accucopy = "on"
+params.facets = "on"
 params.manta = "on"
 params.svaba = "on"
 params.delly = "on"
@@ -184,7 +189,7 @@ params.sclust_minp = 1.5
 params.sclust_maxp = 4.5
 params.sclust_mutclustering = "on"
 params.sclust_lambda = null
-params.accucopy = "on"
+params.facets_min_depth = 20
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -519,6 +524,7 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
 	tuple val(tumor_normal_sample_id), path(tumor_bam) into bam_forCopycat
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forBattenberg
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFacetsPileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusIndelMpileup
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forConsensusCnvTransform
@@ -2170,6 +2176,81 @@ process consensusCnvPrep_sclust {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ~~~~~~~~~~~~~~~~~ FACETS ~~~~~~~~~~~~~~~~ \\
+// START
+
+// FACETS ~ generate SNP read count pileups for CNV calling
+process snpPileup_facets {
+    publishDir "${params.output_dir}/somatic/facets", mode: 'copy'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(common_1000G_snps_sites_vcf), path(common_1000G_snps_sites_vcf_index) from bams_forFacetsPileup.combine(common_1000G_snps_sites).combine(common_1000G_snps_sites_index)
+
+    output:
+    tuple val(tumor_normal_sample_id), path(facets_snp_pileup) into snp_pileup_forFacets
+
+    when:
+    params.facets == "on"
+
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_normal_sample_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    facets_snp_pileup = "${tumor_normal_sample_id}.facets.snp_pileup.csv.gz"
+    """
+    snp-pileup \
+    --gzip \
+    --min-map-quality 15 \
+    --min-base-quality 20 \
+    --pseudo-snps 100 \
+    --min-read-counts ${params.facets_min_depth} \
+    "${common_1000G_snps_sites_vcf}" \
+    "${facets_snp_pileup}" \
+    "${normal_bam}" \
+    "${tumor_bam}"
+    """
+}
+
+
+
+
+
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // ~~~~~~~~~~~~~~~~ Accucopy ~~~~~~~~~~~~~~~~ \\
