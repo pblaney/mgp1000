@@ -396,11 +396,13 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/common_all_20180418.vcf.gz' )
-	.set{ common_dbsnp_ref_vcf }
+	.into{ common_dbsnp_ref_vcf_forControlFreec;
+	       common_dbsnp_ref_vcf_forFacets }
 
 Channel
 	.fromPath( 'references/hg38/common_all_20180418.vcf.gz.tbi' )
-	.set{ common_dbsnp_ref_vcf_index }
+	.into{ common_dbsnp_ref_vcf_index_forControlFreec;
+	       common_dbsnp_ref_vcf_index_forFacets }
 
 Channel
 	.fromPath( 'references/hg38/mappability_track_85m2.hg38.zip' )
@@ -1104,7 +1106,7 @@ reference_genome_bundle_and_bed_forMutectCalling.combine( mutect_gnomad_ref_vcf 
 
 // GATK Mutect2 ~ call somatic SNVs and indels via local assembly of haplotypes
 process snvAndIndelCalling_gatk {
-	tag "${tumor_normal_sample_id} C=${chromosome} "
+	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forMutectCalling), path(reference_genome_fasta_index_forMutectCalling), path(reference_genome_fasta_dict_forMutectCalling), path(gatk_bundle_wgs_bed_forMutectCalling), path(mutect_gnomad_ref_vcf), path(mutect_gnomad_ref_vcf_index), path(panel_of_normals_1000G), path(panel_of_normals_1000G_index) from tumor_normal_pair_forMutectCalling.combine(reference_genome_bed_and_vcfs_forMutectCalling)
@@ -1726,8 +1728,8 @@ reference_genome_fasta_forControlFreecCalling.combine( reference_genome_fasta_in
 
 reference_genome_bundle_forControlFreecCalling.combine( autosome_sex_chromosome_fasta_dir )
 	.combine( autosome_sex_chromosome_sizes_forControlFreec )
-	.combine( common_dbsnp_ref_vcf )
-	.combine( common_dbsnp_ref_vcf_index )
+	.combine( common_dbsnp_ref_vcf_forControlFreec )
+	.combine( common_dbsnp_ref_vcf_index_forControlFreec )
 	.combine( mappability_track_zip )
 	.set{ reference_data_bundle_forControlFreec }
 
@@ -2203,7 +2205,7 @@ process snpPileup_facets {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(common_1000G_snps_sites_vcf), path(common_1000G_snps_sites_vcf_index) from bams_forFacetsPileup.combine(common_1000G_snps_sites).combine(common_1000G_snps_sites_index)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(common_dbsnp_sites_vcf), path(common_dbsnp_sites_vcf_index) from bams_forFacetsPileup.combine(common_dbsnp_ref_vcf_forFacets).combine(common_dbsnp_ref_vcf_index_forFacets)
 
     output:
     tuple val(tumor_normal_sample_id), path(facets_snp_pileup) into snp_pileup_forFacets
@@ -2223,7 +2225,7 @@ process snpPileup_facets {
     --min-base-quality 20 \
     --pseudo-snps 100 \
     --min-read-counts ${params.facets_min_depth} \
-    "${common_1000G_snps_sites_vcf}" \
+    "${common_dbsnp_sites_vcf}" \
     "${facets_snp_pileup}" \
     "${normal_bam}" \
     "${tumor_bam}"
