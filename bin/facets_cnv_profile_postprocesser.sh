@@ -37,7 +37,7 @@ while read -r cnvSegment
     		# Some segments report the minor allele as more than the major (total_cn - minor_allele)
     		majorAllele=$(( $totalCn - $minorAllele ))
 
-    		if [[ ${minorAllele} > ${majorAllele}  ]]; then
+    		if [[ "${minorAllele}" > "${majorAllele}" ]]; then
     			awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$5"/"$4-$5}' <(echo ${cnvSegment})
     		else
     			awk 'BEGIN {OFS="\t"} {print $1,$2,$3,$4-$5"/"$5}' <(echo ${cnvSegment})
