@@ -374,7 +374,7 @@ Channel
 	.fromPath( 'references/hg38/small_exac_common_3.hg38.vcf.gz.tbi' )
 	.set{ exac_common_sites_ref_vcf_index }
 
-if( params.battenberg == "on" && params.battenberg_ref_cached == "yes" ) {
+if( params.battenberg_ref_cached == "yes" ) {
 	Channel
 		.fromPath( 'references/hg38/battenberg_reference/', checkIfExists: true )
 		.ifEmpty{ error "The run command issued has the '--battenberg_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--battenberg_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
