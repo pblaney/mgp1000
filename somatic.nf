@@ -2232,7 +2232,43 @@ process snpPileup_facets {
     """
 }
 
+// FACETS ~ fraction and copy number estimate from tumor/normal sequencing
+process cnvCalling_facets {
+    publishDir "${params.output_dir}/somatic/facets", mode: 'copy'
+    tag "${tumor_normal_sample_id}"
 
+    input:
+    tuple val(tumor_normal_sample_id), path(facets_snp_pileup) from snp_pileup_forFacets
+
+    //output:
+
+
+    when:
+    params.facets == "on"
+
+    script:
+    facets_run_log = "${tumor_normal_sample_id}.facets.log.txt"
+    facets_purity_ploidy = "${tumor_normal_sample_id}.facets.purity.ploidy.txt"
+    facets_cnv_profile = "${tumor_normal_sample_id}.facets.cnv.txt"
+    facets_cnv_pdf = "${tumor_normal_sample_id}.facets.cnv.pdf"
+    facets_spider_qc_pdf = "${tumor_normal_sample_id}.facets.spider.pdf"
+    """
+    Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
+    "${facets_snp_pileup}" \
+    hg38 \
+    1000 \
+    35 \
+    150 \
+    300 \
+    ${params.facets_min_depth}
+
+    # mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
+    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_stats.txt" "${facets_purity_ploidy}"
+    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV.txt" "${facets_cnv_profile}"
+    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV.pdf" "${facets_cnv_pdf}"
+    # mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval*_CNV_spider.pdf" "${facets_spider_qc_pdf}"
+    """
+}
 
 
 
