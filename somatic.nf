@@ -428,14 +428,6 @@ Channel
 	.set{ dbsnp_known_indel_ref_vcf_index }
 
 Channel
-	.fromPath( 'references/hg38/snp_sites_common_1000_genomes.hg38.gz' )
-	.set{ common_1000G_snps_sites }
-
-Channel
-	.fromPath( 'references/hg38/snp_sites_common_1000_genomes.hg38.gz.tbi' )
-	.set{ common_1000G_snps_sites_index }
-
-Channel
 	.fromPath( 'references/hg38/simple_and_centromeric_repeats.hg38.bed' )
 	.into{ simple_and_centromeric_repeats_bed_forSvaba;
 		   simple_and_centromeric_repeats_bed_forSnvBedFilter;
