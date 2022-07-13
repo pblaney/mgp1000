@@ -20,7 +20,7 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
   # First, check which consensus mechanism was used: three_way or four_way
   if(consensus_mechanism == "four_way") {
 
-    # Resolve all no agreement segments using Control-FREEC, Battenberg, Sclust, then Accucopy hierarchy
+    # Resolve all no agreement segments using Control-FREEC, Battenberg, Sclust, then FACETS hierarchy
     for(i in 1:nrow(consensus_cnv_alleles_bed_df)) {
   
       # First find segments with full disagreement
@@ -82,23 +82,23 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "caller_agreement" = "sclust",
                                                     "allele_caller_agreement" = "sclust"))
 
-        } else if(consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+        } else if(consensus_cnv_alleles_bed_df[i,]$facets_cn != ".") {
 
-          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          facets_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
                                              pattern = "/",
                                              simplify = T)[1]
-          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          facets_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
                                              pattern = "/",
                                              simplify = T)[2]
           agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
                                              tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
                                                     "start" = consensus_cnv_alleles_bed_df[i,]$start,
                                                     "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$accucopy_cn,
-                                                    "consensus_major_allele" = accucopy_major_allele,
-                                                    "consensus_minor_allele" = accucopy_minor_allele,
-                                                    "caller_agreement" = "accucopy",
-                                                    "allele_caller_agreement" = "accucopy"))
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$facets_cn,
+                                                    "consensus_major_allele" = facets_major_allele,
+                                                    "consensus_minor_allele" = facets_minor_allele,
+                                                    "caller_agreement" = "facets",
+                                                    "allele_caller_agreement" = "facets"))
         }
     
         # Then find all segments that only disagree on allele balance, likely due to called LOH by Control-FREEC  
@@ -163,13 +163,13 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
                                                     "allele_caller_agreement" = "sclust"))
 
-        } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "accucopy") &
-                  consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
+        } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "facets") &
+                  consensus_cnv_alleles_bed_df[i,]$facets_cn != ".") {
 
-          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          facets_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
                                              pattern = "/",
                                              simplify = T)[1]
-          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
+          facets_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
                                              pattern = "/",
                                              simplify = T)[2]
           agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
@@ -177,10 +177,10 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "start" = consensus_cnv_alleles_bed_df[i,]$start,
                                                     "end" = consensus_cnv_alleles_bed_df[i,]$end,
                                                     "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
-                                                    "consensus_major_allele" = accucopy_major_allele,
-                                                    "consensus_minor_allele" = accucopy_minor_allele,
+                                                    "consensus_major_allele" = facets_major_allele,
+                                                    "consensus_minor_allele" = facets_minor_allele,
                                                     "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
-                                                    "allele_caller_agreement" = "accucopy"))
+                                                    "allele_caller_agreement" = "facets"))
         }
 
       } else {
@@ -199,7 +199,7 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
 
   } else if(consensus_mechanism == "three_way") {
 
-    # Resolve all no agreement segments using Control-FREEC, Accucopy, then Battenberg hierarchy
+    # Resolve all no agreement segments using Control-FREEC, Battenberg, then FACETS hierarchy
     for(i in 1:nrow(consensus_cnv_alleles_bed_df)) {
 
       # First find segments with full disagreement
@@ -225,24 +225,6 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "caller_agreement" = "controlfreec",
                                                     "allele_caller_agreement" = "controlfreec"))
 
-        }  else if(consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
-
-          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
-                                             pattern = "/",
-                                             simplify = T)[1]
-          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
-                                             pattern = "/",
-                                             simplify = T)[2]
-          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$accucopy_cn,
-                                                    "consensus_major_allele" = accucopy_major_allele,
-                                                    "consensus_minor_allele" = accucopy_minor_allele,
-                                                    "caller_agreement" = "accucopy",
-                                                    "allele_caller_agreement" = "accucopy"))
-
         } else if(consensus_cnv_alleles_bed_df[i,]$battenberg_cn != ".") {
 
           battenberg_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$battenberg_alleles,
@@ -260,6 +242,24 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "consensus_minor_allele" = battenberg_minor_allele,
                                                     "caller_agreement" = "battenberg",
                                                     "allele_caller_agreement" = "battenberg"))
+
+        } else if(consensus_cnv_alleles_bed_df[i,]$facets_cn != ".") {
+
+          facets_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
+                                             pattern = "/",
+                                             simplify = T)[1]
+          facets_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
+                                             pattern = "/",
+                                             simplify = T)[2]
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$facets_cn,
+                                                    "consensus_major_allele" = facets_major_allele,
+                                                    "consensus_minor_allele" = facets_minor_allele,
+                                                    "caller_agreement" = "facets",
+                                                    "allele_caller_agreement" = "facets"))
 
         }
 
@@ -287,24 +287,6 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
                                                     "allele_caller_agreement" = "controlfreec"))
       
-        } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "accucopy") &
-                  consensus_cnv_alleles_bed_df[i,]$accucopy_cn != ".") {
-
-          accucopy_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
-                                             pattern = "/",
-                                             simplify = T)[1]
-          accucopy_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$accucopy_alleles,
-                                             pattern = "/",
-                                             simplify = T)[2]
-          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
-                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
-                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
-                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
-                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
-                                                    "consensus_major_allele" = accucopy_major_allele,
-                                                    "consensus_minor_allele" = accucopy_minor_allele,
-                                                    "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
-                                                    "allele_caller_agreement" = "accucopy"))
         } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "battenberg") &
                   consensus_cnv_alleles_bed_df[i,]$battenberg_cn != ".") {
 
@@ -323,7 +305,27 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "consensus_minor_allele" = battenberg_minor_allele,
                                                     "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
                                                     "allele_caller_agreement" = "battenberg"))
-        }
+
+        } else if(str_detect(string = consensus_cnv_alleles_bed_df[i,]$caller_agreement, pattern = "facets") &
+                  consensus_cnv_alleles_bed_df[i,]$facets_cn != ".") {
+
+          facets_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
+                                             pattern = "/",
+                                             simplify = T)[1]
+          facets_minor_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$facets_alleles,
+                                             pattern = "/",
+                                             simplify = T)[2]
+          agreement_resolved_cnv_df <- rbind(agreement_resolved_cnv_df,
+                                             tibble("chrom" = consensus_cnv_alleles_bed_df[i,]$chrom,
+                                                    "start" = consensus_cnv_alleles_bed_df[i,]$start,
+                                                    "end" = consensus_cnv_alleles_bed_df[i,]$end,
+                                                    "consensus_total_cn" = consensus_cnv_alleles_bed_df[i,]$consensus_cn,
+                                                    "consensus_major_allele" = facets_major_allele,
+                                                    "consensus_minor_allele" = facets_minor_allele,
+                                                    "caller_agreement" = consensus_cnv_alleles_bed_df[i,]$caller_agreement,
+                                                    "allele_caller_agreement" = "facets"))
+          
+        } 
 
       } else {
 
