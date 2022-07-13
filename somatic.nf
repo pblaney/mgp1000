@@ -3787,7 +3787,7 @@ process twoWayMergeSubclonalCnvCalls {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(battenberg_subclones_file), path(control_freec_subclones_file) from subclone_output_forThreeWayConsensus
+	tuple val(tumor_normal_sample_id), path(battenberg_subclones_file), path(control_freec_subclones_file) from subclone_output_forTwoWayConsensus
 
 	output:
 	path two_way_consensus_subclonal_cnv_file
