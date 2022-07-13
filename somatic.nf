@@ -132,7 +132,7 @@ def helpMessage() {
 		                                      Available: off, on
 		                                      Default: on
 		--facets_min_depth             [str]  Manually set the minimum read depth in the normal sample for SNP filtering in BAF calculations
-		                                      Available: 9 (~12x coverage), 15, 20 (~30x coverage), 25, 35 (~80x coverage)
+		                                      Available: 9 (~12x coverage), 20 (~30x coverage), 25 (~50x coverage), 35 (~80x coverage)
 		                                      Default: 20
 		--manta                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
