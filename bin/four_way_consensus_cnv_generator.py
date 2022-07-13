@@ -65,7 +65,7 @@ with open(input_args[1]) as merged_copy_number_file:
 
             else:
                 double_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
-                                                       "-", "no_agreement",
+                                                       ".", "no_agreement",
                                                        copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.facets_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(double_caller_no_agreement_cn_tuple)))
 
@@ -110,7 +110,7 @@ with open(input_args[1]) as merged_copy_number_file:
             # Catch segment with no agreement between the 3 tools
             else:
                 triple_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
-                                                       "-", "no_agreement",
+                                                       ".", "no_agreement",
                                                        copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.facets_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(triple_caller_no_agreement_cn_tuple)))
 
@@ -196,7 +196,7 @@ with open(input_args[1]) as merged_copy_number_file:
             # Catch segments with no agreement between all 4 tools
             elif len(quad_caller_cn_dict.keys()) == 4:
                 quad_caller_no_agreement_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
-                                                     "-", "no_agreement",
+                                                     ".", "no_agreement",
                                                      copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.facets_cn)
                 consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_caller_no_agreement_cn_tuple)))
 
