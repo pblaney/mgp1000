@@ -151,16 +151,16 @@ with open(input_args[1]) as merged_copy_number_file:
                                                              copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.facets_cn)
                     consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_partial_agreement_pair2_cn_tuple)))
 
-                # For segments with split 2 vs 2 agreement, prioritize the set with Control-FREEC
+                # For segments with split 2 vs 2 agreement, prioritize the set with Battenberg
                 else:
-                    if re.search(r"controlfreec", ','.join(quad_partial_agreement_cn_callers[0])):
+                    if re.search(r"battenberg", ','.join(quad_partial_agreement_cn_callers[0])):
                         quad_even_split_agreement_pair1_cn_callers = ','.join(quad_partial_agreement_cn_callers[0])
                         quad_even_split_agreement_pair1_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                     quad_partial_agreement_cn[0], quad_even_split_agreement_pair1_cn_callers,
                                                                     copy_num_obj.battenberg_cn, copy_num_obj.controlfreec_cn, copy_num_obj.sclust_cn, copy_num_obj.facets_cn)
                         consensus_cnv_bed.write('{0}\n'.format(consensus_writer(quad_even_split_agreement_pair1_cn_tuple)))
 
-                    elif re.search(r"controlfreec", ','.join(quad_partial_agreement_cn_callers[1])):
+                    elif re.search(r"battenberg", ','.join(quad_partial_agreement_cn_callers[1])):
                         quad_even_split_agreement_pair2_cn_callers = ','.join(quad_partial_agreement_cn_callers[1])
                         quad_even_split_agreement_pair2_cn_tuple = (copy_num_obj.chrom, copy_num_obj.start, copy_num_obj.end,
                                                                     quad_partial_agreement_cn[1], quad_even_split_agreement_pair2_cn_callers,

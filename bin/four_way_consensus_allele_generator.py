@@ -151,16 +151,16 @@ with open(input_args[1]) as merged_allele_file:
                                                                  allele_obj.battenberg_alleles, allele_obj.controlfreec_alleles, allele_obj.sclust_alleles, allele_obj.facets_alleles)
                     consensus_allele_bed.write('{0}\n'.format(consensus_writer(quad_partial_agreement_pair2_allele_tuple)))
 
-                # For segments with split 2 vs 2 agreement, prioritize the set with Control-FREEC
+                # For segments with split 2 vs 2 agreement, prioritize the set with Battenberg
                 else:
-                    if re.search(r"controlfreec", ','.join(quad_partial_agreement_allele_callers[0])):
+                    if re.search(r"battenberg", ','.join(quad_partial_agreement_allele_callers[0])):
                         quad_even_split_agreement_pair1_allele_callers = ','.join(quad_partial_agreement_allele_callers[0])
                         quad_even_split_agreement_pair1_allele_tuple = (allele_obj.chrom, allele_obj.start, allele_obj.end,
                                                                         quad_partial_agreement_allele[0].replace("/", "\t"), quad_even_split_agreement_pair1_allele_callers,
                                                                         allele_obj.battenberg_alleles, allele_obj.controlfreec_alleles, allele_obj.sclust_alleles, allele_obj.facets_alleles)
                         consensus_allele_bed.write('{0}\n'.format(consensus_writer(quad_even_split_agreement_pair1_allele_tuple)))
 
-                    elif re.search(r"controlfreec", ','.join(quad_partial_agreement_allele_callers[1])):
+                    elif re.search(r"battenberg", ','.join(quad_partial_agreement_allele_callers[1])):
                         quad_even_split_agreement_pair2_allele_callers = ','.join(quad_partial_agreement_allele_callers[1])
                         quad_even_split_agreement_pair2_allele_tuple = (allele_obj.chrom, allele_obj.start, allele_obj.end,
                                                                         quad_partial_agreement_allele[1].replace("/", "\t"), quad_even_split_agreement_pair2_allele_callers,

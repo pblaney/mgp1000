@@ -54,9 +54,6 @@ def helpMessage() {
 		                                      done for every separate run after the first
 		                                      Available: yes, no
 		                                      Default: yes
-		--read_length                  [int]  Manually set the read length to be used for the mappability track for Control-FREEC
-		                                      Available: 85, 100, 101, 150, 151 etc
-		                                      Default: 100
 		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes that allow for multithreading
 		                                      Available: 2, 4, 8, 16, etc.
 		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
@@ -98,11 +95,14 @@ def helpMessage() {
 		                                      Available: off, on
 		                                      Default: on
 		--battenberg_min_depth         [int]  Manually set the minimum read depth in the normal sample for SNP filtering in BAF calculations
-		                                      Available: 3, 5, 7, 10
+		                                      Available: 4 (~12x coverage), 10 (~30x coverage)
 		                                      Default: 10
 		--controlfreec                 [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
 		                                      Default: on
+		--controlfreec_read_length     [int]  Manually set the read length to be used for the mappability track for Control-FREEC
+		                                      Available: 85, 100, 101, 150, 151 etc
+		                                      Default: 151
 		--controlfreec_bp_threshold  [float]  Manually set the breakpoint threshold value to be used for the Control-FREEC algorithm, this can be lowered
 		                                      if the sample is expected to have large number of CNV segments or increased for the opposite assumption
 		                                      Available: 0.6, 0.8, 1.2
@@ -132,7 +132,7 @@ def helpMessage() {
 		                                      Available: off, on
 		                                      Default: on
 		--facets_min_depth             [str]  Manually set the minimum read depth in the normal sample for SNP filtering in BAF calculations
-		                                      Available: 9 (~12x coverage), 20 (~30x coverage), 25 (~50x coverage), 35 (~80x coverage)
+		                                      Available: 8 (~12x coverage), 20 (~30x coverage), 27 (~50x coverage), 35 (~80x coverage)
 		                                      Default: 20
 		--manta                        [str]  Indicates whether or not to use this tool
 		                                      Available: off, on
@@ -165,7 +165,6 @@ params.mutect_ref_vcf_concatenated = "yes"
 params.battenberg_ref_cached = "yes"
 params.annotsv_ref_cached = "yes"
 params.vep_ref_cached = "yes"
-params.read_length = 100
 params.telomerecat = "on"
 params.telomerehunter = "on"
 params.conpair = "on"
@@ -182,6 +181,7 @@ params.svaba = "on"
 params.delly = "on"
 params.igcaller = "on"
 params.battenberg_min_depth = 10
+params.controlfreec_read_length = 151
 params.controlfreec_bp_threshold = 0.8
 params.controlfreec_ploidy = 2
 params.sclust_minp = 1.5
@@ -465,7 +465,7 @@ log.info "~~~ Output Directory ~~~	${params.output_dir}"
 log.info ''
 log.info "~~~ Run Report File ~~~		nextflow_report.${params.run_id}.html"
 log.info ''
-log.info "~~~ Read Length ~~~		${params.read_length}"
+log.info "~~~ Read Length ~~~		${params.controlfreec_read_length}"
 log.info ''
 log.info '################################################'
 log.info ''
@@ -1697,9 +1697,9 @@ process mergeMpileupsForControlFreec_samtools {
 }
 
 // Set the mappability track for Control-FREEC based on user-defined read length
-if( params.read_length < 100 ) {
+if( params.controlfreec_read_length < 100 ) {
   	mappability_track_zip = mappability_track_85kmer_zip
-} else if( params.read_length < 150 ) {
+} else if( params.controlfreec_read_length < 150 ) {
   	mappability_track_zip = mappability_track_100kmer_zip
 } else {
   	mappability_track_zip = mappability_track_150kmer_zip
@@ -4115,7 +4115,7 @@ process mergeMetadataOutput {
 	path consensus_metadata_file
 
 	when:
-	params.conpair == "on" && params.mutect == "on" && params.sclust == "on"
+	params.conpair == "on" && params.mutect == "on" && params.controlfreec == "on" && params.sclust == "on"
 
 	script:
 	consensus_metadata_file = "${tumor_normal_sample_id}.consensus.somatic.metadata.txt"
