@@ -44,7 +44,7 @@ with open(input_args[1]) as battenberg_cn_profile:
         # Identify the clonal output determined by the highest state fraction of the two, then separately write output to
         # total CN and allele files for consensus
         if str(battenberg_segment_obj.state1_maj_allele) == "NA" and str(battenberg_segment_obj.state2_maj_allele) == "NA":
-            break
+            continue
         else:
 
             if str(battenberg_segment_obj.state1_maj_allele) != "NA" and str(battenberg_segment_obj.state2_maj_allele) == "NA":
