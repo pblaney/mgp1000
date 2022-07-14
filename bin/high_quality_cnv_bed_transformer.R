@@ -45,7 +45,7 @@ segment_disagreement_resolution <- function(consensus_cnv_alleles_bed_df, consen
                                                     "caller_agreement" = "battenberg",
                                                     "allele_caller_agreement" = "battenberg"))
 
-        } if(consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
+        } else if(consensus_cnv_alleles_bed_df[i,]$controlfreec_cn != ".") {
 
           control_freec_major_allele <- str_split(string = consensus_cnv_alleles_bed_df[i,]$controlfreec_alleles,
                                                   pattern = "/",
