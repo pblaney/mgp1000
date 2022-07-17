@@ -90,6 +90,22 @@ with open(input_args[1]) as battenberg_cn_profile:
                                           battenberg_segment_obj.state1_maj_allele, battenberg_segment_obj.state2_min_allele, str(battenberg_segment_obj.state1_fraction))
                 subclonal_output.write('{0}\n'.format(output_writer(state1_subclonal_tuple)))
 
+            elif float(battenberg_segment_obj.state1_fraction) == float(battenberg_segment_obj.state2_fraction):
+
+                equal_state_total_cn = str(sum([int(battenberg_segment_obj.state1_maj_allele), int(battenberg_segment_obj.state1_min_allele)]))
+                equal_state_cn_tuple = (battenberg_segment_obj.chrom, battenberg_segment_obj.start, battenberg_segment_obj.end,
+                                        equal_state_total_cn)
+                clonal_cn_output.write('{0}\n'.format(output_writer(equal_state_cn_tuple)))
+
+                equal_state_clonal_allele_tuple = (battenberg_segment_obj.chrom, battenberg_segment_obj.start, battenberg_segment_obj.end,
+                                                   '/'.join([battenberg_segment_obj.state1_maj_allele, battenberg_segment_obj.state1_min_allele]))
+                clonal_allele_output.write('{0}\n'.format(output_writer(equal_state_clonal_allele_tuple)))
+
+                # Write subclonal segment to separate input
+                equal_state_subclonal_tuple = (battenberg_segment_obj.chrom, battenberg_segment_obj.start, battenberg_segment_obj.end,
+                                               battenberg_segment_obj.state2_maj_allele, battenberg_segment_obj.state2_min_allele, str(battenberg_segment_obj.state2_fraction))
+                subclonal_output.write('{0}\n'.format(output_writer(equal_state_subclonal_tuple)))
+
 clonal_cn_output.close()
 clonal_allele_output.close()
 subclonal_output.close()
