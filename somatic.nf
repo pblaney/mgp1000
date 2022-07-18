@@ -3527,6 +3527,7 @@ if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "
 
 // BEDtools unionbedg 4-way ~ transform CNV output into BED files then generate merged CNV segment file
 process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{merged.bed}'
   	tag "${tumor_normal_sample_id}"
 
   	input:
@@ -3577,6 +3578,7 @@ process fourWayMergeAndGenerateConsensusCnvCalls_bedtools {
 
 // BEDtools unionbedg 3-way ~ transform CNV output into BED files then generate merged CNV segment file
 process threeWayMergeAndGenerateConsensusCnvCalls_bedtools {
+	publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{merged.bed}'
   	tag "${tumor_normal_sample_id}"
 
   	input:
