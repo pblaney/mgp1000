@@ -128,7 +128,7 @@ with open(input_args[1]) as merged_allele_file:
             if len(quad_caller_allele_dict.keys()) == 1:
                 quad_caller_full_agreement_allele_callers = ','.join(*quad_caller_allele_dict.values())
                 quad_caller_full_agreement_allele_tuple = (allele_obj.chrom, allele_obj.start, allele_obj.end,
-                                                           *quad_caller_allele_dict.replace("/", "\t"), quad_caller_full_agreement_allele_callers,
+                                                           '{0}'.format(*quad_caller_allele_dict).replace("/", "\t"), quad_caller_full_agreement_allele_callers,
                                                            allele_obj.battenberg_alleles, allele_obj.controlfreec_alleles, allele_obj.sclust_alleles, allele_obj.facets_alleles)
                 consensus_allele_bed.write('{0}\n'.format(consensus_writer(quad_caller_full_agreement_allele_tuple)))
 
