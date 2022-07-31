@@ -3142,7 +3142,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	bgzip "${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
 	tabix "${mpileup_supported_consensus_somatic_snv_noformat_vcf}.gz"
 
-	bcftools annotate 
+	bcftools annotate \
 	--output-type z \
 	--annotations "${snv_mpileup_genotyped_vcf}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/GT \
