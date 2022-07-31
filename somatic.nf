@@ -3002,6 +3002,7 @@ process consensusSnvMpileup_bcftools {
 	snv_mpileup_tumor_format_metrics_index = "${snv_mpileup_tumor_format_metrics}.tbi"
 	"""
 	bcftools mpileup \
+	--output-type u \
 	--no-BAQ \
 	--max-depth 5000 \
 	--threads ${task.cpus} \
@@ -3010,6 +3011,11 @@ process consensusSnvMpileup_bcftools {
 	--samples ${normal_id},${tumor_id} \
 	--annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP \
 	"${normal_bam}" "${tumor_bam}" \
+	| \
+	bcftools call \
+	--variants-only \
+	--multiallelic-caller \
+	--output-type v \
 	| \
 	bcftools norm \
 	--threads ${task.cpus} \
