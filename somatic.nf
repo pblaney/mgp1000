@@ -2985,7 +2985,7 @@ process consensusSnvMpileup_bcftools {
 
 	output:
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_snv_nosamples_noformat_vcf) into consensus_snv_vcf_forAddSamples
-	tuple val(tumor_normal_sample_id), path(snv_mpileup_info_dp_metrics), path(snv_mpileup_normal_format_metrics), path(snv_mpileup_normal_format_metrics_index), path(snv_mpileup_tumor_format_metrics), path(snv_mpileup_tumor_format_metrics_index) into consensus_snv_mpileup_metrics_forAddFormat
+	tuple val(tumor_normal_sample_id), path(snv_mpileup_genotyped_vcf), path(snv_mpileup_genotyped_vcf_index), path(snv_mpileup_info_dp_metrics), path(snv_mpileup_normal_format_metrics), path(snv_mpileup_normal_format_metrics_index), path(snv_mpileup_tumor_format_metrics), path(snv_mpileup_tumor_format_metrics_index) into consensus_snv_mpileup_metrics_forAddFormat
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on"
@@ -2993,6 +2993,8 @@ process consensusSnvMpileup_bcftools {
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	snv_mpileup_genotyped_vcf = "${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz"
+	snv_mpileup_genotyped_vcf_index = "${snv_mpileup_genotyped_vcf}.tbi"
 	full_snv_vcf_header = "full_snv_vcf_header.txt"
 	mpileup_supported_consensus_somatic_snv_nosamples_noformat_vcf = "${tumor_normal_sample_id}.ms.consensus.somatic.snv.nosamples.noformat.vcf"
 	snv_mpileup_info_dp_metrics = "${tumor_normal_sample_id}.snv.mpileup.info.dp.metrics.txt"
@@ -3029,8 +3031,8 @@ process consensusSnvMpileup_bcftools {
 	| \
 	grep -Ev '<.>|INDEL;' \
 	| \
-	bgzip > "${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz"
-	tabix "${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz"
+	bgzip > "${snv_mpileup_genotyped_vcf}"
+	tabix "${snv_mpileup_genotyped_vcf}"
 
 	bgzip < "${consensus_somatic_snv_nosamples_badheader_noformat_vcf}" > "${consensus_somatic_snv_nosamples_badheader_noformat_vcf}.gz"
 	tabix "${consensus_somatic_snv_nosamples_badheader_noformat_vcf}.gz"
@@ -3045,7 +3047,7 @@ process consensusSnvMpileup_bcftools {
 	--nfiles =2 \
 	--write 1 \
 	"${consensus_somatic_snv_nosamples_badheader_noformat_vcf}.gz" \
-	"${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz" \
+	"${snv_mpileup_genotyped_vcf}" \
 	| \
 	bcftools reheader \
 	--header "${full_snv_vcf_header}" \
@@ -3054,20 +3056,20 @@ process consensusSnvMpileup_bcftools {
 	bcftools query \
 	--format '%CHROM\t%POS\t%REF\t%ALT\t%INFO/DP\n' \
 	--output "${snv_mpileup_info_dp_metrics}" \
-	"${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz"
+	"${snv_mpileup_genotyped_vcf}"
 
 	bcftools query \
-	--format '%CHROM\t%POS\t%REF\t%ALT\t[%GT]\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
+	--format '%CHROM\t%POS\t%REF\t%ALT\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
 	--samples "${normal_id}" \
-	"${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz" \
+	"${snv_mpileup_genotyped_vcf}" \
 	| \
 	bgzip > "${snv_mpileup_normal_format_metrics}"
 	tabix -s1 -b2 -e2 "${snv_mpileup_normal_format_metrics}"
 
 	bcftools query \
-	--format '%CHROM\t%POS\t%REF\t%ALT\t[%GT]\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
+	--format '%CHROM\t%POS\t%REF\t%ALT\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
 	--samples "${tumor_id}" \
-	"${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz" \
+	"${snv_mpileup_genotyped_vcf}" \
 	| \
 	bgzip > "${snv_mpileup_tumor_format_metrics}"
 	tabix -s1 -b2 -e2 "${snv_mpileup_tumor_format_metrics}"
@@ -3109,7 +3111,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_snv_noformat_vcf), path(snv_mpileup_info_dp_metrics), path(snv_mpileup_normal_format_metrics), path(snv_mpileup_normal_format_metrics_index), path(snv_mpileup_tumor_format_metrics), path(snv_mpileup_tumor_format_metrics_index) from consensus_snv_vcf_forAddFormat.join(consensus_snv_mpileup_metrics_forAddFormat)
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_snv_noformat_vcf), path(snv_mpileup_genotyped_vcf), path(snv_mpileup_genotyped_vcf_index), path(snv_mpileup_info_dp_metrics), path(snv_mpileup_normal_format_metrics), path(snv_mpileup_normal_format_metrics_index), path(snv_mpileup_tumor_format_metrics), path(snv_mpileup_tumor_format_metrics_index) from consensus_snv_vcf_forAddFormat.join(consensus_snv_mpileup_metrics_forAddFormat)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(snv_consensus_vcf), path(snv_consensus_vcf_index), path(snv_strand_metrics) into consensus_snv_forBedFilters
@@ -3126,16 +3128,25 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	"""
 	cat "${snv_mpileup_info_dp_metrics}" \
 	| \
-	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 7 | awk '{split(\$0,x,","); print x[2]}') > "${tumor_normal_sample_id}.snv.mpileup.info.dp.ac.metrics.txt"
+	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 6 | awk '{split(\$0,x,","); print x[2]}') > "${tumor_normal_sample_id}.snv.mpileup.info.dp.ac.metrics.txt"
 
 	cat "${tumor_normal_sample_id}.snv.mpileup.info.dp.ac.metrics.txt" \
 	| \
-	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 6) \
+	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 5) \
 	| \
 	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$5,\$6,\$6/\$7}' \
 	| \
 	bgzip > "${tumor_normal_sample_id}.snv.mpileup.info.metrics.txt.gz"
 	tabix -s1 -b2 -e2 "${tumor_normal_sample_id}.snv.mpileup.info.metrics.txt.gz"
+
+	tabix "${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
+
+	bcftools annotate 
+	--output-type z \
+	--annotations "${snv_mpileup_genotyped_vcf}" \
+	--columns CHROM,POS,REF,ALT,FORMAT/GT \
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.gt.noformat.vcf.gz" \
+	"${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
 
 	touch "${snv_consensus_vcf_info_header}"
 	echo '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth across samples (normal sample DP + tumor sample DP)">' >> "${snv_consensus_vcf_info_header}"
@@ -3147,12 +3158,10 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	--annotations "${tumor_normal_sample_id}.snv.mpileup.info.metrics.txt.gz" \
 	--header-lines "${snv_consensus_vcf_info_header}" \
 	--columns CHROM,POS,REF,ALT,INFO/DP,INFO/AC,INFO/VAF \
-	--remove FORMAT/GT \
-	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.noformat.vcf.gz" \
-	"${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.gt.noformat.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.gt.noformat.vcf.gz"
 
 	touch "${snv_consensus_vcf_format_headers}"
-	echo '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=DPS,Number=1,Type=Integer,Description="Total read depth in sample">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=ACS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads in sample">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=ACFS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads on forward(+) strand in sample">' >> "${snv_consensus_vcf_format_headers}"
@@ -3163,23 +3172,23 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	--samples "${normal_id}" \
 	--annotations "${snv_mpileup_normal_format_metrics}" \
 	--header-lines "${snv_consensus_vcf_format_headers}" \
-	--columns CHROM,POS,REF,ALT,.+FORMAT/GT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
-	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.halfformat.vcf.gz" \
-	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.noformat.vcf.gz"
+	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.gt.halfformat.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.gt.noformat.vcf.gz"
 
 	bcftools annotate \
 	--output-type z \
 	--samples "${tumor_id}" \
 	--annotations "${snv_mpileup_tumor_format_metrics}" \
 	--header-lines "${snv_consensus_vcf_format_headers}" \
-	--columns CHROM,POS,REF,ALT,FORMAT/GT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
-	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.format.vcf.gz" \
-	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.halfformat.vcf.gz"
+	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.gt.format.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.gt.halfformat.vcf.gz"
 
 	bcftools filter \
 	--output-type v \
 	--exclude 'INFO/AC<3 | INFO/VAF<0.01' \
-	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.format.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.gt.format.vcf.gz" \
 	| \
 	bcftools filter \
 	--output-type v \
