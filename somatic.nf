@@ -3057,7 +3057,7 @@ process consensusSnvMpileup_bcftools {
 	"${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz"
 
 	bcftools query \
-	--format '%CHROM\t%POS\t%REF\t%ALT\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
+	--format '%CHROM\t%POS\t%REF\t%ALT\t[%GT]\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
 	--samples "${normal_id}" \
 	"${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz" \
 	| \
@@ -3065,7 +3065,7 @@ process consensusSnvMpileup_bcftools {
 	tabix -s1 -b2 -e2 "${snv_mpileup_normal_format_metrics}"
 
 	bcftools query \
-	--format '%CHROM\t%POS\t%REF\t%ALT\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
+	--format '%CHROM\t%POS\t%REF\t%ALT\t[%GT]\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
 	--samples "${tumor_id}" \
 	"${tumor_normal_sample_id}.consensus.somatic.snv.mpileup.vcf.gz" \
 	| \
@@ -3151,6 +3151,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	"${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
 
 	touch "${snv_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=DPS,Number=1,Type=Integer,Description="Total read depth in sample">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=ACS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads in sample">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=ACFS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads on forward(+) strand in sample">' >> "${snv_consensus_vcf_format_headers}"
@@ -3171,7 +3172,6 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	--annotations "${snv_mpileup_tumor_format_metrics}" \
 	--header-lines "${snv_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
-	--remove FORMAT/GT \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.format.vcf.gz" \
 	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.halfformat.vcf.gz"
 
