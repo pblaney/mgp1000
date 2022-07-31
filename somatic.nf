@@ -3272,7 +3272,7 @@ process consensusIndelMpileup_bcftools {
 
 	output:
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_indel_nosamples_noformat_vcf) into consensus_indel_vcf_forAddSamples
-	tuple val(tumor_normal_sample_id), path(indel_mpileup_info_dp_metrics), path(indel_mpileup_normal_format_metrics), path(indel_mpileup_normal_format_metrics_index), path(indel_mpileup_tumor_format_metrics), path(indel_mpileup_tumor_format_metrics_index) into consensus_indel_mpileup_metrics_forAddFormat
+	tuple val(tumor_normal_sample_id), path(indel_mpileup_genotyped_vcf), path(indel_mpileup_genotyped_vcf_index), path(indel_mpileup_info_dp_metrics), path(indel_mpileup_normal_format_metrics), path(indel_mpileup_normal_format_metrics_index), path(indel_mpileup_tumor_format_metrics), path(indel_mpileup_tumor_format_metrics_index) into consensus_indel_mpileup_metrics_forAddFormat
 
 	when:
 	params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
@@ -3280,6 +3280,8 @@ process consensusIndelMpileup_bcftools {
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	indel_mpileup_genotyped_vcf = "${tumor_normal_sample_id}.consensus.somatic.indel.mpileup.vcf.gz"
+	indel_mpileup_genotyped_vcf_index = "${indel_mpileup_genotyped_vcf}.tbi"
 	full_indel_vcf_header = "full_indel_vcf_header.txt"
 	mpileup_supported_consensus_somatic_indel_nosamples_noformat_vcf = "${tumor_normal_sample_id}.ms.consensus.somatic.indel.nosamples.noformat.vcf"
 	indel_mpileup_info_dp_metrics = "${tumor_normal_sample_id}.indel.mpileup.info.dp.metrics.txt"
@@ -3298,6 +3300,11 @@ process consensusIndelMpileup_bcftools {
 	--annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP \
 	"${normal_bam}" "${tumor_bam}" \
 	| \
+	bcftools call \
+	--variants-only \
+	--multiallelic-caller \
+	--output-type v \
+	| \
 	bcftools norm \
 	--threads ${task.cpus} \
 	--multiallelics - \
@@ -3310,8 +3317,8 @@ process consensusIndelMpileup_bcftools {
 	| \
 	grep -E '^#|INDEL;' \
 	| \
-	bgzip > "${tumor_normal_sample_id}.consensus.somatic.indel.mpileup.vcf.gz"
-	tabix "${tumor_normal_sample_id}.consensus.somatic.indel.mpileup.vcf.gz"
+	bgzip > "${indel_mpileup_genotyped_vcf}"
+	tabix "${indel_mpileup_genotyped_vcf}"
 
 	bgzip < "${consensus_somatic_indel_nosamples_badheader_noformat_vcf}" > "${consensus_somatic_indel_nosamples_badheader_noformat_vcf}.gz"
 	tabix "${consensus_somatic_indel_nosamples_badheader_noformat_vcf}.gz"
@@ -3326,7 +3333,7 @@ process consensusIndelMpileup_bcftools {
 	--nfiles =2 \
 	--write 1 \
 	"${consensus_somatic_indel_nosamples_badheader_noformat_vcf}.gz" \
-	"${tumor_normal_sample_id}.consensus.somatic.indel.mpileup.vcf.gz" \
+	"${indel_mpileup_genotyped_vcf}" \
 	| \
 	bcftools reheader \
 	--header "${full_indel_vcf_header}" \
@@ -3335,12 +3342,12 @@ process consensusIndelMpileup_bcftools {
 	bcftools query \
 	--format '%CHROM\t%POS\t%REF\t%ALT\t%INFO/DP\n' \
 	--output "${indel_mpileup_info_dp_metrics}" \
-	"${tumor_normal_sample_id}.consensus.somatic.indel.mpileup.vcf.gz"
+	"${indel_mpileup_genotyped_vcf}"
 
 	bcftools query \
 	--format '%CHROM\t%POS\t%REF\t%ALT\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
 	--samples "${normal_id}" \
-	"${tumor_normal_sample_id}.consensus.somatic.indel.mpileup.vcf.gz" \
+	"${indel_mpileup_genotyped_vcf}" \
 	| \
 	bgzip > "${indel_mpileup_normal_format_metrics}"
 	tabix -s1 -b2 -e2 "${indel_mpileup_normal_format_metrics}"
@@ -3348,7 +3355,7 @@ process consensusIndelMpileup_bcftools {
 	bcftools query \
 	--format '%CHROM\t%POS\t%REF\t%ALT\t[%DP]\t[%AD]\t[%ADF]\t[%ADR]\n' \
 	--samples "${tumor_id}" \
-	"${tumor_normal_sample_id}.consensus.somatic.indel.mpileup.vcf.gz" \
+	"${indel_mpileup_genotyped_vcf}" \
 	| \
 	bgzip > "${indel_mpileup_tumor_format_metrics}"
 	tabix -s1 -b2 -e2 "${indel_mpileup_tumor_format_metrics}"
@@ -3390,7 +3397,7 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_indel_noformat_vcf), path(indel_mpileup_info_dp_metrics), path(indel_mpileup_normal_format_metrics), path(indel_mpileup_normal_format_metrics_index), path(indel_mpileup_tumor_format_metrics), path(indel_mpileup_tumor_format_metrics_index) from consensus_indel_vcf_forAddFormat.join(consensus_indel_mpileup_metrics_forAddFormat)
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(mpileup_supported_consensus_somatic_indel_noformat_vcf), path(indel_mpileup_genotyped_vcf), path(indel_mpileup_genotyped_vcf_index), path(indel_mpileup_info_dp_metrics), path(indel_mpileup_normal_format_metrics), path(indel_mpileup_normal_format_metrics_index), path(indel_mpileup_tumor_format_metrics), path(indel_mpileup_tumor_format_metrics_index) from consensus_indel_vcf_forAddFormat.join(consensus_indel_mpileup_metrics_forAddFormat)
 
 	output:
 	tuple val(tumor_normal_sample_id), path(indel_consensus_vcf), path(indel_consensus_vcf_index), path(indel_strand_metrics) into consensus_indel_forBedFilters
@@ -3418,6 +3425,16 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	bgzip > "${tumor_normal_sample_id}.indel.mpileup.info.metrics.txt.gz"
 	tabix -s1 -b2 -e2 "${tumor_normal_sample_id}.indel.mpileup.info.metrics.txt.gz"
 
+	bgzip "${mpileup_supported_consensus_somatic_indel_noformat_vcf}"
+	tabix "${mpileup_supported_consensus_somatic_indel_noformat_vcf}.gz"
+
+	bcftools annotate \
+	--output-type z \
+	--annotations "${indel_mpileup_genotyped_vcf}" \
+	--columns CHROM,POS,REF,ALT,FORMAT/GT \
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.gt.noformat.vcf.gz" \
+	"${mpileup_supported_consensus_somatic_indel_noformat_vcf}.gz"
+
 	touch "${indel_consensus_vcf_info_header}"
 	echo '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth across samples (normal sample DP + tumor sample DP)">' >> "${indel_consensus_vcf_info_header}"
 	echo '##INFO=<ID=AC,Number=1,Type=Integer,Description="Count of ALT allele reads in tumor sample">' >> "${indel_consensus_vcf_info_header}"
@@ -3428,8 +3445,8 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	--annotations "${tumor_normal_sample_id}.indel.mpileup.info.metrics.txt.gz" \
 	--header-lines "${indel_consensus_vcf_info_header}" \
 	--columns CHROM,POS,REF,ALT,INFO/DP,INFO/AC,INFO/VAF \
-	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.noformat.vcf.gz" \
-	"${mpileup_supported_consensus_somatic_indel_noformat_vcf}"
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.noformat.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.gt.noformat.vcf.gz"
 
 	touch "${indel_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=DPS,Number=1,Type=Integer,Description="Total read depth in sample">' >> "${indel_consensus_vcf_format_headers}"
@@ -3443,8 +3460,8 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	--annotations "${indel_mpileup_normal_format_metrics}" \
 	--header-lines "${indel_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
-	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.halfformat.vcf.gz" \
-	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.noformat.vcf.gz"
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.halfformat.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.noformat.vcf.gz"
 
 	bcftools annotate \
 	--output-type z \
@@ -3453,13 +3470,13 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	--header-lines "${indel_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
 	--remove FORMAT/GT \
-	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.format.vcf.gz" \
-	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.halfformat.vcf.gz"
+	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.format.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.halfformat.vcf.gz"
 
 	bcftools filter \
 	--output-type v \
 	--exclude 'INFO/AC<3 | INFO/VAF<0.01' \
-	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.format.vcf.gz" \
+	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.format.vcf.gz" \
 	| \
 	bcftools filter \
 	--output-type v \
