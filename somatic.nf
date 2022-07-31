@@ -3151,6 +3151,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	"${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
 
 	touch "${snv_consensus_vcf_format_headers}"
+	echo '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=DPS,Number=1,Type=Integer,Description="Total read depth in sample">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=ACS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads in sample">' >> "${snv_consensus_vcf_format_headers}"
 	echo '##FORMAT=<ID=ACFS,Number=R,Type=Integer,Description="Count of REF,ALT allele reads on forward(+) strand in sample">' >> "${snv_consensus_vcf_format_headers}"
