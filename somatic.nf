@@ -3147,6 +3147,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	--annotations "${tumor_normal_sample_id}.snv.mpileup.info.metrics.txt.gz" \
 	--header-lines "${snv_consensus_vcf_info_header}" \
 	--columns CHROM,POS,REF,ALT,INFO/DP,INFO/AC,INFO/VAF \
+	--remove FORMAT/GT \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.noformat.vcf.gz" \
 	"${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
 
