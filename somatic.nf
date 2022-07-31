@@ -3469,7 +3469,6 @@ process annotateConsensusIndelVcfFormatColumnAndFilter_bcftools {
 	--annotations "${indel_mpileup_tumor_format_metrics}" \
 	--header-lines "${indel_consensus_vcf_format_headers}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
-	--remove FORMAT/GT \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.format.vcf.gz" \
 	"${tumor_normal_sample_id}.ms.consensus.somatic.indel.info.gt.halfformat.vcf.gz"
 
