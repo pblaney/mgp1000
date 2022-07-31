@@ -3162,7 +3162,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	--samples "${normal_id}" \
 	--annotations "${snv_mpileup_normal_format_metrics}" \
 	--header-lines "${snv_consensus_vcf_format_headers}" \
-	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
+	--columns CHROM,POS,REF,ALT,FORMAT/GT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.halfformat.vcf.gz" \
 	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.noformat.vcf.gz"
 
@@ -3171,7 +3171,7 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	--samples "${tumor_id}" \
 	--annotations "${snv_mpileup_tumor_format_metrics}" \
 	--header-lines "${snv_consensus_vcf_format_headers}" \
-	--columns CHROM,POS,REF,ALT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
+	--columns CHROM,POS,REF,ALT,FORMAT/GT,FORMAT/DPS,FORMAT/ACS,FORMAT/ACFS,FORMAT/ACRS \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.format.vcf.gz" \
 	"${tumor_normal_sample_id}.ms.consensus.somatic.snv.info.halfformat.vcf.gz"
 
