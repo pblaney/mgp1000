@@ -3126,11 +3126,11 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	"""
 	cat "${snv_mpileup_info_dp_metrics}" \
 	| \
-	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 6 | awk '{split(\$0,x,","); print x[2]}') > "${tumor_normal_sample_id}.snv.mpileup.info.dp.ac.metrics.txt"
+	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 7 | awk '{split(\$0,x,","); print x[2]}') > "${tumor_normal_sample_id}.snv.mpileup.info.dp.ac.metrics.txt"
 
 	cat "${tumor_normal_sample_id}.snv.mpileup.info.dp.ac.metrics.txt" \
 	| \
-	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 5) \
+	paste - <(zcat "${snv_mpileup_tumor_format_metrics}" | cut -f 6) \
 	| \
 	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$5,\$6,\$6/\$7}' \
 	| \
