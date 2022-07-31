@@ -3139,14 +3139,15 @@ process annotateConsensusSnvVcfFormatColumnAndFilter_bcftools {
 	bgzip > "${tumor_normal_sample_id}.snv.mpileup.info.metrics.txt.gz"
 	tabix -s1 -b2 -e2 "${tumor_normal_sample_id}.snv.mpileup.info.metrics.txt.gz"
 
-	tabix "${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
+	bgzip "${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
+	tabix "${mpileup_supported_consensus_somatic_snv_noformat_vcf}.gz"
 
 	bcftools annotate 
 	--output-type z \
 	--annotations "${snv_mpileup_genotyped_vcf}" \
 	--columns CHROM,POS,REF,ALT,FORMAT/GT \
 	--output "${tumor_normal_sample_id}.ms.consensus.somatic.snv.gt.noformat.vcf.gz" \
-	"${mpileup_supported_consensus_somatic_snv_noformat_vcf}"
+	"${mpileup_supported_consensus_somatic_snv_noformat_vcf}.gz"
 
 	touch "${snv_consensus_vcf_info_header}"
 	echo '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth across samples (normal sample DP + tumor sample DP)">' >> "${snv_consensus_vcf_info_header}"
