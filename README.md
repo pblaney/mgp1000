@@ -1,5 +1,5 @@
 <div align="center">
-	<img alt="MGP1000 logo" src="https://github.com/pblaney/mgp1000/blob/development/docs/mgp1000Logo.svg" width="500" />
+	<img alt="MGP1000 logo" src="https://github.com/pblaney/mgp1000/blob/development/docs/mgp1000Logo.svg" width="300" />
 
 # Myeloma Genome Pipeline 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to delineate the broad spectrum of somatic events
@@ -9,8 +9,9 @@ Comprehensive bioinformatics pipeline for the large-scale collaborative analysis
 In order to analyze over one thousand matched tumor/normal whole-genome samples across multiple data centers in a consistent manner, a pipeline was created that leverages the workflow management, portability, and reproducibility of [Nextflow](http://www.nextflow.io/) in conjuction with [Singularity](https://sylabs.io/docs/).
 
 The entire pipeline is divided into 3 modules: Preprocessing, Germline, and Somatic
-
-<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/development/docs/pipelineArchitectureForGitHub.svg" width="750" />
+<div align="center">
+	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/development/docs/pipelineArchitectureForGitHub.svg" width="650" />
+</div>
 
 ## Deploying the Pipeline
 The pipeline was developed to be run on various HPCs without concern of environment incompatibilities, version issues, or missing dependencies. None of the commands require admin access or `sudo` to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available on nearly all HPC systems.
