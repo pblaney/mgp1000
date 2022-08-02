@@ -3,7 +3,7 @@
 // https://github.com/pblaney/mgp1000
 
 // This portion of the pipeline is used for germline variant analysis of normal WGS samples.
-// It is designed to be run with BAMs that were genereated via the Preprocessing step of this pipeline.
+// It is designed to be run with BAMs that were genereated via the Preprocessing module of this pipeline.
 
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
@@ -12,54 +12,67 @@ def helpMessage() {
 	log.info"""
 
 	Usage Example:
-
-		nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name wgs_set --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
+	  nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name wgs_set --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
 
 	Mandatory Arguments:
-    	--run_id                       [str]  Unique identifier for pipeline run
-    	--sample_sheet                 [str]  CSV file containing the list of samples where the first column designates the file name of the
-    	                                      normal sample, the second column for the file name of the matched tumor sample, example of the
-    	                                      format for this file is in the testSamples directory
-    	--cohort_name                  [str]  A user defined collective name of the group of samples being run through this step of the
-    	                                      pipeline, this will be used as the name of the final output multi-sample GVCF
-		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-		                                      Available: preprocessing, germline, somatic
+	  --run_id                       [str]  Unique identifier for pipeline run
+	  --sample_sheet                 [str]  CSV file containing the list of samples where the
+	                                        first column designates the file name of the normal
+	                                        sample, the second column for the file name of the
+	                                        matched tumor sample, example of the format for this
+	                                        file is in the testSamples directory
+	  --cohort_name                  [str]  A user defined collective name of the group of
+	                                        samples being run through this module of the pipeline
+	                                        and this will be used as the name of the final output
+	  -profile                       [str]  Configuration profile to use, each profile described
+	                                        in nextflow.config file
+	                                        Available: preprocessing, germline, somatic
 
 	Main Options:
-		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
-		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
-		                                      environment
-		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
-		                                      previously completed tasks are skipped while maintaining their output
-		--input_dir                    [str]  Directory that holds BAMs and associated index files
-		                                      Default: input/preprocessedBams/
-		--output_dir                   [str]  Directory that will hold all output files from the germline variant analysis
-		                                      Default: output/
-		--email                        [str]  Email address to send workflow completion/stoppage notification
-		--vep_ref_cached               [str]  Indicates whether or not the VEP reference files used for annotation have been downloaded/cached
-		                                      locally, this will be done in a process of the pipeline if it has not, this does not need to be
-		                                      done for every separate run after the first
-		                                      Available: yes, no
-		                                      Default: yes
-		--ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project reference VCF used for ADMIXTURE analysis has
-		                                      been concatenated, this will be done in a process of the pipeline if it has not, this does not
-		                                      need to be done for every separate run after the first
-		                                      Available: yes, no
-		                                      Default: yes
-		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
-		                                      Available: 2, 4, 8, 16, etc.
-		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
-		--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
-		                                      Available: 32.GB, 2400.MB, etc.
-		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
-		--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
-		                                      Available: 25, 50, 100, 150, etc.
-		                                      Default: 100
-		--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
-		                                      and supervises their execution
-		                                      Available: local, slurm
-		                                      Default: slurm
-		--help                        [flag]  Prints this message
+	  -bg                           [flag]  Runs the pipeline processes in the background, this
+	                                        option should be included if deploying pipeline with
+	                                        real data set so processes will not be cut if user
+	                                        disconnects from deployment environment
+	  -resume                       [flag]  Successfully completed tasks are cached so that if
+	                                        the pipeline stops prematurely the previously
+	                                        completed tasks are skipped while maintaining their
+	                                        output
+	  --input_dir                    [str]  Directory that holds BAMs and associated index files,
+	                                        this should be given as an absolute path
+	                                        Default: input/preprocessedBams/
+	  --output_dir                   [str]  Directory that will hold all output files this should
+	                                        be given as an absolute path
+	                                        Default: output/
+	  --email                        [str]  Email address to send workflow completion/stoppage
+	                                        notification
+	  --vep_ref_cached               [str]  Indicates whether or not the VEP reference files used
+	                                        for annotation have been downloaded/cached locally,
+	                                        this will be done in a process of the pipeline if it
+	                                        has not, this does not need to be done for every
+	                                        separate run after the first
+	                                        Available: yes, no
+	                                        Default: yes
+	  --ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project
+	                                        reference VCF used for ADMIXTURE analysis has been
+	                                        concatenated, this will be done in a process of the
+	                                        pipeline if it has not, this does not need to be done
+	                                        for every separate run after the first
+	                                        Available: yes, no
+	                                        Default: yes
+	  --cpus                         [int]  Globally set the number of cpus to be allocated
+	                                        Available: 2, 4, 8, 16, etc.
+	                                        Default: uniquly set for each process in config file
+	  --memory                       [str]  Globally set the amount of memory to be allocated for
+	                                        all processes, written as '##.GB' or '##.MB'
+	                                        Available: 32.GB, 2400.MB, etc.
+	                                        Default: uniquly set for each process in config file
+	  --queue_size                   [int]  Set max number of tasks the pipeline will launch
+	                                        Available: 25, 50, 100, 150, etc.
+	                                        Default: 100
+	  --executor                     [str]  Set the job executor for the run
+	                                        Available: local, slurm, lsf
+	                                        Default: slurm
+	  --help                        [flag]  Prints this message
 
 	################################################
 
@@ -377,7 +390,7 @@ process combineAllGvcfs_gatk {
 	gvcf_cohort_combined_index = "${gvcf_cohort_combined}.tbi"
 	"""
 	gatk CombineGVCFs \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx24576m -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--reference "${reference_genome_fasta_forCombineGvcfs}" \
@@ -411,7 +424,7 @@ process jointGenotyping_gatk {
 	vcf_joint_genotyped_index = "${vcf_joint_genotyped}.tbi"
 	"""
 	gatk GenotypeGVCFs \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx24576m -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--dbsnp "${gatk_bundle_dbsnp138}" \

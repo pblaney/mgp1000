@@ -13,49 +13,50 @@ def helpMessage() {
 	log.info"""
 
 	Usage Example:
-
-		nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing 
+	  nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing
 
 	Mandatory Arguments:
-		--run_id                       [str]  Unique identifier for pipeline run
-		--input_format                 [str]  Format of input files
-		                                      Available: fastq, bam
-		-profile                       [str]  Configuration profile to use, each profile described in nextflow.config file
-		                                      Available: preprocessing, germline, somatic
+	  --run_id                       [str]  Unique identifier for pipeline run
+	  --input_format                 [str]  Format of input files
+	                                        Available: fastq, bam
+	  -profile                       [str]  Configuration profile to use, each profile described
+	                                        in nextflow.config file
+	                                        Available: preprocessing, germline, somatic
 
 	Main Options:
-		-bg                           [flag]  Runs the pipeline processes in the background, this option should be included if deploying
-		                                      pipeline with real data set so processes will not be cut if user disconnects from deployment
-		                                      environment
-		-resume                       [flag]  Successfully completed tasks are cached so that if the pipeline stops prematurely the
-		                                      previously completed tasks are skipped while maintaining their output
-		--lane_split                   [str]  Determines if input FASTQs are lane split per R1/R2
-		                                      Available: yes, no
-		                                      Default: no
-		--input_dir                    [str]  Directory that holds BAMs and associated index files
-		                                      Default: input/
-		--output_dir                   [str]  Directory that will hold all output files from the somatic variant analysis
-		                                      Default: output/
-		--email                        [str]  Email address to send workflow completion/stoppage notification
-		--skip_to_qc                   [str]  Skips directly to final Preprocessing QC step, can only be used in conjunction with bam as the input_format,
-		                                      should only be used for extreme coverage BAMs that have been previously aligned with BWA MEM to the hg38
-		                                      reference genome and have adequate provenance to reflect this
-		                                      Available: yes, no
-		                                      Default: no
-		--cpus                         [int]  Globally set the number of cpus to be allocated for all processes
-		                                      Available: 2, 4, 8, 16, etc.
-		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
-		--memory                       [str]  Globally set the amount of memory to be allocated for all processes, written as '##.GB' or '##.MB'
-		                                      Available: 32.GB, 2400.MB, etc.
-		                                      Default: uniquly set for each process in nextflow.config to minimize resources needed
-		--queue_size                   [int]  Set max number of tasks the pipeline will handle in parallel
-		                                      Available: 25, 50, 100, 150, etc.
-		                                      Default: 100
-		--executor                     [str]  Set the job executor for the run, this determines the system where the pipeline processes are run
-		                                      and supervises their execution
-		                                      Available: local, slurm
-		                                      Default: slurm
-		--help                        [flag]  Prints this message
+	  -bg                           [flag]  Runs the pipeline processes in the background, this
+	                                        option should be included if deploying pipeline with
+	                                        real data set so processes will not be cut if user
+	                                        disconnects from deployment environment
+	  -resume                       [flag]  Successfully completed tasks are cached so that if
+	                                        the pipeline stops prematurely the previously
+	                                        completed tasks are skipped while maintaining their
+	                                        output
+	  --lane_split                   [str]  Determines if input FASTQs are lane split per R1/R2
+	                                        Available: yes, no
+	                                        Default: no
+	  --input_dir                    [str]  Directory that holds BAMs and associated index files,
+	                                        this should be given as an absolute path
+	                                        Default: input/
+	  --output_dir                   [str]  Directory that will hold all output files this should
+	                                        be given as an absolute path
+	                                        Default: output/
+	  --email                        [str]  Email address to send workflow completion/stoppage
+	                                        notification
+	  --cpus                         [int]  Globally set the number of cpus to be allocated
+	                                        Available: 2, 4, 8, 16, etc.
+	                                        Default: uniquly set for each process in config file
+	  --memory                       [str]  Globally set the amount of memory to be allocated for
+	                                        all processes, written as '##.GB' or '##.MB'
+	                                        Available: 32.GB, 2400.MB, etc.
+	                                        Default: uniquly set for each process in config file
+	  --queue_size                   [int]  Set max number of tasks the pipeline will launch
+	                                        Available: 25, 50, 100, 150, etc.
+	                                        Default: 100
+	  --executor                     [str]  Set the job executor for the run
+	                                        Available: local, slurm, lsf
+	                                        Default: slurm
+	  --help                        [flag]  Prints this message
 
 	################################################
 
