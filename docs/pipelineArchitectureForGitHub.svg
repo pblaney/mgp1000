@@ -503,7 +503,7 @@
 	.st497{clip-path:url(#SVGID_527_);fill:#F8E26F;}
 	.st498{clip-path:url(#SVGID_527_);fill:none;stroke:#231F20;stroke-width:2.059;stroke-miterlimit:10;}
 	.st499{clip-path:url(#SVGID_525_);}
-	.st500{clip-path:url(#SVGID_525_);fill:none;stroke:#231F20;stroke-width:1.782;stroke-miterlimit:10;}
+	.st500{clip-path:url(#SVGID_525_);fill:none;stroke:#231F20;stroke-width:1.7883;stroke-miterlimit:10;}
 	.st501{font-size:10.6855px;}
 	.st502{opacity:0.9;clip-path:url(#SVGID_529_);}
 	.st503{clip-path:url(#SVGID_531_);}
@@ -10990,13 +10990,13 @@ RK5CYII=" transform="matrix(0.24 0 0 0.24 198.7338 624.8471)">
 							c0-5.01,4.1-9.12,9.11-9.12h124c5.01,0,9.12,4.1,9.12,9.12V803.99z"/>
 					</g>
 				</g>
-				<path class="st499" d="M507.1,730.58H382.21c-4.79,0-8.67-3.88-8.67-8.67v-5.74c0-4.79,3.88-8.67,8.67-8.67H507.1
-					c4.79,0,8.67,3.88,8.67,8.67v5.74C515.77,726.7,511.89,730.58,507.1,730.58"/>
-				<path class="st500" d="M507.1,730.58H382.21c-4.79,0-8.67-3.88-8.67-8.67v-5.74c0-4.79,3.88-8.67,8.67-8.67H507.1
-					c4.79,0,8.67,3.88,8.67,8.67v5.74C515.77,726.7,511.89,730.58,507.1,730.58z"/>
+				<path class="st499" d="M506.1,730.58H381.21c-4.79,0-8.67-3.88-8.67-8.67v-5.74c0-4.79,3.88-8.67,8.67-8.67H506.1
+					c4.79,0,8.67,3.88,8.67,8.67v5.74C514.77,726.7,510.89,730.58,506.1,730.58"/>
+				<path class="st500" d="M506.04,730.58H380.27c-4.82,0-8.74-3.88-8.74-8.67v-5.74c0-4.79,3.91-8.67,6.72-8.67h125.76
+					c6.84,0,10.75,3.88,10.75,8.67v5.74C514.77,726.7,510.86,730.58,506.04,730.58z"/>
 			</g>
 			<g class="st406">
-				<text transform="matrix(1 0 0 1.0294 374.3554 722.3115)" class="st23 st24 st501">Joint genotyping and VQSR</text>
+				<text transform="matrix(1 0 0 1.0294 373.3554 722.3115)" class="st23 st24 st501">Joint genotyping and VQSR</text>
 			</g>
 			<g class="st406">
 				<defs>
