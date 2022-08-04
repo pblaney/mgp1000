@@ -10,7 +10,7 @@ In order to analyze over one thousand matched tumor/normal whole-genome samples 
 
 The entire pipeline is divided into 3 modules: Preprocessing, Germline, and Somatic
 <div align="center">
-	<img alt="Pipeline flowchart" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/pipelineArchitectureForGitHub.svg" width="700" />
+	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/master/docs/pipelineArchitectureForGitHub.png?raw=true" width="700" />
 </div>
 
 ## Deploying the Pipeline
