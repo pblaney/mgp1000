@@ -1,5 +1,5 @@
 <div align="center">
-	<img alt="MGP1000 logo" src="https://github.com/pblaney/mgp1000/blob/development/docs/mgp1000Logo.svg" width="300" />
+	<img alt="MGP1000 logo" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/mgp1000Logo.svg" width="350" />
 
 # Myeloma Genome Pipeline 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to delineate the broad spectrum of somatic events
@@ -10,7 +10,7 @@ In order to analyze over one thousand matched tumor/normal whole-genome samples 
 
 The entire pipeline is divided into 3 modules: Preprocessing, Germline, and Somatic
 <div align="center">
-	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/development/docs/pipelineArchitectureForGitHub.svg" width="650" />
+	<img alt="Pipeline flowchart" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/pipelineArchitectureForGitHub.svg" width="700" />
 </div>
 
 ## Deploying the Pipeline
@@ -30,7 +30,7 @@ git clone https://github.com/pblaney/mgp1000.git
 ### Installing Git LFS
 In an effort to containerize the pipeline further, all the necessary reference files and Singularity container images are stored in the GitHub repository using their complementary [Large File Storage (LFS)](https://git-lfs.github.com) extension. This requires a simple installation of the binary executible file at a location on your `$PATH`. The extension pairs seemlessly with Git to download all files while cloning the repository.
 
-**NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
+**NOTE: Many HPC environments may already have this dependency installed, if so users only need to run the last two code blocks.**
 
 If required, a `make` command will complete the installation of Linux AMD64 binary executible git-lfs file (v3.0.2). Other binary files available [here](https://github.com/git-lfs/git-lfs/releases)
 
@@ -42,9 +42,12 @@ Move the `git-lfs` binary to a location on `$PATH`
 ```
 mv git-lfs $HOME/bin
 ```
-Use `git-lfs` to complete the clone
+Complete the install and configuration
 ```
 git-lfs install
+```
+Use `git-lfs` to complete the clone
+```
 git-lfs pull
 ```
 
@@ -52,19 +55,17 @@ git-lfs pull
 To facilitate ease of use, reproducibility, and consistency between all users of the pipeline, all required reference data has been provided within the `references/hg38/` directory. Detailed provenance of each file per tool is included in the pipline [Wiki](https://github.com/pblaney/mgp1000/wiki) for full traceability.
 
 ### Containers
-For the same reasons as with the reference data, the Singularity image files needed for each tool's container is provided within the `containers/` directory. All containers were originally developed with Docker and all tags can be found on the associated [DockerHub](https://hub.docker.com/r/patrickblaneynyu/mgp1000)
+For the same reasons as with the reference data, the Singularity image files needed for each tool's container is provided within the `containers/` directory. All containers were originally developed with Docker and all tags can be found on the associated [DockerHub](https://hub.docker.com/r/patrickblaneynyu/mgp1000).
 
 ## Install Nextflow
-This series of commands will first check if Java is available to the base pipeline environment and then install Nextflow.
+This series of commands will install Nextflow.
 
 **NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
-```
-java -version
-```
+
 ```
 make install-nextflow
 ```
-For ease of use, ove the binary executible `nextflow` file to same directory as git-lfs
+For ease of use, ove the binary executible `nextflow` file to same directory as `git-lfs`
 ```
 mv nextflow $HOME/bin
 ```
@@ -78,9 +79,11 @@ make prep-pipeline
 
 
 ## Stage Input BAM or FASTQ Files
-By default, all input files are handled out of the `input` and `input/preprocessedBams` directories for the Preprocessing and Germline/Somatic module, respectively. However, each module in the pipeline includes an option (`--input_dir`) for the user to define the input directory. Additionally, the pipeline will follow symbolic links for input files so there is no need to move files for staging. Given the possible size of the input data, the samples may have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs.
+By default, all input files are handled out of the `input` and `input/preprocessedBams` directories for the Preprocessing and Germline/Somatic modules, respectively. However, each module in the pipeline includes an option (`--input_dir`) for the user to define the input directory. Additionally, the pipeline will follow symbolic links for input files so there is no need to move files for staging. Given the possible size of the input data, the samples may have to be processed in batches. Additionally, the pipeline is designed to process batches of identical format, i.e. all BAMs or all FASTQs.
 
-**NOTE: A key assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files. Check the `testSample` directory to see examples of FASTQ naming conventions that are accepted. It is recommended that these be used as a sanity check of the pipeline if deploying for the first time.**
+The Preprocessing module also supports lane split FASTQs as input. The files will be merged internally as part of the module run and will not alter any input files.
+
+**NOTE: A key assumption is that any input FASTQs use an 'R1/R2' naming convention to designate paired-end read files.**
 
 Example of staging input data files with symbolic link
 ```
@@ -91,68 +94,67 @@ ln -s /absolute/path/to/unprocessed/samples/directory/*.fastq.gz input/
 ## Run the Preprocessing Module
 The Preprocessing module of the pipeline will be started with one command that will handle linking each individual process in the pipeline to the next. A key advantage of using Nextflow within an HPC environment is that will also perform all the job scheduling/submitting given the correct configuration with the user's [executor](https://www.nextflow.io/docs/latest/executor.html).
 
-There are two methods for running each module in the pipeline: directly from the current environment or batch submission. An example of direct submission is given below and an example of batch submission is provided within the [Wiki](https://github.com/pblaney/mgp1000/wiki/Usage).
+Currently supported executors:
+* SLURM
+* LSF
 
-**NOTE: The pipeline is currently configured to run with SLURM as the executor. If the user's HPC uses an alternative scheduler please reach out for assistance with adjustments to the configuration to accommodate this, contact information at end of README.**
+There are two methods for running each module in the pipeline: directly from the current environment or batch submission. An example of direct submission is given below and an example of batch submission is provided within the [Wiki](https://github.com/pblaney/mgp1000/wiki/Usage).
 
 ### Direct Submission Example
 First, the user will need to load the necessary software to run the pipeline module to the environment. At most, this will require Java, Nextflow, and Singularity. This is a user-specific step so the commands may be different depending on the user's HPC configuration.
+
 ```
-module load java/1.8 nextflow/21.04.3 singularity/3.7.1
+nextflow run preprocessing.nf \
+  -bg \
+  --run_id batch1 \
+  --input_format fastq \
+  --email user@example.com \
+  -profile preprocessing
 ```
 
 Here is the full help message for the Preprocessing module.
 ```
-nextflow run preprocessing.nf --help
+$ nextflow run preprocessing.nf --help
 
 
-Usage Example:
-  nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing
+Usage:
+  nextflow run preprocessing.nf --run_id STR --input_format STR -profile preprocessing
+  [-bg] [-resume] [--lane_split STR] [--input_dir PATH] [--output_dir PATH] [--email STR]
+  [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 Mandatory Arguments:
-  --run_id                       [str]  Unique identifier for pipeline run
-  --input_format                 [str]  Format of input files
-                                        Available: fastq, bam
-  -profile                       [str]  Configuration profile to use, each profile described
-                                        in nextflow.config file
-                                        Available: preprocessing, germline, somatic
+  --run_id                       STR  Unique identifier for pipeline run
+  --input_format                 STR  Format of input files
+                                      [Default: fastq | Available: fastq, bam]
+  -profile                       STR  Configuration profile to use, must use preprocessing                               
 
 Main Options:
-  -bg                           [flag]  Runs the pipeline processes in the background, this
-                                        option should be included if deploying pipeline with
-                                        real data set so processes will not be cut if user
-                                        disconnects from deployment environment
-  -resume                       [flag]  Successfully completed tasks are cached so that if
-                                        the pipeline stops prematurely the previously
-                                        completed tasks are skipped while maintaining their
-                                        output
-  --lane_split                   [str]  Determines if input FASTQs are lane split per R1/R2
-                                        Available: yes, no
-                                        Default: no
-  --input_dir                    [str]  Directory that holds BAMs and associated index files,
-                                        this should be given as an absolute path
-                                        Default: input/
-  --output_dir                   [str]  Directory that will hold all output files this should
-                                        be given as an absolute path
-                                        Default: output/
-  --email                        [str]  Email address to send workflow completion/stoppage
-                                        notification
-  --cpus                         [int]  Globally set the number of cpus to be allocated
-                                        Available: 2, 4, 8, 16, etc.
-                                        Default: uniquly set for each process in config file
-  --memory                       [str]  Globally set the amount of memory to be allocated for
-                                        all processes, written as '##.GB' or '##.MB'
-                                        Available: 32.GB, 2400.MB, etc.
-                                        Default: uniquly set for each process in config file
-  --queue_size                   [int]  Set max number of tasks the pipeline will launch
-                                        Available: 25, 50, 100, 150, etc.
-                                        Default: 100
-  --executor                     [str]  Set the job executor for the run
-                                        Available: local, slurm, lsf
-                                        Default: slurm
-  --help                        [flag]  Prints this message
-
-################################################
+  -bg                           FLAG  Runs the pipeline processes in the background, this
+                                      option should be included if deploying pipeline with
+                                      real data set so processes will not be cut if user
+                                      disconnects from deployment environment
+  -resume                       FLAG  Successfully completed tasks are cached so that if
+                                      the pipeline stops prematurely the previously
+                                      completed tasks are skipped while maintaining their
+                                      output
+  --lane_split                   STR  Determines if input FASTQs are lane split per R1/R2
+                                      [Default: no | Available: yes, no]
+  --input_dir                   PATH  Directory that holds BAMs and associated index files,
+                                      this should be given as an absolute path
+                                      [Default: input/]
+  --output_dir                  PATH  Directory that will hold all output files this should
+                                      be given as an absolute path
+                                      [Default: output/]
+  --email                        STR  Email address to send workflow completion/stoppage
+                                      notification
+  --cpus                         INT  Globally set the number of cpus to be allocated
+  --memory                       STR  Globally set the amount of memory to be allocated,
+                                      written as '##.GB' or '##.MB'
+  --queue_size                   INT  Set max number of tasks the pipeline will launch
+                                      [Default: 100]
+  --executor                     STR  Set the job executor for the run
+                                      [Default: slurm | Available: local, slurm, lsf]
+  --help                        FLAG  Prints this message
 ```
 
 
@@ -183,75 +185,76 @@ The most important component of this module of the pipeline is the user-provided
 ### Note on Parameters
 There are two parameters that will prepare necessary reference files as part of this module of the pipeline, `--vep_ref_cached` and `--ref_vcf_concatenated`. These parameters only need be set to `no` for the **first run** of the Germline module.
 
+```
+nextflow run germline.nf \
+  -bg \
+  --run_id batch1 \
+  --sample_sheet wgs_samples.csv \
+  --cohort_name wgs_set \
+  --email user@example.com \
+  --vep_ref_cached no \
+  --ref_vcf_concatenated no \
+  -profile germline
+```
+
 Here is the full help message for the Germline module.
 ```
-nextflow run germline.nf --help
+$ nextflow run germline.nf --help
 
 
-Usage Example:
-  nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name wgs_set --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
+Usage:
+    nextflow run germline.nf --run_id STR --sample_sheet FILE --cohort_name STR -profile germline
+    [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--vep_ref_cached STR]
+    [--ref_vcf_concatenated STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR]
+    [--help]
 
-Mandatory Arguments:
-  --run_id                       [str]  Unique identifier for pipeline run
-  --sample_sheet                 [str]  CSV file containing the list of samples where the
+  Mandatory Arguments:
+    --run_id                       STR  Unique identifier for pipeline run
+    --sample_sheet                FILE  CSV file containing the list of samples where the
                                         first column designates the file name of the normal
                                         sample, the second column for the file name of the
-                                        matched tumor sample, example of the format for this
-                                        file is in the testSamples directory
-  --cohort_name                  [str]  A user defined collective name of the group of
-                                        samples being run through this module of the pipeline
-                                        and this will be used as the name of the final output
-  -profile                       [str]  Configuration profile to use, each profile described
-                                        in nextflow.config file
-                                        Available: preprocessing, germline, somatic
+                                        matched tumor sample
+    --cohort_name                  STR  A user defined collective name of the group of
+                                        samples, this will be used as the name of the output
+    -profile                       STR  Configuration profile to use, must use germline
 
-Main Options:
-  -bg                           [flag]  Runs the pipeline processes in the background, this
+  Main Options:
+    -bg                           FLAG  Runs the pipeline processes in the background, this
                                         option should be included if deploying pipeline with
                                         real data set so processes will not be cut if user
                                         disconnects from deployment environment
-  -resume                       [flag]  Successfully completed tasks are cached so that if
+    -resume                       FLAG  Successfully completed tasks are cached so that if
                                         the pipeline stops prematurely the previously
                                         completed tasks are skipped while maintaining their
                                         output
-  --input_dir                    [str]  Directory that holds BAMs and associated index files,
+    --input_dir                   PATH  Directory that holds BAMs and associated index files,
                                         this should be given as an absolute path
-                                        Default: input/preprocessedBams/
-  --output_dir                   [str]  Directory that will hold all output files this should
+                                        [Default: input/preprocessedBams/]
+    --output_dir                  PATH  Directory that will hold all output files this should
                                         be given as an absolute path
-                                        Default: output/
-  --email                        [str]  Email address to send workflow completion/stoppage
+                                        [Default: output/]
+    --email                        STR  Email address to send workflow completion/stoppage
                                         notification
-  --vep_ref_cached               [str]  Indicates whether or not the VEP reference files used
+    --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
                                         for annotation have been downloaded/cached locally,
                                         this will be done in a process of the pipeline if it
                                         has not, this does not need to be done for every
                                         separate run after the first
-                                        Available: yes, no
-                                        Default: yes
-  --ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project
+                                        [Default: yes | Available: yes, no]
+    --ref_vcf_concatenated         STR  Indicates whether or not the 1000 Genomes Project
                                         reference VCF used for ADMIXTURE analysis has been
                                         concatenated, this will be done in a process of the
                                         pipeline if it has not, this does not need to be done
                                         for every separate run after the first
-                                        Available: yes, no
-                                        Default: yes
-  --cpus                         [int]  Globally set the number of cpus to be allocated
-                                        Available: 2, 4, 8, 16, etc.
-                                        Default: uniquly set for each process in config file
-  --memory                       [str]  Globally set the amount of memory to be allocated for
-                                        all processes, written as '##.GB' or '##.MB'
-                                        Available: 32.GB, 2400.MB, etc.
-                                        Default: uniquly set for each process in config file
-  --queue_size                   [int]  Set max number of tasks the pipeline will launch
-                                        Available: 25, 50, 100, 150, etc.
-                                        Default: 100
-  --executor                     [str]  Set the job executor for the run
-                                        Available: local, slurm, lsf
-                                        Default: slurm
-  --help                        [flag]  Prints this message
-
-################################################
+                                        [Default: yes | Available: yes, no]
+    --cpus                         INT  Globally set the number of cpus to be allocated
+    --memory                       STR  Globally set the amount of memory to be allocated,
+                                        written as '##.GB' or '##.MB'
+    --queue_size                   INT  Set max number of tasks the pipeline will launch
+                                        [Default: 100]
+    --executor                     STR  Set the job executor for the run
+                                        [Default: slurm | Available: local, slurm, lsf]
+    --help                        FLAG  Prints this message
 ```
 
 ### Germline Output Description
@@ -287,172 +290,135 @@ There are three parameters that will prepare necessary reference files as part o
 nextflow run somatic.nf --help
 
 
-Usage Example:
-  nextflow run somatic.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --email someperson@gmail.com --mutect_ref_vcf_concatenated no --annotsv_ref_cached no --vep_ref_cached no -profile somatic 
+Usage:
+    nextflow run somatic.nf --run_id STR --sample_sheet FILE -profile somatic [-bg] [-resume]
+    [--input_dir PATH] [--output_dir PATH] [--email STR] [--mutect_ref_vcf_concatenated STR]
+    [--battenberg_ref_cached STR] [--annotsv_ref_cached STR] [--vep_ref_cached STR] [--help]
 
-Mandatory Arguments:
-  --run_id                       [str]  Unique identifier for pipeline run
-  --sample_sheet                 [str]  CSV file containing the list of samples where the
+  Mandatory Arguments:
+    --run_id                       STR  Unique identifier for pipeline run
+    --sample_sheet                FILE  CSV file containing the list of samples where the
                                         first column designates the file name of the normal
                                         sample, the second column for the file name of the
-                                        matched tumor sample, example of the format for this
-                                        file is in the testSamples directory
-  -profile                       [str]  Configuration profile to use, each profile described
-                                        in nextflow.config file
-                                        Available: preprocessing, germline, somatic
+                                        matched tumor sample
+    -profile                       STR  Configuration profile to use, must use somatic
 
-Main Options:
-  -bg                           [flag]  Runs the pipeline processes in the background, this
+  Main Options:
+    -bg                           FLAG  Runs the pipeline processes in the background, this
                                         option should be included if deploying pipeline with
                                         real data set so processes will not be cut if user
                                         disconnects from deployment environment
-  -resume                       [flag]  Successfully completed tasks are cached so that if
+    -resume                       FLAG  Successfully completed tasks are cached so that if
                                         the pipeline stops prematurely the previously
                                         completed tasks are skipped while maintaining their
                                         output
-  --input_dir                    [str]  Directory that holds BAMs and associated index files,
+    --input_dir                   PATH  Directory that holds BAMs and associated index files,
                                         this should be given as an absolute path
-                                        Default: input/preprocessedBams/
-  --output_dir                   [str]  Directory that will hold all output files this should
+                                        [Default: input/preprocessedBams/]
+    --output_dir                  PATH  Directory that will hold all output files this should
                                         be given as an absolute path
-                                        Default: output/
-  --email                        [str]  Email address to send workflow completion/stoppage
+                                        [Default: output/]
+    --email                        STR  Email address to send workflow completion/stoppage
                                         notification
-  --mutect_ref_vcf_concatenated  [str]  Indicates whether or not the gnomAD allele frequency
+    --mutect_ref_vcf_concatenated  STR  Indicates whether or not the gnomAD allele frequency
                                         reference VCF used for MuTect2 processes has been
                                         concatenated, this will be done in a process of the
                                         pipeline if it has not, this does not need to be done
                                         for every separate run after the first
-                                        Available: yes, no
-                                        Default: yes
-  --battenberg_ref_cached        [str]  Indicates whether or not the reference files used for
+                                        [Default: yes | Available: yes, no]
+    --battenberg_ref_cached        STR  Indicates whether or not the reference files used for
                                         Battenberg have been downloaded/cached locally, this
                                         will be done in a process of the pipeline if it has
                                         not, this does not need to be done for every separate
                                         run after the first
-                                        Available: yes, no
-                                        Default: yes
-  --annotsv_ref_cached           [str]  Indicates whether or not the AnnotSV reference files
+                                        [Default: yes | Available: yes, no]
+    --annotsv_ref_cached           STR  Indicates whether or not the AnnotSV reference filee
                                         used for annotation have been downloaded/cached
                                         locally, this will be done in a process of the
                                         pipeline if it has not, this does not need to be done
                                         for every separate run after the first
-                                        Available: yes, no
-                                        Default: yes
-  --vep_ref_cached               [str]  Indicates whether or not the VEP reference files used
+                                        [Default: yes | Available: yes, no]
+    --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
                                         for annotation have been downloaded/cached locally,
                                         this will be done in a process of the pipeline if it
                                         has not, this does not need to be done for every
                                         separate run after the first
-                                        Available: yes, no
-                                        Default: yes
-  --cpus                         [int]  Globally set the number of cpus to be allocated
-                                        Available: 2, 4, 8, 16, etc.
-                                        Default: uniquly set for each process in config file
-  --memory                       [str]  Globally set the amount of memory to be allocated for
-                                        all processes, written as '##.GB' or '##.MB'
-                                        Available: 32.GB, 2400.MB, etc.
-                                        Default: uniquly set for each process in config file
-  --queue_size                   [int]  Set max number of tasks the pipeline will launch
-                                        Available: 25, 50, 100, 150, etc.
-                                        Default: 100
-  --executor                     [str]  Set the job executor for the run
-                                        Available: local, slurm, lsf
-                                        Default: slurm
-  --help                        [flag]  Prints this message
+                                        [Default: yes | Available: yes, no]
+    --cpus                         INT  Globally set the number of cpus to be allocated
+    --memory                       STR  Globally set the amount of memory to be allocated,
+                                        written as '##.GB' or '##.MB'
+    --queue_size                   INT  Set max number of tasks the pipeline will launch
+                                        [Default: 100]
+    --executor                     STR  Set the job executor for the run
+                                        [Default: slurm | Available: local, slurm, lsf]
+    --help                        FLAG  Prints this message
 
-Toolbox Switches and Options:
-  --telomerecat                  [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --telomerehunter               [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --conpair                      [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --varscan                      [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --mutect                       [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --strelka                      [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --copycat                      [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --battenberg                   [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --battenberg_min_depth         [int]  Manually set the minimum read depth in the normal
-                                        sample for SNP filtering in BAF calculations
-                                        Available: 4 (~12x coverage), 10 (~30x coverage)
-                                        Default: 10
-  --controlfreec                 [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --controlfreec_read_length     [int]  Manually set the read length to be used for the
-                                        mappability track for Control-FREEC
-                                        Available: 85, 100, 101, 150, 151, etc.
-                                        Default: 151
-  --controlfreec_bp_threshold  [float]  Manually set the breakpoint threshold value to be
-                                        used for the Control-FREEC algorithm, this can be
-                                        lowered if the sample is expected to have large
-                                        number of CNV segments or increased for the opposite
-                                        assumption
-                                        Available: 0.6, 0.8, 1.2
-                                        Default: 0.8
-  --controlfreec_ploidy          [int]  Manually set the ploidy value to be used for the
-                                        Control-FREEC algorithm
-                                        Available: 2, 3, 4
-                                        Default: 2
-  --sclust                       [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --sclust_minp                [float]  Manually set the minimal expected ploidy to be used
-                                        for the Sclust algorithm
-                                        Available: 1.5, 2.0
-                                        Default: 1.5
-  --sclust_maxp                [float]  Manually set the maximal expected ploidy to be used
-                                        for the Sclust algorithm
-                                        Available: 2.0, 3.5, 4.5, etc.
-                                        Default: 4.5
-  --sclust_mutclustering         [str]  Manually turn on or off the mutational clustering
-                                        step of the Sclust process, this can be done if the
-                                        process cannot reach a solution for a given sample,
-                                        this should only be used after attempts at lowering
-                                        the lambda value does not work, see --sclust_lambda
-                                        Available: off, on
-                                        Default: on
-  --sclust_lambda                [str]  Manually set the degree of smoothing for clustering
-                                        mutations, increasing the value should resolve
-                                        issues with QP iterations related errors
-                                        Available: 1e-6, 1e-5
-                                        Default: 1e-7
-  --facets                       [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --facets_min_depth             [str]  Manually set the minimum read depth in the normal
-                                        sample for SNP filtering in BAF calculations
-                                        Available: 8 (~12x coverage), 20 (~30x coverage),
-                                                   27 (~50x coverage), 35 (~80x coverage)
-                                        Default: 20
-  --manta                        [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --svaba                        [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --delly                        [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
-  --igcaller                     [str]  Indicates whether or not to use this tool
-                                        Available: off, on
-                                        Default: on
+  Toolbox Options:
+    --telomerecat                  STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --telomerehunter               STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --conpair                      STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --varscan                      STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --mutect                       STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --strelka                      STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --copycat                      STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --battenberg                   STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --battenberg_min_depth         STR  Manually set the minimum read depth in the normal
+                                        sample for SNP filtering in BAF calculations,
+                                        default is for 30x coverage
+                                        [Default: 10]
+    --controlfreec                 STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --controlfreec_read_length     STR  Manually set the read length to be used for the
+                                        mappability
+                                        [Default: 151]
+    --controlfreec_bp_threshold  FLOAT  Manually set the breakpoint threshold value, lower if
+                                        the sample is expected to have large number of CNV
+                                        segments or increase for the opposite assumption
+                                        [Default: 0.8]
+    --controlfreec_ploidy          INT  Manually set the ploidy value
+                                        [Default: 2 | Available: 3, 4]
+    --sclust                       STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --sclust_minp                FLOAT  Manually set the minimal expected ploidy
+                                        [Default: 1.5]
+    --sclust_maxp                FLOAT  Manually set the maximal expected ploidy
+                                        [Default: 4.5]
+    --sclust_mutclustering         STR  Manually turn on or off the mutational clustering step
+                                        of the Sclust process, turn off if a solution cannot be
+                                        reached after lowering lambda value
+                                        [Default: on | Available: off]
+    --sclust_lambda                STR  Manually set the degree of smoothing for clustering
+                                        mutations, increasing the value should resolve issues
+                                        with QP iterations related errors
+                                        [Default: 1e-7]
+    --facets                       STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --facets_min_depth             STR  Manually set the minimum read depth in the normal
+                                        sample for SNP filtering in BAF calculations,
+                                        default is for 30x coverage
+                                        [Default: 20]
+    --manta                        STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --svaba                        STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --delly                        STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
+    --igcaller                     STR  Indicates whether or not to use this tool
+                                        [Default: on | Available: off, on]
 
-################################################
+  Consensus Workflow Options:
+    --min_consensus_snv_callers    INT  Set minimum of caller agreement for SNV consensus
+                                        [Default: 2]
+    --min_consensus_indel_callers  INT  Set minimum of caller agreement for InDel consensus
+                                        [Default: 2]
 ```
 
 ### Somatic Output Description
