@@ -11,54 +11,59 @@ def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
 
 def helpMessage() {
 	log.info"""
+	                             .------------------------.
+	                            |    .-..-. .--. .---.     |
+	                            |    : `' :: .--': .; :    |
+	                            |    : .. :: : _ :  _.'    |
+	                            |    : :; :: :; :: :       |
+	                            |    :_;:_;`.__.':_;       |
+	                            |   ,-. .--.  .--.  .--.   |
+	                            | .'  :: ,. :: ,. :: ,. :  |
+	                            |   : :: :: :: :: :: :: :  |
+	                            |   : :: :; :: :; :: :; :  |
+	                            |   :_;`.__.'`.__.'`.__.'  |
+	                             .________________________.
 
-	Usage Example:
-	  nextflow run preprocessing.nf -bg -resume --run_id batch1 --input_format fastq --email someperson@gmail.com -profile preprocessing
+	                                   PREPROCESSING
+
+	Usage:
+	  nextflow run preprocessing.nf --run_id STR --input_format STR -profile preprocessing
+	  [-bg] [-resume] [--lane_split STR] [--input_dir PATH] [--output_dir PATH] [--email STR]
+	  [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 	Mandatory Arguments:
-	  --run_id                       [str]  Unique identifier for pipeline run
-	  --input_format                 [str]  Format of input files
-	                                        Available: fastq, bam
-	  -profile                       [str]  Configuration profile to use, each profile described
-	                                        in nextflow.config file
-	                                        Available: preprocessing, germline, somatic
+	  --run_id                       STR  Unique identifier for pipeline run
+	  --input_format                 STR  Format of input files
+	                                      [Default: fastq | Available: fastq, bam]
+	  -profile                       STR  Configuration profile to use, must use preprocessing                               
 
 	Main Options:
-	  -bg                           [flag]  Runs the pipeline processes in the background, this
-	                                        option should be included if deploying pipeline with
-	                                        real data set so processes will not be cut if user
-	                                        disconnects from deployment environment
-	  -resume                       [flag]  Successfully completed tasks are cached so that if
-	                                        the pipeline stops prematurely the previously
-	                                        completed tasks are skipped while maintaining their
-	                                        output
-	  --lane_split                   [str]  Determines if input FASTQs are lane split per R1/R2
-	                                        Available: yes, no
-	                                        Default: no
-	  --input_dir                    [str]  Directory that holds BAMs and associated index files,
-	                                        this should be given as an absolute path
-	                                        Default: input/
-	  --output_dir                   [str]  Directory that will hold all output files this should
-	                                        be given as an absolute path
-	                                        Default: output/
-	  --email                        [str]  Email address to send workflow completion/stoppage
-	                                        notification
-	  --cpus                         [int]  Globally set the number of cpus to be allocated
-	                                        Available: 2, 4, 8, 16, etc.
-	                                        Default: uniquly set for each process in config file
-	  --memory                       [str]  Globally set the amount of memory to be allocated for
-	                                        all processes, written as '##.GB' or '##.MB'
-	                                        Available: 32.GB, 2400.MB, etc.
-	                                        Default: uniquly set for each process in config file
-	  --queue_size                   [int]  Set max number of tasks the pipeline will launch
-	                                        Available: 25, 50, 100, 150, etc.
-	                                        Default: 100
-	  --executor                     [str]  Set the job executor for the run
-	                                        Available: local, slurm, lsf
-	                                        Default: slurm
-	  --help                        [flag]  Prints this message
-
-	################################################
+	  -bg                           FLAG  Runs the pipeline processes in the background, this
+	                                      option should be included if deploying pipeline with
+	                                      real data set so processes will not be cut if user
+	                                      disconnects from deployment environment
+	  -resume                       FLAG  Successfully completed tasks are cached so that if
+	                                      the pipeline stops prematurely the previously
+	                                      completed tasks are skipped while maintaining their
+	                                      output
+	  --lane_split                   STR  Determines if input FASTQs are lane split per R1/R2
+	                                      [Default: no | Available: yes, no]
+	  --input_dir                   PATH  Directory that holds BAMs and associated index files,
+	                                      this should be given as an absolute path
+	                                      [Default: input/]
+	  --output_dir                  PATH  Directory that will hold all output files this should
+	                                      be given as an absolute path
+	                                      [Default: output/]
+	  --email                        STR  Email address to send workflow completion/stoppage
+	                                      notification
+	  --cpus                         INT  Globally set the number of cpus to be allocated
+	  --memory                       STR  Globally set the amount of memory to be allocated,
+	                                      written as '##.GB' or '##.MB'
+	  --queue_size                   INT  Set max number of tasks the pipeline will launch
+	                                      [Default: 100]
+	  --executor                     STR  Set the job executor for the run
+	                                      [Default: slurm | Available: local, slurm, lsf]
+	  --help                        FLAG  Prints this message
 
 	""".stripIndent()
 }
@@ -70,7 +75,7 @@ def helpMessage() {
 params.input_dir = "${workflow.projectDir}/input"
 params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
-params.input_format = null
+params.input_format = "fastq"
 params.lane_split = "no"
 params.email = null
 params.skip_to_qc = "no"
@@ -158,10 +163,22 @@ Channel
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 log.info ''
-log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
-log.info '~~~~~~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~~~~~'
-log.info '################################################'
+log.info ''
+log.info "           .------------------------.           "
+log.info "          |    .-..-. .--. .---.     |          "
+log.info "          |    : `' :: .--': .; :    |          "
+log.info "          |    : .. :: : _ :  _.'    |          "
+log.info "          |    : :; :: :; :: :       |          "
+log.info "          |    :_;:_;`.__.':_;       |          "
+log.info "          |   ,-. .--.  .--.  .--.   |          "
+log.info "          | .'  :: ,. :: ,. :: ,. :  |          "
+log.info "          |   : :: :: :: :: :: :: :  |          "
+log.info "          |   : :: :; :: :; :: :; :  |          "
+log.info "          |   :_;`.__.'`.__.'`.__.'  |          "
+log.info "           .________________________.           "
+log.info ''
+log.info "                 PREPROCESSING                  "
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''

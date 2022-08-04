@@ -10,71 +10,74 @@ def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
 
 def helpMessage() {
 	log.info"""
+	                             .------------------------.
+	                            |    .-..-. .--. .---.     |
+	                            |    : `' :: .--': .; :    |
+	                            |    : .. :: : _ :  _.'    |
+	                            |    : :; :: :; :: :       |
+	                            |    :_;:_;`.__.':_;       |
+	                            |   ,-. .--.  .--.  .--.   |
+	                            | .'  :: ,. :: ,. :: ,. :  |
+	                            |   : :: :: :: :: :: :: :  |
+	                            |   : :: :; :: :; :: :; :  |
+	                            |   :_;`.__.'`.__.'`.__.'  |
+	                             .________________________.
 
-	Usage Example:
-	  nextflow run germline.nf -bg -resume --run_id batch1 --sample_sheet samplesheet.csv --cohort_name wgs_set --email someperson@gmail.com --vep_ref_cached no --ref_vcf_concatenated no -profile germline 
+	                                      GERMLINE
+
+	Usage:
+	  nextflow run germline.nf --run_id STR --sample_sheet FILE --cohort_name STR -profile germline
+	  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--vep_ref_cached STR]
+	  [--ref_vcf_concatenated STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR]
+	  [--help]
 
 	Mandatory Arguments:
-	  --run_id                       [str]  Unique identifier for pipeline run
-	  --sample_sheet                 [str]  CSV file containing the list of samples where the
-	                                        first column designates the file name of the normal
-	                                        sample, the second column for the file name of the
-	                                        matched tumor sample, example of the format for this
-	                                        file is in the testSamples directory
-	  --cohort_name                  [str]  A user defined collective name of the group of
-	                                        samples being run through this module of the pipeline
-	                                        and this will be used as the name of the final output
-	  -profile                       [str]  Configuration profile to use, each profile described
-	                                        in nextflow.config file
-	                                        Available: preprocessing, germline, somatic
+	  --run_id                       STR  Unique identifier for pipeline run
+	  --sample_sheet                FILE  CSV file containing the list of samples where the
+	                                      first column designates the file name of the normal
+	                                      sample, the second column for the file name of the
+	                                      matched tumor sample
+	  --cohort_name                  STR  A user defined collective name of the group of
+	                                      samples, this will be used as the name of the output
+	  -profile                       STR  Configuration profile to use, must use germline
 
 	Main Options:
-	  -bg                           [flag]  Runs the pipeline processes in the background, this
-	                                        option should be included if deploying pipeline with
-	                                        real data set so processes will not be cut if user
-	                                        disconnects from deployment environment
-	  -resume                       [flag]  Successfully completed tasks are cached so that if
-	                                        the pipeline stops prematurely the previously
-	                                        completed tasks are skipped while maintaining their
-	                                        output
-	  --input_dir                    [str]  Directory that holds BAMs and associated index files,
-	                                        this should be given as an absolute path
-	                                        Default: input/preprocessedBams/
-	  --output_dir                   [str]  Directory that will hold all output files this should
-	                                        be given as an absolute path
-	                                        Default: output/
-	  --email                        [str]  Email address to send workflow completion/stoppage
-	                                        notification
-	  --vep_ref_cached               [str]  Indicates whether or not the VEP reference files used
-	                                        for annotation have been downloaded/cached locally,
-	                                        this will be done in a process of the pipeline if it
-	                                        has not, this does not need to be done for every
-	                                        separate run after the first
-	                                        Available: yes, no
-	                                        Default: yes
-	  --ref_vcf_concatenated         [str]  Indicates whether or not the 1000 Genomes Project
-	                                        reference VCF used for ADMIXTURE analysis has been
-	                                        concatenated, this will be done in a process of the
-	                                        pipeline if it has not, this does not need to be done
-	                                        for every separate run after the first
-	                                        Available: yes, no
-	                                        Default: yes
-	  --cpus                         [int]  Globally set the number of cpus to be allocated
-	                                        Available: 2, 4, 8, 16, etc.
-	                                        Default: uniquly set for each process in config file
-	  --memory                       [str]  Globally set the amount of memory to be allocated for
-	                                        all processes, written as '##.GB' or '##.MB'
-	                                        Available: 32.GB, 2400.MB, etc.
-	                                        Default: uniquly set for each process in config file
-	  --queue_size                   [int]  Set max number of tasks the pipeline will launch
-	                                        Available: 25, 50, 100, 150, etc.
-	                                        Default: 100
-	  --executor                     [str]  Set the job executor for the run
-	                                        Available: local, slurm, lsf
-	                                        Default: slurm
-	  --help                        [flag]  Prints this message
-
-	################################################
+	  -bg                           FLAG  Runs the pipeline processes in the background, this
+	                                      option should be included if deploying pipeline with
+	                                      real data set so processes will not be cut if user
+	                                      disconnects from deployment environment
+	  -resume                       FLAG  Successfully completed tasks are cached so that if
+	                                      the pipeline stops prematurely the previously
+	                                      completed tasks are skipped while maintaining their
+	                                      output
+	  --input_dir                   PATH  Directory that holds BAMs and associated index files,
+	                                      this should be given as an absolute path
+	                                      [Default: input/preprocessedBams/]
+	  --output_dir                  PATH  Directory that will hold all output files this should
+	                                      be given as an absolute path
+	                                      [Default: output/]
+	  --email                        STR  Email address to send workflow completion/stoppage
+	                                      notification
+	  --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
+	                                      for annotation have been downloaded/cached locally,
+	                                      this will be done in a process of the pipeline if it
+	                                      has not, this does not need to be done for every
+	                                      separate run after the first
+	                                      [Default: yes | Available: yes, no]
+	  --ref_vcf_concatenated         STR  Indicates whether or not the 1000 Genomes Project
+	                                      reference VCF used for ADMIXTURE analysis has been
+	                                      concatenated, this will be done in a process of the
+	                                      pipeline if it has not, this does not need to be done
+	                                      for every separate run after the first
+	                                      [Default: yes | Available: yes, no]
+	  --cpus                         INT  Globally set the number of cpus to be allocated
+	  --memory                       STR  Globally set the amount of memory to be allocated,
+	                                      written as '##.GB' or '##.MB'
+	  --queue_size                   INT  Set max number of tasks the pipeline will launch
+	                                      [Default: 100]
+	  --executor                     STR  Set the job executor for the run
+	                                      [Default: slurm | Available: local, slurm, lsf]
+	  --help                        FLAG  Prints this message
 
 	""".stripIndent()
 }
@@ -250,10 +253,22 @@ if( params.ref_vcf_concatenated == "yes" ) {
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 log.info ''
-log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
-log.info '~~~~~~~~~~~~~~~~~~~ GERMLINE ~~~~~~~~~~~~~~~~~~~'
-log.info '################################################'
+log.info ''
+log.info "           .------------------------.           "
+log.info "          |    .-..-. .--. .---.     |          "
+log.info "          |    : `' :: .--': .; :    |          "
+log.info "          |    : .. :: : _ :  _.'    |          "
+log.info "          |    : :; :: :; :: :       |          "
+log.info "          |    :_;:_;`.__.':_;       |          "
+log.info "          |   ,-. .--.  .--.  .--.   |          "
+log.info "          | .'  :: ,. :: ,. :: ,. :  |          "
+log.info "          |   : :: :: :: :: :: :: :  |          "
+log.info "          |   : :: :; :: :; :: :; :  |          "
+log.info "          |   :_;`.__.'`.__.'`.__.'  |          "
+log.info "           .________________________.           "
+log.info ''
+log.info "                    GERMLINE                    "
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''
