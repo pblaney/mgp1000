@@ -460,10 +460,22 @@ if( params.vep_ref_cached == "yes" ) {
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
 
 log.info ''
-log.info '######### Myeloma Genome Pipeline 1000 #########'
 log.info '################################################'
-log.info '~~~~~~~~~~~~~~~~~~~ SOMATIC ~~~~~~~~~~~~~~~~~~~'
-log.info '################################################'
+log.info ''
+log.info "           .------------------------.           "
+log.info "          |    .-..-. .--. .---.     |          "
+log.info "          |    : `' :: .--': .; :    |          "
+log.info "          |    : .. :: : _ :  _.'    |          "
+log.info "          |    : :; :: :; :: :       |          "
+log.info "          |    :_;:_;`.__.':_;       |          "
+log.info "          |   ,-. .--.  .--.  .--.   |          "
+log.info "          | .'  :: ,. :: ,. :: ,. :  |          "
+log.info "          |   : :: :: :: :: :: :: :  |          "
+log.info "          |   : :: :; :: :; :: :; :  |          "
+log.info "          |   :_;`.__.'`.__.'`.__.'  |          "
+log.info "           .________________________.           "
+log.info ''
+log.info "                    SOMATIC                     "
 log.info ''
 log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
 log.info ''

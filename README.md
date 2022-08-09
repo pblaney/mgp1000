@@ -116,7 +116,6 @@ Here is the full help message for the Preprocessing module.
 ```
 $ nextflow run preprocessing.nf --help
 
-
 Usage:
   nextflow run preprocessing.nf --run_id STR --input_format STR -profile preprocessing
   [-bg] [-resume] [--lane_split STR] [--input_dir PATH] [--output_dir PATH] [--email STR]
@@ -431,7 +430,8 @@ Here is a snapshot of the final `output/somatic/consensus/[tumor_normal_id]` dir
 | `*.hq.consensus.somatic.snv.vep.summary.html` | annotation summary HTML file for SNVs |
 | `*.hq.consensus.somatic.indel.annotated.vcf.gz` | filtered and annotated consensus InDel VCF |
 | `*.hq.consensus.somatic.indel.vep.summary.html` | annotation summary HTML file for InDels |
-| `*.hq.consensus.somatic.cnv.annotated.bed` | per segment consensus annotated CNV BED |
+| `*.hq.consensus.somatic.cnv.annotated.bed` | consensus annotated CNV BED |
+| `*.consensus.somatic.cnvalleles.merged.bed` | all per segment CNV calls by tool |
 | `*.consensus.somatic.cnv.subclonal.txt` | aggregated subclonal population estimates |
 | `*.hq.consensus.somatic.sv.annotated.bedpe` | consensus annotated SV BEDPE |
 | `*.hq.consensus.somatic.sv.annotated.genesplit.bed` | annotations per each gene overlapped by SV in BEDPE |

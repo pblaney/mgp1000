@@ -10,24 +10,20 @@ Help()
 	echo "run command and then submit this to the scheduler"
 	echo ""
 	echo "Syntax:"
-	echo '	./nextflow_run_slurm_submitter.sh [-h] [pipelineStepScript] [runId] [userEmail] [estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]" "[additionalSlurmOptions]"'
+	echo '	./nextflow_run_slurm_submitter.sh [-h] [pipelineStepScript] [runId] [userEmail]'
+	echo '	[estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]" "[additionalSlurmOptions]"'
 	echo ""
 	echo "Argument Descriptions:"
 	echo "	[-h]				Print this message"
 	echo "	[pipelineStepScript]		The name of the Nextflow script that will be run"
 	echo "	[runId]				The unique ID associated with the run"
 	echo "	[userEmail]			The email address to be sent notifications of pipeline progress"
-	echo "	[estimatedRuntime]		The estimated number of days the pipeline will take to complete"
-	echo "	[moduleLoadCmd]			The text string that will be used to load required modules within the parent SLURM job"
+	echo "	[estimatedRuntime]		The estimated number of days for run to complete"
+	echo "	[moduleLoadCmd]			The text string that will be used to load required modules"
+	echo "                 			within the parent SLURM job"
 	echo "	[pipelineStepOptions]		The text string of any pipeline step specific run options"
-	echo "	[additionalSlurmOptions]	OPTIONAL; The text string of any unqiue additional SLURM submission options"
-	echo ""
-	echo "Usage Examples:"
-	echo '	./nextflow_run_slurm_submitter.sh preprocessing.nf batch1 someperson@gmail.com 3 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--input_format fastq"'
-	echo ""
-	echo '	./nextflow_run_slurm_submitter.sh germline.nf batch1 someperson@gmail.com 10 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --cohort_name wgs_set --vep_ref_cached no --ref_vcf_concatenated no"'
-	echo ""
-	echo '	./nextflow_run_slurm_submitter.sh somatic.nf batch1 someperson@gmail.com 7 "module load java/1.8 nextflow/21.04.3 singularity/3.7.1" "--sample_sheet samplesheet.csv --mutect_ref_vcf_concatenated no --annotsv_ref_cached no --vep_ref_cached no"'
+	echo "	[additionalSlurmOptions]	OPTIONAL; The text string of any unqiue additional SLURM"
+	echo "	                        	submission options"
 	echo ""
 }
 
