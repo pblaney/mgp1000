@@ -125,7 +125,7 @@ Mandatory Arguments:
   --run_id                       STR  Unique identifier for pipeline run
   --input_format                 STR  Format of input files
                                       [Default: fastq | Available: fastq, bam]
-  -profile                       STR  Configuration profile to use, must use preprocessing                               
+  -profile                       STR  Configuration profile to use, must use preprocessing
 
 Main Options:
   -bg                           FLAG  Runs the pipeline processes in the background, this
@@ -199,7 +199,6 @@ nextflow run germline.nf \
 Here is the full help message for the Germline module.
 ```
 $ nextflow run germline.nf --help
-
 
 Usage:
   nextflow run germline.nf --run_id STR --sample_sheet FILE --cohort_name STR -profile germline
@@ -431,7 +430,7 @@ Here is a snapshot of the final `output/somatic/consensus/[tumor_normal_id]` dir
 | `*.hq.consensus.somatic.indel.annotated.vcf.gz` | filtered and annotated consensus InDel VCF |
 | `*.hq.consensus.somatic.indel.vep.summary.html` | annotation summary HTML file for InDels |
 | `*.hq.consensus.somatic.cnv.annotated.bed` | consensus annotated CNV BED |
-| `*.consensus.somatic.cnvalleles.merged.bed` | all per segment CNV calls by tool |
+| `*.consensus.somatic.cnvalleles.merged.bed` | all per segment CNV calls per tool |
 | `*.consensus.somatic.cnv.subclonal.txt` | aggregated subclonal population estimates |
 | `*.hq.consensus.somatic.sv.annotated.bedpe` | consensus annotated SV BEDPE |
 | `*.hq.consensus.somatic.sv.annotated.genesplit.bed` | annotations per each gene overlapped by SV in BEDPE |
