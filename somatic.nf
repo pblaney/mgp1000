@@ -95,6 +95,8 @@ def helpMessage() {
 	                                      [Default: on | Available: off, on]
 	  --conpair                      STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
+	  --conpair_min_cov              INT  Manually set the minimum coverage
+	                                      [Default: 10]
 	  --varscan                      STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --mutect                       STR  Indicates whether or not to use this tool
@@ -186,6 +188,7 @@ params.manta = "on"
 params.svaba = "on"
 params.delly = "on"
 params.igcaller = "on"
+params.conpair_min_cov = 10
 params.battenberg_min_depth = 10
 params.controlfreec_read_length = 151
 params.controlfreec_bp_threshold = 0.8
@@ -694,7 +697,7 @@ process concordanceAndContaminationEstimation_conpair {
 	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
 	"""
 	\${CONPAIR_DIR}/scripts/verify_concordance.py \
-	--min_cov 10 \
+	--min_cov ${conpair_min_cov} \
 	--min_mapping_quality 10 \
 	--min_base_quality 20 \
 	--tumor_pileup "${tumor_pileup}" \
