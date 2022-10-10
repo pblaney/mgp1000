@@ -3,10 +3,12 @@
 
 inputDirectory=$1
 
-outputDirectory=$2
+workDirectory=$2
+
+outputDirectory=$3
 
 mkdir -p "${outputDirectory}"
-ls -1 ${inputDirectory}/*.f*q.gz \
+ls -1 ${workDirectory}/*.f*q.gz \
 | \
 while read fastqPath
 do
@@ -44,15 +46,15 @@ do
 
 	if [[ ${laneSplitRegex} =~ _L00\*_R ]]; then
 
-		laneMergedFastqBasename=$(echo ${laneSplitRegex} | sed -E 's|_L00\*||')
+		laneMergedFastqBasename=$(echo "$laneSplitRegex" | sed -E 's|_L00\*||')
 
 	elif [[ ${laneSplitRegex} =~ _00\*_R ]]; then
 
-		laneMergedFastqBasename=$(echo ${laneSplitRegex} | sed -E 's|_00\*||')
+		laneMergedFastqBasename=$(echo "$laneSplitRegex" | sed -E 's|_00\*||')
 
 	elif [[ ${laneSplitRegex} =~ _R[12]_00\* ]]; then
 
-		laneMergedFastqBasename=$(echo ${laneSplitRegex} | sed -E 's|_00\*||')
+		laneMergedFastqBasename=$(echo "$laneSplitRegex" | sed -E 's|_00\*||')
 	fi
 
 	mergeCmd="cat ${splitFiles} > ${laneMergedFastqBasename}.merged.fastq.gz"

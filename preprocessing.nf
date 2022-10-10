@@ -244,6 +244,7 @@ process mergeLaneSplitFastqs_mergelane {
 	"""
 	lane_split_merger.sh \
 	"${params.input_dir}" \
+	. \
 	"${lane_merged_input_fastqs}"
 	"""
 }
