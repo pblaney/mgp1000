@@ -419,8 +419,8 @@ if( params.skip_trimming == "no" ) {
 	fastqs_forFastqc = trimmed_fastqs_forFastqc
 	fastqs_forAlignment = trimmed_fastqs_forFastqc
 } else {
-	fastqs_forFastqc = paired_input_fastqs
-	fastqs_forAlignment = paired_input_fastqs
+	paired_input_fastqs.into{ fastqs_forFastqc;
+	                          fastqs_forAlignment }
 }
 
 // FastQC ~ generate sequence quality metrics for input FASTQ files
