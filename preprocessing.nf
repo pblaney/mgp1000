@@ -78,7 +78,7 @@ params.run_id = null
 params.input_format = "fastq"
 params.lane_split = "no"
 params.email = null
-params.skip_to_qc = "no"
+params.skip_trimming = "no"
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -95,6 +95,8 @@ if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directo
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
 if( params.input_format == null ) exit 1, "The run command issued does not have the '--input_format' parameter set. Please set the '--input_format' parameter to either bam or fastq depending on input data."
+
+if( params.input_format == bam & params.skip_trimming == "yes" ) exit 1, "This run command cannot be executed. If '--input_format' parameter is 'bam', then trimming must be performed. Please set '--skip_trimming to 'no'."
 
 // Set channels for reference files
 Channel
@@ -290,7 +292,7 @@ if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 						                  file("${params.output_dir}/preprocessing/laneMergedFastqs/${input_R1_fastq}"),
 						                  file("${params.output_dir}/preprocessing/laneMergedFastqs/${input_R2_fastq}") ] }
 						    .set{ paired_input_fastqs }
-} else if( params.input_format == "fastq" & params.lane_split == "no") {
+} else if( params.input_format == "fastq" & params.lane_split == "no" ) {
 	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
 						    .map{ row -> sample_id = "${row.sample_id}"
 						                 input_R1_fastq = "${row.read_1}"
@@ -368,8 +370,7 @@ process bamToFastq_biobambam {
 // Depending on which input data type was used, set an input variable for the Trimmomatic process
 if( params.input_format == "bam" ) {
 	input_fastqs_forTrimming = converted_fastqs_forTrimming
-}
-else {
+} else if( params.input_format == "fastq" & params.skip_trimming == "no" ){
 	input_fastqs_forTrimming = paired_input_fastqs
 }
 
@@ -384,6 +385,9 @@ process fastqTrimming_trimmomatic {
 	output:
 	tuple val(sample_id), path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
 	path fastq_trim_log
+
+	when:
+	params.skip_trimming == "no"
 
 	script:
 	fastq_R1_trimmed = "${sample_id}_R1_trim.fastq.gz"
@@ -408,13 +412,20 @@ process fastqTrimming_trimmomatic {
 	"""
 }
 
+// Depending on if the FASTQs were trimmed or not, set the input for FastQC and alignment
+if( params.skip_trimming == "no" ) {
+	fastqs_forFastqc, fastqs_forAlignment = trimmed_fastqs_forFastqc
+} else {
+	fastqs_forFastqc, fastqs_forAlignment = = paired_input_fastqs
+}
+
 // FastQC ~ generate sequence quality metrics for input FASTQ files
 process fastqQualityControlMetrics_fastqc {
 	publishDir "${params.output_dir}/preprocessing/fastqc", mode: 'copy'
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(fastq_R1), path(fastq_R2) from trimmed_fastqs_forFastqc
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2) from fastqs_forFastqc
 
 	output:
 	tuple path(fastqc_R1_html), path(fastqc_R2_html)
@@ -439,7 +450,7 @@ process alignment_bwa {
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from trimmed_fastqs_forAlignment.combine(bwa_reference_dir)
+	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
 
 	output:
 	path bam_aligned into aligned_bams
