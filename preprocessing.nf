@@ -319,7 +319,6 @@ process revertMappedBam_gatk {
 
 	when:
 	params.input_format == "bam"
-	params.skip_to_qc == "no"
 
 	script:
 	bam_unmapped = "${bam_mapped}".replaceFirst(/\..*bam/, ".unmapped.bam")
@@ -352,7 +351,6 @@ process bamToFastq_biobambam {
 
 	when:
 	params.input_format == "bam"
-	params.skip_to_qc == "no"
 
 	script:
 	sample_id = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "")
@@ -368,11 +366,11 @@ process bamToFastq_biobambam {
 }
 
 // Depending on which input data type was used, set an input variable for the Trimmomatic process
-if( params.input_format == "bam" ) {
+if( params.input_format == "bam" & params.skip_trimming == "no" ) {
 	input_fastqs_forTrimming = converted_fastqs_forTrimming
-} else if( params.input_format == "fastq" & params.skip_trimming == "no" ){
+} else if( params.input_format == "fastq" & params.skip_trimming == "no" ) {
 	input_fastqs_forTrimming = paired_input_fastqs
-} else {
+} else if( params.input_format == "fastq" & params.skip_trimming == "yes" ) {
 	input_fastqs_forTrimming = Channel.empty()
 }
 
@@ -417,10 +415,9 @@ process fastqTrimming_trimmomatic {
 // Depending on if the FASTQs were trimmed or not, set the input for FastQC and alignment
 if( params.skip_trimming == "no" ) {
 	fastqs_forFastqc = trimmed_fastqs_forFastqc
-	fastqs_forAlignment = trimmed_fastqs_forFastqc
+	fastqs_forAlignment = trimmed_fastqs_forAlignment
 } else {
-	paired_input_fastqs.into{ fastqs_forFastqc;
-	                          fastqs_forAlignment }
+	fastqs_forFastqc, fastqs_forAlignment = paired_input_fastqs
 }
 
 // FastQC ~ generate sequence quality metrics for input FASTQ files
@@ -434,9 +431,6 @@ process fastqQualityControlMetrics_fastqc {
 	output:
 	tuple path(fastqc_R1_html), path(fastqc_R2_html)
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
-
-	when:
-	params.skip_to_qc == "no"
 
 	script:
 	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
@@ -459,9 +453,6 @@ process alignment_bwa {
 	output:
 	path bam_aligned into aligned_bams
 	tuple val(sample_id), path(bam_aligned) into aligned_bam_forFlagstats
-
-	when:
-	params.skip_to_qc == "no"
 
 	script:
 	bam_aligned = "${sample_id}.bam"
@@ -504,9 +495,6 @@ process postAlignmentFlagstats_sambamba {
 	output:
 	path bam_flagstat_log
 
-	when:
-	params.skip_to_qc == "no"
-
 	script:
 	bam_flagstat_log = "${sample_id}.alignment.flagstat.log"
 	"""
@@ -524,9 +512,6 @@ process fixMateInformationAndSort_gatk {
 
 	output:
 	path bam_fixed_mate into fixed_mate_bams
-
-	when:
-	params.skip_to_qc == "no"
 
 	script:
 	bam_fixed_mate_unsorted = "${bam_aligned}".replaceFirst(/\.bam/, ".unsorted.fixedmate.bam")
@@ -567,9 +552,6 @@ process markDuplicatesAndIndex_sambamba {
 	path markdup_output_log
 	path bam_markdup_flagstat_log
 
-	when:
-	params.skip_to_qc == "no"
-
 	script:
 	sample_id = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, "")
 	bam_marked_dup = "${sample_id}.markdup.bam"
@@ -604,9 +586,6 @@ process downsampleBam_gatk {
 
 	output:
 	path bam_marked_dup_downsampled into downsampled_makred_dup_bams
-
-	when:
-	params.skip_to_qc == "no"
 
 	script:
 	bam_marked_dup_downsampled = "${sample_id}.markdup.downsampled.bam"
@@ -654,9 +633,6 @@ process baseRecalibrator_gatk {
 	output:
 	tuple val(sample_id), path(bqsr_table) into base_quality_score_recalibration_data
 
-	when:
-	params.skip_to_qc == "no"
-
 	script:
 	sample_id = "${bam_marked_dup_downsampled}".replaceFirst(/\.markdup\.downsampled\.bam/, "")
 	bqsr_table = "${sample_id}.recaldata.table"
@@ -701,9 +677,6 @@ process applyBqsr_gatk {
 	path bam_preprocessed_final into final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics
 	path bam_preprocessed_final_index
 
-	when:
-	params.skip_to_qc == "no"
-
 	script:
 	bam_preprocessed_final = "${bam_marked_dup}".replaceFirst(/\.markdup\.bam/, ".final.bam")
 	bam_preprocessed_final_index = "${bam_preprocessed_final}".replaceFirst(/\.bam$/, ".bai")
@@ -736,9 +709,6 @@ process collectWgsMetrics_gatk {
 
 	output:
 	path coverage_metrics
-
-	when:
-	params.skip_to_qc == "no"
 
 	script:
 	sample_id = "${bam_preprocessed_final}".replaceFirst(/\.final\.bam/, "")
@@ -775,9 +745,6 @@ process collectGcBiasMetrics_gatk {
 	path gc_bias_metrics
 	path gc_bias_chart
 	path gc_bias_summary
-
-	when:
-	params.skip_to_qc == "no"
 
 	script:
 	sample_id = "${bam_preprocessed_final}".replaceFirst(/\.final\.bam/, "")
