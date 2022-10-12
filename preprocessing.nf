@@ -292,15 +292,6 @@ if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 						                  file("${params.output_dir}/preprocessing/laneMergedFastqs/${input_R1_fastq}"),
 						                  file("${params.output_dir}/preprocessing/laneMergedFastqs/${input_R2_fastq}") ] }
 						    .set{ paired_input_fastqs }
-} else if( params.input_format == "fastq" & params.lane_split == "no" ) {
-	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
-						    .map{ row -> sample_id = "${row.sample_id}"
-						                 input_R1_fastq = "${row.read_1}"
-						                 input_R2_fastq = "${row.read_2}"
-						          return[ "${sample_id}",
-						                  file("${params.input_dir}/${input_R1_fastq}"),
-						                  file("${params.input_dir}/${input_R2_fastq}") ] }
-						    .set{ paired_input_fastqs }
 } else if( params.input_format == "fastq" & params.lane_split == "no" & params.skip_trimming == "yes" ) {
 	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
 						    .map{ row -> sample_id = "${row.sample_id}"
@@ -311,6 +302,15 @@ if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 						                  file("${params.input_dir}/${input_R2_fastq}") ] }
 						    .into{ paired_input_fastqs_forFastqc;
 						           paired_input_fastqs_forAlignment }
+} else if( params.input_format == "fastq" & params.lane_split == "no" & params.skip_trimming == "no" ) {
+	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
+						    .map{ row -> sample_id = "${row.sample_id}"
+						                 input_R1_fastq = "${row.read_1}"
+						                 input_R2_fastq = "${row.read_2}"
+						          return[ "${sample_id}",
+						                  file("${params.input_dir}/${input_R1_fastq}"),
+						                  file("${params.input_dir}/${input_R2_fastq}") ] }
+						    .set{ paired_input_fastqs }
 } else {
 	Channel
 		.empty()
@@ -426,7 +426,7 @@ process fastqTrimming_trimmomatic {
 if( params.skip_trimming == "no" ) {
 	fastqs_forFastqc = trimmed_fastqs_forFastqc
 	fastqs_forAlignment = trimmed_fastqs_forAlignment
-} else {
+} else if( params.skip_trimming == "yes" ) {
 	fastqs_forFastqc = paired_input_fastqs_forFastqc
 	fastqs_forAlignment = paired_input_fastqs_forAlignment
 }
