@@ -301,7 +301,7 @@ if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 						                  file("${params.input_dir}/${input_R1_fastq}"),
 						                  file("${params.input_dir}/${input_R2_fastq}") ] }
 						    .set{ paired_input_fastqs }
-} else if( params.input_format == "fastq" & params.skip_trimming == "yes" ) {
+} else if( params.input_format == "fastq" & params.lane_split == "no" & params.skip_trimming == "yes" ) {
 	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
 						    .map{ row -> sample_id = "${row.sample_id}"
 						                 input_R1_fastq = "${row.read_1}"
