@@ -301,6 +301,16 @@ if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 						                  file("${params.input_dir}/${input_R1_fastq}"),
 						                  file("${params.input_dir}/${input_R2_fastq}") ] }
 						    .set{ paired_input_fastqs }
+} else if( params.input_format == "fastq" & params.skip_trimming == "yes" ) {
+	input_fastq_sample_sheet.splitCsv( header: true, sep: '\t' )
+						    .map{ row -> sample_id = "${row.sample_id}"
+						                 input_R1_fastq = "${row.read_1}"
+						                 input_R2_fastq = "${row.read_2}"
+						          return[ "${sample_id}",
+						                  file("${params.input_dir}/${input_R1_fastq}"),
+						                  file("${params.input_dir}/${input_R2_fastq}") ] }
+						    .into{ paired_input_fastqs_forFastqc;
+						           paired_input_fastqs_forAlignment }
 } else {
 	Channel
 		.empty()
@@ -417,7 +427,8 @@ if( params.skip_trimming == "no" ) {
 	fastqs_forFastqc = trimmed_fastqs_forFastqc
 	fastqs_forAlignment = trimmed_fastqs_forAlignment
 } else {
-	fastqs_forFastqc, fastqs_forAlignment = paired_input_fastqs
+	fastqs_forFastqc = paired_input_fastqs_forFastqc
+	fastqs_forAlignment = paired_input_fastqs_forAlignment
 }
 
 // FastQC ~ generate sequence quality metrics for input FASTQ files
