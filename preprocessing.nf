@@ -372,6 +372,8 @@ if( params.input_format == "bam" ) {
 	input_fastqs_forTrimming = converted_fastqs_forTrimming
 } else if( params.input_format == "fastq" & params.skip_trimming == "no" ){
 	input_fastqs_forTrimming = paired_input_fastqs
+} else {
+	input_fastqs_forTrimming = Channel.empty()
 }
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
