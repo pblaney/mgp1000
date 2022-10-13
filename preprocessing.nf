@@ -78,6 +78,7 @@ params.run_id = null
 params.input_format = "fastq"
 params.lane_split = "no"
 params.email = null
+params.trimmomatic_min_len = 35
 params.skip_trimming = "no"
 params.cpus = null
 params.memory = null
@@ -417,7 +418,7 @@ process fastqTrimming_trimmomatic {
 	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true \
 	TRAILING:5 \
 	SLIDINGWINDOW:4:15 \
-	MINLEN:35 \
+	MINLEN:${params.trimmomatic_min_len} \
 	2> "${fastq_trim_log}"
 	"""
 }
