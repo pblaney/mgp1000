@@ -298,7 +298,7 @@ log.info '################################################'
 log.info ''
 
 // Read user provided sample sheet to find Normal sample BAM files
-if( params.admixture_input_vcf == "" ) {
+if( params.sample_sheet != null & params.admixture_input_vcf == "" ) {
 	Channel
 		.fromPath( params.sample_sheet )
 		.splitCsv( header:true )
@@ -308,7 +308,8 @@ if( params.admixture_input_vcf == "" ) {
 } else {
 	Channel
 		.empty()
-}		.set{ input_preprocessed_bams_forHaplotypeCaller }
+		.set{ input_preprocessed_bams_forHaplotypeCaller }
+}		
 
 // Combine all needed reference FASTA files into one channel for use in SplitIntervals process
 reference_genome_fasta_forSplitIntervals.combine( reference_genome_fasta_index_forSplitIntervals )
