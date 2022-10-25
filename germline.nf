@@ -70,6 +70,9 @@ def helpMessage() {
 	                                      pipeline if it has not, this does not need to be done
 	                                      for every separate run after the first
 	                                      [Default: yes | Available: yes, no]
+	  --admixture_input_vcf          STR  If set, this skips the germline variant calling and
+	                                      performs the ADMIXTURE analysis on user-specified
+	                                      VCF
 	  --cpus                         INT  Globally set the number of cpus to be allocated
 	  --memory                       STR  Globally set the amount of memory to be allocated,
 	                                      written as '##.GB' or '##.MB'
@@ -94,6 +97,7 @@ params.cohort_name = null
 params.email = null
 params.vep_ref_cached = "yes"
 params.ref_vcf_concatenated = "yes"
+params.admixture_input_vcf = ""
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -246,6 +250,18 @@ if( params.ref_vcf_concatenated == "yes" ) {
 		.fromPath( 'references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi', checkIfExists: true )
 		.ifEmpty{ error "The '--ref_vcf_concatenated' parameter set to 'yes', however the index file does not exist for the reference VCF. Please set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. Alternatively, use Tabix to index the reference VCF."}
 		.set{ reference_vcf_1000G_index_preBuilt }
+}
+
+if( params.admixture_input_vcf != "" ) {
+    Channel
+        .fromPath( "${params.admixture_input_vcf}", checkIfExists: true )
+        .ifEmpty{ error "The run command issued is invalid. The path to the VCF set with '--admixture_input_vcf' does not exist. Please provide absolute path to the VCF, must bgzipped and indexed."}
+        .set{ admixture_input_vcf_fromUser }
+
+    Channel
+        .fromPath( "${params.admixture_input_vcf}.tbi", checkIfExists: true )
+        .ifEmpty{ error "The VCF set with '--admixture_input_vcf' does not have an index file."}
+        .set{ admixture_input_vcf_index_fromUser }
 }
 
 
@@ -800,13 +816,21 @@ else {
 	reference_vcf_1000G = reference_vcf_1000G_fromProcess
 }
 
+// Depending on whether the user wants to run the ADMIXTURE analysis on specified VCF, set the input for the BCFtools annotate/merge process
+if( params.admixture_input_vcf != "" ) {
+    input_forAdmixutre = admixture_input_vcf_fromUser.combine( admixture_input_vcf_index_fromUser )
+}
+else {
+    input_forAdmixutre = final_germline_vcf_forAdmixture
+}
+
 // BCFtools Annotate/Merge ~ preprocessing of VCF to remove all FORMAT fields except genotype needed for merging with reference VCF
 // and merge cohort VCF with 1000G ref VCF for supervised projection analysis, output no new multiallelic records
 process mergeCohortAndReferenceVcf_bcftools {
 	tag "${params.cohort_name}"
 
 	input:
-	tuple path(vcf_germline_final), path(vcf_germline_final_index) from final_germline_vcf_forAdmixture
+	tuple path(input_vcf), path(input_vcf_index) from input_forAdmixutre
 	tuple path(whole_genome_ref_vcf), path(whole_genome_ref_vcf_index) from reference_vcf_1000G
 
 	output:
@@ -814,16 +838,16 @@ process mergeCohortAndReferenceVcf_bcftools {
 
 	script:
 	sample_ref_merged_vcf = "${params.cohort_name}.refmerged.vcf.gz"
-	vcf_germline_final_gt_only = "${vcf_germline_final}".replaceFirst(/\.germline\.vcf\.gz/, ".germline.gto.vcf.gz")
+	vcf_gt_only = "${input_vcf}".replaceFirst(/\.vcf\.gz/, ".gto.vcf.gz")
 	"""
 	bcftools annotate \
 	--threads ${task.cpus} \
 	--remove FORMAT \
 	--output-type z \
-	--output "${vcf_germline_final_gt_only}" \
-	"${vcf_germline_final}"
+	--output "${vcf_gt_only}" \
+	"${input_vcf}"
 
-	tabix "${vcf_germline_final_gt_only}"
+	tabix "${vcf_gt_only}"
 
 	bcftools merge \
 	--threads ${task.cpus} \
@@ -831,7 +855,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 	--missing-to-ref \
 	--output-type z \
 	--output "${sample_ref_merged_vcf}" \
-	"${vcf_germline_final_gt_only}" "${whole_genome_ref_vcf}"
+	"${vcf_gt_only}" "${whole_genome_ref_vcf}"
 	"""
 }
 
