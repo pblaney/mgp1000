@@ -320,7 +320,7 @@ if( params.input_format == "fastq" & params.lane_split == "yes" ) {
 
 // GATK RevertSam ~ convert input mapped BAM files to unmapped BAM files
 process revertMappedBam_gatk {
-	tag "${bam_mapped.baseName}"
+	tag "${sample_id}"
 
 	input:
 	path bam_mapped from input_mapped_bams
@@ -333,6 +333,7 @@ process revertMappedBam_gatk {
 
 	script:
 	bam_unmapped = "${bam_mapped}".replaceFirst(/\..*bam/, ".unmapped.bam")
+	sample_id = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "")
 	"""
 	gatk RevertSam \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
