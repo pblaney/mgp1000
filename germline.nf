@@ -320,6 +320,9 @@ process splitIntervalList_gatk {
 	output:
 	path "splitIntervals/*-split.interval_list" into split_intervals mode flatten
 
+	when:
+	params.admixture_input_vcf == ""
+
 	script:
 	"""
 	gatk SplitIntervals \
@@ -354,6 +357,9 @@ process haplotypeCaller_gatk {
 	output:
 	tuple val(sample_id), path(gvcf_per_interval_raw), path(gvcf_per_interval_raw_index) into raw_gvcfs
 
+	when:
+	params.admixture_input_vcf == ""
+
 	script:
 	sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
 	interval_id = "${interval}".replaceFirst(/-split\.interval_list/, "_int")
@@ -385,6 +391,9 @@ process mergeAndSortGvcfs_gatk {
 	path gvcf_merged_raw into merged_raw_gcvfs
 	path gvcf_merged_raw_index into merged_raw_gcvfs_indicies
 
+	when:
+	params.admixture_input_vcf == ""
+
 	script:
 	gvcf_merged_raw = "${sample_id}.g.vcf.gz"
 	gvcf_merged_raw_index = "${gvcf_merged_raw}.tbi"
@@ -415,6 +424,9 @@ process combineAllGvcfs_gatk {
 
 	output:
 	tuple path(gvcf_cohort_combined), path(gvcf_cohort_combined_index) into combined_cohort_gvcf
+
+	when:
+	params.admixture_input_vcf == ""
 
 	script:
 	gvcf_cohort_combined = "${params.cohort_name}.g.vcf.gz"
@@ -450,6 +462,9 @@ process jointGenotyping_gatk {
 	output:
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) into joint_genotyped_vcfs
 
+	when:
+	params.admixture_input_vcf == ""
+
 	script:
 	vcf_joint_genotyped = "${params.cohort_name}.vcf.gz"
 	vcf_joint_genotyped_index = "${vcf_joint_genotyped}.tbi"
@@ -479,6 +494,9 @@ process excessHeterozygosityHardFilter_gatk {
 
 	output:
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnpVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
+
+	when:
+	params.admixture_input_vcf == ""
 
 	script:
 	vcf_hard_filtered_marked = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtermarked.vcf.gz")
@@ -527,6 +545,9 @@ process indelVariantRecalibration_gatk {
 
 	output:
 	tuple path(indel_vqsr_table), path(indel_vqsr_table_index), path(indel_vqsr_tranches) into indel_vqsr_files
+
+	when:
+	params.admixture_input_vcf == ""
 
 	script:
 	indel_vqsr_table = "${params.cohort_name}.indel.recaldata.table"
@@ -577,6 +598,9 @@ process snpVariantRecalibration_gatk {
 	output:
 	tuple path(snp_vqsr_table), path(snp_vqsr_table_index), path(snp_vqsr_tranches) into snp_vqsr_files
 
+	when:
+	params.admixture_input_vcf == ""
+
 	script:
 	snp_vqsr_table = "${params.cohort_name}.snp.recaldata.table"
 	snp_vqsr_table_index = "${snp_vqsr_table}.idx"
@@ -612,6 +636,9 @@ process applyIndelAndSnpVqsr_gatk {
 
 	output:
 	tuple path(final_vqsr_germline_vcf), path(final_vqsr_germline_vcf_index) into vqsr_germline_vcfs
+
+	when:
+	params.admixture_input_vcf == ""
 
 	script:
 	intermediate_vqsr_germline_vcf = "${vcf_hard_filtered}".replaceFirst(/\.filtered\.vcf\.gz/, ".intermediate.vqsr.vcf.gz")
@@ -663,6 +690,9 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	tuple path(final_germline_vcf), path(final_germline_vcf_index) into final_germline_vcf_forAnnotation, final_germline_vcf_forAdmixture
 	path multiallelics_stats
 	path realign_normalize_stats
+
+	when:
+	params.admixture_input_vcf == ""
 
 	script:
 	final_germline_vcf = "${final_vqsr_germline_vcf}".replaceFirst(/\.final\.vqsr\.vcf\.gz/, ".germline.vcf.gz")
@@ -738,6 +768,9 @@ process annotateGermlineVcf_vep {
 	output:
 	path final_annotated_germline_vcf
 	path annotation_summary
+
+	when:
+	params.admixture_input_vcf == ""
 
 	script:
 	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".annotated.vcf.gz")
