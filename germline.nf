@@ -113,7 +113,7 @@ if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directo
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
-if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
+if( params.sample_sheet == null &  params.admixture_input_vcf == "") exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
 if( params.cohort_name == null ) exit 1, "The run command issued does not have the '--cohort_name' parameter set. Please set the '--cohort_name' parameter to a unique identifier for the multi-sample germline GVCF."
 
