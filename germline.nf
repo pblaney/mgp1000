@@ -353,7 +353,7 @@ process splitIntervalList_gatk {
 	path "splitIntervals/*-split.interval_list" into split_intervals mode flatten
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	"""
@@ -390,7 +390,7 @@ process haplotypeCaller_gatk {
 	tuple val(sample_id), path(gvcf_per_interval_raw), path(gvcf_per_interval_raw_index) into raw_gvcfs
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
