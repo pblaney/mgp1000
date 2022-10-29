@@ -325,8 +325,8 @@ if(params.sample_sheet != null) {
         .splitCsv( header:true )
         .map{ normal_bam = "${row.normal}"
               normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, "") }
-              return = [ file("${params.input_dir}/${normal_bam}"), 
-                         file("${params.input_dir}/${normal_bam_index}*.bai") ]
+              return[ file("${params.input_dir}/${normal_bam}"), 
+                      file("${params.input_dir}/${normal_bam_index}*.bai") ]
         .unique()
         .into{ input_preprocessed_bams_forAngsd;
                input_preprocessed_bams_forHaplotypeCaller }
