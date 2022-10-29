@@ -1066,7 +1066,7 @@ process alleleFrequencyEstimation_angsd {
     path beagle_genotype_likelihoods into beagle_input_forFastNgsAdmix
 
     script:
-    sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
+    sample_id = "${normal_bam}".replaceFirst(/\.final\..*bam/, "")
     beagle_genotype_likelihoods = "${sample_id}.beagle.gz"
     """
     angsd \
