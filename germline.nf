@@ -96,6 +96,7 @@ params.sample_sheet = null
 params.cohort_name = null
 params.email = null
 params.vep_ref_cached = "yes"
+params.fastngsadmix_only = "no"
 params.ref_vcf_concatenated = "yes"
 params.admixture_input_vcf = ""
 params.cpus = null
@@ -113,7 +114,7 @@ if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directo
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
-if( params.sample_sheet == null &  params.admixture_input_vcf == "") exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
+if( params.sample_sheet == null & params.fastngsadmix_only == "no" ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
 if( params.cohort_name == null ) exit 1, "The run command issued does not have the '--cohort_name' parameter set. Please set the '--cohort_name' parameter to a unique identifier for the multi-sample germline GVCF."
 
@@ -215,6 +216,26 @@ if( params.vep_ref_cached == "yes" ) {
 }
 
 Channel
+    .value( file('references/hg38/fastNGSadmix_markers_refPanel.hg38.txt') )
+    .set{ admix_markers_ref_population_allele_freqs }
+
+Channel
+    .value( file('references/hg38/fastNGSadmix_markers_nInd.txt') )
+    .set{ admix_markers_ref_population_num_of_individuals }
+
+Channel
+    .value( file('references/hg38/fastNGSadmix_markers.hg38.sites') )
+    .set{ admix_markers_sites }
+
+Channel
+    .value( file('references/hg38/fastNGSadmix_markers.hg38.sites.bin') )
+    .set{ admix_markers_sites_bin }
+
+Channel
+    .value( file('references/hg38/fastNGSadmix_markers.hg38.sites.idx') )
+    .set{ admix_markers_sites_index }
+
+Channel
 	.fromPath( 'references/hg38/ALL.chr[0-9].shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
 	.toSortedList()
 	.set{ reference_vcf_1000G_chromosomes1_9 }
@@ -298,17 +319,22 @@ log.info '################################################'
 log.info ''
 
 // Read user provided sample sheet to find Normal sample BAM files
-if( params.sample_sheet != null & params.admixture_input_vcf == "" ) {
-	Channel
-		.fromPath( params.sample_sheet )
-		.splitCsv( header:true )
-		.map{ row -> file("${params.input_dir}/${row.normal}") }
-		.unique()
-		.set{ input_preprocessed_bams_forHaplotypeCaller }
+if(params.sample_sheet != null) {
+    Channel
+        .fromPath( params.sample_sheet )
+        .splitCsv( header:true )
+        .map{ normal_bam = "${row.normal}"
+              normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, "") }
+              return = [ file("${params.input_dir}/${normal_bam}"), 
+                         file("${params.input_dir}/${normal_bam_index}*.bai") ]
+        .unique()
+        .into{ input_preprocessed_bams_forAngsd;
+               input_preprocessed_bams_forHaplotypeCaller }
 } else {
 	Channel
 		.empty()
-		.set{ input_preprocessed_bams_forHaplotypeCaller }
+		.set{ input_preprocessed_bams_forAngsd;
+		      input_preprocessed_bams_forHaplotypeCaller }
 }		
 
 // Combine all needed reference FASTA files into one channel for use in SplitIntervals process
@@ -327,7 +353,7 @@ process splitIntervalList_gatk {
 	path "splitIntervals/*-split.interval_list" into split_intervals mode flatten
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	"""
@@ -364,7 +390,7 @@ process haplotypeCaller_gatk {
 	tuple val(sample_id), path(gvcf_per_interval_raw), path(gvcf_per_interval_raw_index) into raw_gvcfs
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
@@ -398,7 +424,7 @@ process mergeAndSortGvcfs_gatk {
 	path gvcf_merged_raw_index into merged_raw_gcvfs_indicies
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	gvcf_merged_raw = "${sample_id}.g.vcf.gz"
@@ -432,7 +458,7 @@ process combineAllGvcfs_gatk {
 	tuple path(gvcf_cohort_combined), path(gvcf_cohort_combined_index) into combined_cohort_gvcf
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	gvcf_cohort_combined = "${params.cohort_name}.g.vcf.gz"
@@ -469,7 +495,7 @@ process jointGenotyping_gatk {
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) into joint_genotyped_vcfs
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	vcf_joint_genotyped = "${params.cohort_name}.vcf.gz"
@@ -502,7 +528,7 @@ process excessHeterozygosityHardFilter_gatk {
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnpVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	vcf_hard_filtered_marked = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtermarked.vcf.gz")
@@ -553,7 +579,7 @@ process indelVariantRecalibration_gatk {
 	tuple path(indel_vqsr_table), path(indel_vqsr_table_index), path(indel_vqsr_tranches) into indel_vqsr_files
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	indel_vqsr_table = "${params.cohort_name}.indel.recaldata.table"
@@ -605,7 +631,7 @@ process snpVariantRecalibration_gatk {
 	tuple path(snp_vqsr_table), path(snp_vqsr_table_index), path(snp_vqsr_tranches) into snp_vqsr_files
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	snp_vqsr_table = "${params.cohort_name}.snp.recaldata.table"
@@ -644,7 +670,7 @@ process applyIndelAndSnpVqsr_gatk {
 	tuple path(final_vqsr_germline_vcf), path(final_vqsr_germline_vcf_index) into vqsr_germline_vcfs
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	intermediate_vqsr_germline_vcf = "${vcf_hard_filtered}".replaceFirst(/\.filtered\.vcf\.gz/, ".intermediate.vqsr.vcf.gz")
@@ -698,7 +724,7 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	path realign_normalize_stats
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	final_germline_vcf = "${final_vqsr_germline_vcf}".replaceFirst(/\.final\.vqsr\.vcf\.gz/, ".germline.vcf.gz")
@@ -776,7 +802,7 @@ process annotateGermlineVcf_vep {
 	path annotation_summary
 
 	when:
-	params.admixture_input_vcf == ""
+	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
 
 	script:
 	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".annotated.vcf.gz")
@@ -875,6 +901,9 @@ process mergeCohortAndReferenceVcf_bcftools {
 	output:
 	path sample_ref_merged_vcf into merged_unfiltered_vcf
 
+	when:
+	params.fastngsadmix_only = "no"
+
 	script:
 	sample_ref_merged_vcf = "${params.cohort_name}.refmerged.vcf.gz"
 	vcf_gt_only = "${input_vcf}".replaceFirst(/\.vcf\.gz/, ".gto.vcf.gz")
@@ -910,6 +939,9 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) into hard_filtered_refmerged_plink_files
 	path hard_filtered_stats_file
 
+	when:
+	params.fastngsadmix_only = "no"
+
 	script:
 	hard_filtered_plink_file_prefix = "${params.cohort_name}.hardfiltered.refmerged"
 	hard_filtered_plink_ped_file = "${hard_filtered_plink_file_prefix}.ped"
@@ -944,6 +976,9 @@ process filterPlinkFilesForAdmixture_plink {
 	tuple val(pruned_filtered_plink_file_prefix), path(pruned_filtered_plink_bed_file), path(pruned_filtered_plink_bim_file), path(pruned_filtered_plink_fam_file) into pruned_filtered_refmerged_plink_files
 	path maf_gt_filtered_plink_stats
 	path pruned_filtered_plink_stats
+
+	when:
+	params.fastngsadmix_only = "no"
 
 	script:
 	maf_gt_filtered_plink_file_prefix = "${params.cohort_name}.maf.gt.filtered.refmerged"
@@ -991,6 +1026,9 @@ process ancestryEstimation_admixture {
 	path admixture_allele_frequencies
 	path admixture_standard_error
 
+	when:
+	params.fastngsadmix_only = "no"
+
 	script:
 	ancestry_groups = 26
 	admixture_supervised_analysis_pop_file = "${pruned_filtered_plink_file_prefix}.pop"
@@ -1011,4 +1049,65 @@ process ancestryEstimation_admixture {
 	"${pruned_filtered_plink_file_prefix}.bed" \
 	"${ancestry_groups}"
 	"""
+}
+
+
+// ANGSD ~ estimate allele frequencies from genotype likelihoods
+process alleleFrequencyEstimation_angsd {
+    tag "COHORT=${params.cohort_name} SAMPLE=${sample_id}"
+
+    input:
+    tuple path(normal_bam), path(normal_bam_index) from input_preprocessed_bams_forAngsd
+    path admix_markers_sites
+    path admix_markers_sites_bin
+    path admix_markers_sites_index
+
+    output:
+    path beagle_genotype_likelihoods into beagle_input_forFastNgsAdmix
+
+    script:
+    sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
+    beagle_genotype_likelihoods = "${sample_id}.beagle.gz"
+    """
+    angsd \
+    -nThreads "${task.cpus}" \
+    -i "${normal_bam}" \
+    -sites "${admix_markers_sites}" \
+    -GL 2 \
+    -doGlf 2 \
+    -doMajorMinor 3 \
+    -minMapQ 30 \
+    -minQ 20 \
+    -doDepth 1 \
+    -doCounts 1 \
+    -out "${sample_id}"
+    """
+}
+
+// fastNGSadmix ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised fashion
+process ancestryEstimation_fastngsadmix {
+    publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy'
+    tag "COHORT=${params.cohort_name} SAMPLE=${sample_id}"
+    
+    input:
+    path beagle_genotype_likelihoods from beagle_input_forFastNgsAdmix
+    path admix_markers_ref_population_allele_freqs
+    path admix_markers_ref_population_num_of_individuals
+
+    output:
+    path cohort_sample_admixture_estimations
+    path fastngsadmix_log
+
+    script:
+    cohort_sample_admixture_estimations = "${params.cohort_name}_${params.sample_id}.fastngsadmix.23.qopt"
+    fastngsadmix_log = "${params.cohort_name}_${params.sample_id}.fastngsadmix.23.log"
+    """
+    fastNGSadmix \
+    -likes "${beagle_genotype_likelihoods}" \
+    -fname "${admix_markers_ref_population_allele_freqs}" \
+    -Nname "${admix_markers_ref_population_num_of_individuals}" \
+    -out "${params.cohort_name}_${params.sample_id}.fastngsadmix.23" \
+    -boot 100 \
+    -whichPops all
+    """
 }
