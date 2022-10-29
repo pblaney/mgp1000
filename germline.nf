@@ -324,7 +324,7 @@ if(params.sample_sheet != null) {
         .fromPath( params.sample_sheet )
         .splitCsv( header:true )
         .map{ row -> normal_bam = "${row.normal}"
-              		 normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, "") }
+              		 normal_bam_index = "${row.normal}".replaceFirst(/\.bam$/, "")
               		 return[ file("${params.input_dir}/${normal_bam}"), 
                       		 file("${params.input_dir}/${normal_bam_index}*.bai") ]
         .unique()
