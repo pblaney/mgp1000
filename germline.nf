@@ -424,7 +424,7 @@ process mergeAndSortGvcfs_gatk {
 	path gvcf_merged_raw_index into merged_raw_gcvfs_indicies
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	gvcf_merged_raw = "${sample_id}.g.vcf.gz"
@@ -458,7 +458,7 @@ process combineAllGvcfs_gatk {
 	tuple path(gvcf_cohort_combined), path(gvcf_cohort_combined_index) into combined_cohort_gvcf
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	gvcf_cohort_combined = "${params.cohort_name}.g.vcf.gz"
@@ -495,7 +495,7 @@ process jointGenotyping_gatk {
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) into joint_genotyped_vcfs
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	vcf_joint_genotyped = "${params.cohort_name}.vcf.gz"
@@ -528,7 +528,7 @@ process excessHeterozygosityHardFilter_gatk {
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnpVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	vcf_hard_filtered_marked = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtermarked.vcf.gz")
@@ -579,7 +579,7 @@ process indelVariantRecalibration_gatk {
 	tuple path(indel_vqsr_table), path(indel_vqsr_table_index), path(indel_vqsr_tranches) into indel_vqsr_files
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	indel_vqsr_table = "${params.cohort_name}.indel.recaldata.table"
@@ -631,7 +631,7 @@ process snpVariantRecalibration_gatk {
 	tuple path(snp_vqsr_table), path(snp_vqsr_table_index), path(snp_vqsr_tranches) into snp_vqsr_files
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	snp_vqsr_table = "${params.cohort_name}.snp.recaldata.table"
@@ -670,7 +670,7 @@ process applyIndelAndSnpVqsr_gatk {
 	tuple path(final_vqsr_germline_vcf), path(final_vqsr_germline_vcf_index) into vqsr_germline_vcfs
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	intermediate_vqsr_germline_vcf = "${vcf_hard_filtered}".replaceFirst(/\.filtered\.vcf\.gz/, ".intermediate.vqsr.vcf.gz")
@@ -724,7 +724,7 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	path realign_normalize_stats
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	final_germline_vcf = "${final_vqsr_germline_vcf}".replaceFirst(/\.final\.vqsr\.vcf\.gz/, ".germline.vcf.gz")
@@ -802,7 +802,7 @@ process annotateGermlineVcf_vep {
 	path annotation_summary
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only = "no"
+	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
 
 	script:
 	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".annotated.vcf.gz")
@@ -902,7 +902,7 @@ process mergeCohortAndReferenceVcf_bcftools {
 	path sample_ref_merged_vcf into merged_unfiltered_vcf
 
 	when:
-	params.fastngsadmix_only = "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	sample_ref_merged_vcf = "${params.cohort_name}.refmerged.vcf.gz"
@@ -940,7 +940,7 @@ process hardFilterCohortReferenceMergedVcf_vcftools {
 	path hard_filtered_stats_file
 
 	when:
-	params.fastngsadmix_only = "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	hard_filtered_plink_file_prefix = "${params.cohort_name}.hardfiltered.refmerged"
@@ -978,7 +978,7 @@ process filterPlinkFilesForAdmixture_plink {
 	path pruned_filtered_plink_stats
 
 	when:
-	params.fastngsadmix_only = "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	maf_gt_filtered_plink_file_prefix = "${params.cohort_name}.maf.gt.filtered.refmerged"
@@ -1027,7 +1027,7 @@ process ancestryEstimation_admixture {
 	path admixture_standard_error
 
 	when:
-	params.fastngsadmix_only = "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	ancestry_groups = 26
