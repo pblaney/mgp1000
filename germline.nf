@@ -220,7 +220,7 @@ Channel
     .set{ admix_markers_ref_population_allele_freqs }
 
 Channel
-    .value( file('references/hg38/fastNGSadmix_markers_nInd.txt') )
+    .value( file('references/hg38/fastNGSadmix_markers_nInd.hg38.txt') )
     .set{ admix_markers_ref_population_num_of_individuals }
 
 Channel
@@ -1063,7 +1063,7 @@ process alleleFrequencyEstimation_angsd {
     path admix_markers_sites_index
 
     output:
-    path beagle_genotype_likelihoods into beagle_input_forFastNgsAdmix
+    tuple val(sample_id), path(beagle_genotype_likelihoods) into beagle_input_forFastNgsAdmix
 
     script:
     sample_id = "${normal_bam}".replaceFirst(/\.final\..*bam/, "")
@@ -1090,7 +1090,7 @@ process ancestryEstimation_fastngsadmix {
     tag "COHORT=${params.cohort_name} SAMPLE=${sample_id}"
     
     input:
-    path beagle_genotype_likelihoods from beagle_input_forFastNgsAdmix
+    tuple val(sample_id), path(beagle_genotype_likelihoods) from beagle_input_forFastNgsAdmix
     path admix_markers_ref_population_allele_freqs
     path admix_markers_ref_population_num_of_individuals
 
