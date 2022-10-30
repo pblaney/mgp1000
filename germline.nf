@@ -1099,14 +1099,14 @@ process ancestryEstimation_fastngsadmix {
     path fastngsadmix_log
 
     script:
-    cohort_sample_admixture_estimations = "${params.cohort_name}_${params.sample_id}.fastngsadmix.23.qopt"
-    fastngsadmix_log = "${params.cohort_name}_${params.sample_id}.fastngsadmix.23.log"
+    cohort_sample_admixture_estimations = "${params.cohort_name}_${sample_id}.fastngsadmix.23.qopt"
+    fastngsadmix_log = "${params.cohort_name}_${sample_id}.fastngsadmix.23.log"
     """
     fastNGSadmix \
     -likes "${beagle_genotype_likelihoods}" \
     -fname "${admix_markers_ref_population_allele_freqs}" \
     -Nname "${admix_markers_ref_population_num_of_individuals}" \
-    -out "${params.cohort_name}_${params.sample_id}.fastngsadmix.23" \
+    -out "${params.cohort_name}_${sample_id}.fastngsadmix.23" \
     -boot 100 \
     -whichPops all
     """
