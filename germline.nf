@@ -27,9 +27,8 @@ def helpMessage() {
 
 	Usage:
 	  nextflow run germline.nf --run_id STR --sample_sheet FILE --cohort_name STR -profile germline
-	  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--vep_ref_cached STR]
-	  [--ref_vcf_concatenated STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR]
-	  [--help]
+	  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix_only STR]
+	  [--vep_ref_cached STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 	Mandatory Arguments:
 	  --run_id                       STR  Unique identifier for pipeline run
@@ -58,21 +57,15 @@ def helpMessage() {
 	                                      [Default: output/]
 	  --email                        STR  Email address to send workflow completion/stoppage
 	                                      notification
+	  --fastngsadmix_only            STR  Indicates whether or not to only run the fastNGSadmix
+	                                      workflow
+	                                      [Default: no | Available: no, yes]
 	  --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
 	                                      for annotation have been downloaded/cached locally,
 	                                      this will be done in a process of the pipeline if it
 	                                      has not, this does not need to be done for every
 	                                      separate run after the first
 	                                      [Default: yes | Available: yes, no]
-	  --ref_vcf_concatenated         STR  Indicates whether or not the 1000 Genomes Project
-	                                      reference VCF used for ADMIXTURE analysis has been
-	                                      concatenated, this will be done in a process of the
-	                                      pipeline if it has not, this does not need to be done
-	                                      for every separate run after the first
-	                                      [Default: yes | Available: yes, no]
-	  --admixture_input_vcf          STR  If set, this skips the germline variant calling and
-	                                      performs the ADMIXTURE analysis on user-specified
-	                                      VCF
 	  --cpus                         INT  Globally set the number of cpus to be allocated
 	  --memory                       STR  Globally set the amount of memory to be allocated,
 	                                      written as '##.GB' or '##.MB'
@@ -108,7 +101,7 @@ params.help = null
 // Print help message if requested
 if( params.help ) exit 0, helpMessage()
 
-// Print erro message if user-defined input/output directories does not exist
+// Print error message if user-defined input/output directories does not exist
 if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directory does not exist in filesystem."
 
 // Print error messages if required parameters are not set
@@ -235,56 +228,6 @@ Channel
     .value( file('references/hg38/fastNGSadmix_markers.hg38.sites.idx') )
     .set{ admix_markers_sites_index }
 
-Channel
-	.fromPath( 'references/hg38/ALL.chr[0-9].shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
-	.toSortedList()
-	.set{ reference_vcf_1000G_chromosomes1_9 }
-
-Channel
-	.fromPath( 'references/hg38/ALL.chr[0-9][0-9].shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
-	.toSortedList()
-	.set{ reference_vcf_1000G_chromosomes10_22 }
-
-Channel
-	.fromPath( 'references/hg38/ALL.chrX.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz' )
-	.set{ reference_vcf_1000G_chromosomeX }
-
-Channel
-	.fromPath( 'references/hg38/ALL.chr*.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi' )
-	.set{ reference_vcf_1000G_per_chromosome_index }
-
-Channel
-	.fromPath( 'references/hg38/ref_vcf_chr_name_conversion_map.txt' )
-	.set{ reference_vcf_1000G_chr_name_conversion_map }
-
-Channel
-	.fromPath( 'references/hg38/ref_vcf_samples_known_ancestry.txt' )
-	.set{ reference_vcf_1000G_known_ancestry }
-
-if( params.ref_vcf_concatenated == "yes" ) {
-	Channel
-		.fromPath( 'references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz', checkIfExists: true )
-		.ifEmpty{ error "The run command issued has the '--ref_vcf_concatenated' parameter set to 'yes', however the file does not exist. Please set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run germline.nf --help'"}
-		.set{ reference_vcf_1000G_preBuilt }
-
-	Channel
-		.fromPath( 'references/hg38/ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi', checkIfExists: true )
-		.ifEmpty{ error "The '--ref_vcf_concatenated' parameter set to 'yes', however the index file does not exist for the reference VCF. Please set the '--ref_vcf_concatenated' parameter to 'no' and resubmit the run command. Alternatively, use Tabix to index the reference VCF."}
-		.set{ reference_vcf_1000G_index_preBuilt }
-}
-
-if( params.admixture_input_vcf != "" ) {
-    Channel
-        .fromPath( "${params.admixture_input_vcf}", checkIfExists: true )
-        .ifEmpty{ error "The run command issued is invalid. The path to the VCF set with '--admixture_input_vcf' does not exist. Please provide absolute path to the VCF, must bgzipped and indexed."}
-        .set{ admixture_input_vcf_fromUser }
-
-    Channel
-        .fromPath( "${params.admixture_input_vcf}.tbi", checkIfExists: true )
-        .ifEmpty{ error "The VCF set with '--admixture_input_vcf' does not have an index file."}
-        .set{ admixture_input_vcf_index_fromUser }
-}
-
 
 // #################################################### \\
 // ~~~~~~~~~~~~~~~~ PIPELINE PROCESSES ~~~~~~~~~~~~~~~~ \\
@@ -330,12 +273,7 @@ if(params.sample_sheet != null) {
         .unique()
         .into{ input_preprocessed_bams_forAngsd;
                input_preprocessed_bams_forHaplotypeCaller }
-} else {
-	Channel
-		.empty()
-		.set{ input_preprocessed_bams_forAngsd;
-		      input_preprocessed_bams_forHaplotypeCaller }
-}		
+}	
 
 // Combine all needed reference FASTA files into one channel for use in SplitIntervals process
 reference_genome_fasta_forSplitIntervals.combine( reference_genome_fasta_index_forSplitIntervals )
@@ -353,7 +291,7 @@ process splitIntervalList_gatk {
 	path "splitIntervals/*-split.interval_list" into split_intervals mode flatten
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	"""
@@ -390,7 +328,7 @@ process haplotypeCaller_gatk {
 	tuple val(sample_id), path(gvcf_per_interval_raw), path(gvcf_per_interval_raw_index) into raw_gvcfs
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
@@ -424,7 +362,7 @@ process mergeAndSortGvcfs_gatk {
 	path gvcf_merged_raw_index into merged_raw_gcvfs_indicies
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	gvcf_merged_raw = "${sample_id}.g.vcf.gz"
@@ -458,7 +396,7 @@ process combineAllGvcfs_gatk {
 	tuple path(gvcf_cohort_combined), path(gvcf_cohort_combined_index) into combined_cohort_gvcf
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	gvcf_cohort_combined = "${params.cohort_name}.g.vcf.gz"
@@ -495,7 +433,7 @@ process jointGenotyping_gatk {
 	tuple path(vcf_joint_genotyped), path(vcf_joint_genotyped_index) into joint_genotyped_vcfs
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	vcf_joint_genotyped = "${params.cohort_name}.vcf.gz"
@@ -528,7 +466,7 @@ process excessHeterozygosityHardFilter_gatk {
 	tuple path(vcf_hard_filtered), path(vcf_hard_filtered_index) into hard_filtered_vcfs_forIndelVariantRecalibration, hard_filtered_vcfs_forSnpVariantRecalibration, hard_filtered_vcfs_forApplyVqsr
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	vcf_hard_filtered_marked = "${vcf_joint_genotyped}".replaceFirst(/\.vcf\.gz/, ".filtermarked.vcf.gz")
@@ -579,7 +517,7 @@ process indelVariantRecalibration_gatk {
 	tuple path(indel_vqsr_table), path(indel_vqsr_table_index), path(indel_vqsr_tranches) into indel_vqsr_files
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	indel_vqsr_table = "${params.cohort_name}.indel.recaldata.table"
@@ -631,7 +569,7 @@ process snpVariantRecalibration_gatk {
 	tuple path(snp_vqsr_table), path(snp_vqsr_table_index), path(snp_vqsr_tranches) into snp_vqsr_files
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	snp_vqsr_table = "${params.cohort_name}.snp.recaldata.table"
@@ -670,7 +608,7 @@ process applyIndelAndSnpVqsr_gatk {
 	tuple path(final_vqsr_germline_vcf), path(final_vqsr_germline_vcf_index) into vqsr_germline_vcfs
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	intermediate_vqsr_germline_vcf = "${vcf_hard_filtered}".replaceFirst(/\.filtered\.vcf\.gz/, ".intermediate.vqsr.vcf.gz")
@@ -724,7 +662,7 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	path realign_normalize_stats
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	final_germline_vcf = "${final_vqsr_germline_vcf}".replaceFirst(/\.final\.vqsr\.vcf\.gz/, ".germline.vcf.gz")
@@ -802,7 +740,7 @@ process annotateGermlineVcf_vep {
 	path annotation_summary
 
 	when:
-	params.admixture_input_vcf == "" & params.fastngsadmix_only == "no"
+	params.fastngsadmix_only == "no"
 
 	script:
 	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".annotated.vcf.gz")
@@ -831,226 +769,6 @@ process annotateGermlineVcf_vep {
 	--vcf
 	"""
 }
-
-// Merge all reference VCFs per chromosome into one sorted channel for concatenation
-reference_vcf_1000G_chromosomes1_9
-	.merge( reference_vcf_1000G_chromosomes10_22 )
-	.merge( reference_vcf_1000G_chromosomeX )
-	.set{ reference_vcf_1000G_per_chromosome }
-
-// BCFtools Concat/Annotate/View ~ prepare the 1000 Genomes Project reference VCFs for use in ADMIXTURE process, if needed
-process referenceVcfPrep_bcftools {
-	publishDir "references/hg38", mode: 'copy'
-
-	input:
-	path per_chromosome_ref_vcf from reference_vcf_1000G_per_chromosome
-	path per_chromosome_ref_vcf_index from reference_vcf_1000G_per_chromosome_index.toList()
-	path chr_name_conversion_map from reference_vcf_1000G_chr_name_conversion_map
-
-	output:
-	tuple path(whole_genome_ref_vcf), path(whole_genome_ref_vcf_index) into reference_vcf_1000G_fromProcess
-
-	when:
-	params.ref_vcf_concatenated == "no"
-
-	script:
-	whole_genome_ref_vcf = "ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz"
-	whole_genome_ref_vcf_index = "ALL.wgs.shapeit2_integrated_snvindels_v2a_27022019.GRCh38.phased.vcf.gz.tbi"
-	"""
-	bcftools concat \
-	--threads ${task.cpus} \
-	--output-type z \
-	${per_chromosome_ref_vcf.collect { "$it "}.join()} \
-	| \
-	bcftools annotate \
-	--threads ${task.cpus} \
-	--output-type z \
-	--rename-chrs "${chr_name_conversion_map}" \
-	- > "${whole_genome_ref_vcf}"
-
-	tabix "${whole_genome_ref_vcf}"
-	"""
-}
-
-// Depending on whether the 1000 Genomes Project whole-genome reference VCF was pre-built, set the input
-// channel for the BCFtools merge VCF process
-if( params.ref_vcf_concatenated == "yes" ) {
-	reference_vcf_1000G = reference_vcf_1000G_preBuilt.combine( reference_vcf_1000G_index_preBuilt )
-}
-else {
-	reference_vcf_1000G = reference_vcf_1000G_fromProcess
-}
-
-// Depending on whether the user wants to run the ADMIXTURE analysis on specified VCF, set the input for the BCFtools annotate/merge process
-if( params.admixture_input_vcf != "" ) {
-    input_forAdmixutre = admixture_input_vcf_fromUser.combine( admixture_input_vcf_index_fromUser )
-}
-else {
-    input_forAdmixutre = final_germline_vcf_forAdmixture
-}
-
-// BCFtools Annotate/Merge ~ preprocessing of VCF to remove all FORMAT fields except genotype needed for merging with reference VCF
-// and merge cohort VCF with 1000G ref VCF for supervised projection analysis, output no new multiallelic records
-process mergeCohortAndReferenceVcf_bcftools {
-	tag "${params.cohort_name}"
-
-	input:
-	tuple path(input_vcf), path(input_vcf_index) from input_forAdmixutre
-	tuple path(whole_genome_ref_vcf), path(whole_genome_ref_vcf_index) from reference_vcf_1000G
-
-	output:
-	path sample_ref_merged_vcf into merged_unfiltered_vcf
-
-	when:
-	params.fastngsadmix_only == "no"
-
-	script:
-	sample_ref_merged_vcf = "${params.cohort_name}.refmerged.vcf.gz"
-	vcf_gt_only = "${input_vcf}".replaceFirst(/\.vcf\.gz/, ".gto.vcf.gz")
-	"""
-	bcftools annotate \
-	--threads ${task.cpus} \
-	--remove FORMAT \
-	--output-type z \
-	--output "${vcf_gt_only}" \
-	"${input_vcf}"
-
-	tabix "${vcf_gt_only}"
-
-	bcftools merge \
-	--threads ${task.cpus} \
-	--merge none \
-	--missing-to-ref \
-	--output-type z \
-	--output "${sample_ref_merged_vcf}" \
-	"${vcf_gt_only}" "${whole_genome_ref_vcf}"
-	"""
-}
-
-// VCFtools ~ hard filter the merged VCF to only contain biallelic, non-singleton SNP sites that are a minimum of 2kb apart from each other
-process hardFilterCohortReferenceMergedVcf_vcftools {
-	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy', pattern: '*.{stats.txt}'
-	tag "${params.cohort_name}"
-
-	input:
-	path sample_ref_merged_vcf from merged_unfiltered_vcf
-
-	output:
-	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) into hard_filtered_refmerged_plink_files
-	path hard_filtered_stats_file
-
-	when:
-	params.fastngsadmix_only == "no"
-
-	script:
-	hard_filtered_plink_file_prefix = "${params.cohort_name}.hardfiltered.refmerged"
-	hard_filtered_plink_ped_file = "${hard_filtered_plink_file_prefix}.ped"
-	hard_filtered_plink_map_file = "${hard_filtered_plink_file_prefix}.map"
-	hard_filtered_stats_file = "${hard_filtered_plink_file_prefix}.stats.txt"
-	"""
-	vcftools \
-	--gzvcf "${sample_ref_merged_vcf}" \
-	--thin 2000 \
-	--min-alleles 2 \
-	--max-alleles 2 \
-	--non-ref-ac 2 \
-	--max-missing 1.0 \
-	--plink \
-	--temp . \
-	--out "${hard_filtered_plink_file_prefix}" \
-	2>"${hard_filtered_stats_file}"
-	"""
-}
-
-// PLINK ~ generate ADMIXTURE ready PLINK files keeping only sites with a minor allele freq > 0.05, no missing genotype, then
-// prune the markers for linkage disequilibrium (remove SNPs that have an R-squared value of greater than 0.5 with any
-// other SNP within a 50-SNP sliding window, the window is advanced by 10-SNPs each time)
-process filterPlinkFilesForAdmixture_plink {
-	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy', pattern: '*.{txt,fam}'
-	tag "${params.cohort_name}"
-
-	input:
-	tuple val(hard_filtered_plink_file_prefix), path(hard_filtered_plink_ped_file), path(hard_filtered_plink_map_file) from hard_filtered_refmerged_plink_files
-
-	output:
-	tuple val(pruned_filtered_plink_file_prefix), path(pruned_filtered_plink_bed_file), path(pruned_filtered_plink_bim_file), path(pruned_filtered_plink_fam_file) into pruned_filtered_refmerged_plink_files
-	path maf_gt_filtered_plink_stats
-	path pruned_filtered_plink_stats
-
-	when:
-	params.fastngsadmix_only == "no"
-
-	script:
-	maf_gt_filtered_plink_file_prefix = "${params.cohort_name}.maf.gt.filtered.refmerged"
-	maf_gt_filtered_plink_stats = "${maf_gt_filtered_plink_file_prefix}.stats.txt"
-	pruned_filtered_plink_file_prefix = "${params.cohort_name}.pruned.maf.gt.filtered.refmerged"
-	pruned_filtered_plink_bed_file = "${pruned_filtered_plink_file_prefix}.bed"
-	pruned_filtered_plink_bim_file = "${pruned_filtered_plink_file_prefix}.bim"
-	pruned_filtered_plink_fam_file = "${pruned_filtered_plink_file_prefix}.fam"
-	pruned_filtered_plink_stats = "${pruned_filtered_plink_file_prefix}.stats.txt"
-	"""
-	plink \
-	--threads ${task.cpus} \
-	--file "${hard_filtered_plink_file_prefix}" \
-	--out "${maf_gt_filtered_plink_file_prefix}" \
-	--make-bed \
-	--maf 0.05 \
-	--geno 0.1 \
-	--indep-pairwise 50 10 0.5 \
-	
-	mv "${maf_gt_filtered_plink_file_prefix}.log" "${maf_gt_filtered_plink_stats}"
-
-	plink \
-	--threads ${task.cpus} \
-	--bfile "${maf_gt_filtered_plink_file_prefix}" \
-	--extract "${maf_gt_filtered_plink_file_prefix}.prune.in" \
-	--make-bed \
-	--out "${pruned_filtered_plink_file_prefix}" \
-	
-	mv "${pruned_filtered_plink_file_prefix}.log" "${pruned_filtered_plink_stats}"
-	"""
-}
-
-// ADMIXTURE ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised and haploid aware fashion 
-process ancestryEstimation_admixture {
-	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy'
-	tag "${params.cohort_name}"
-
-	input:
-	tuple val(pruned_filtered_plink_file_prefix), path(pruned_filtered_plink_bed_file), path(pruned_filtered_plink_bim_file), path(pruned_filtered_plink_fam_file) from pruned_filtered_refmerged_plink_files
-	path known_ancestry_file_ref_vcf from reference_vcf_1000G_known_ancestry
-
-	output:
-	path admixture_supervised_analysis_pop_file
-	path admixture_ancestry_fractions
-	path admixture_allele_frequencies
-	path admixture_standard_error
-
-	when:
-	params.fastngsadmix_only == "no"
-
-	script:
-	ancestry_groups = 26
-	admixture_supervised_analysis_pop_file = "${pruned_filtered_plink_file_prefix}.pop"
-	admixture_ancestry_fractions = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.Q"
-	admixture_allele_frequencies = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.P"
-	admixture_standard_error = "${pruned_filtered_plink_file_prefix}.${ancestry_groups}.Q_se"
-	"""
-	cohort_pop_file_creator.sh \
-	"${pruned_filtered_plink_file_prefix}.fam" \
-	"${known_ancestry_file_ref_vcf}" \
-	"${admixture_supervised_analysis_pop_file}"
-
-	admixture \
-	-j${task.cpus}\
-	-B200 \
-	--supervised \
-	--haploid="male:23" \
-	"${pruned_filtered_plink_file_prefix}.bed" \
-	"${ancestry_groups}"
-	"""
-}
-
 
 // ANGSD ~ estimate allele frequencies from genotype likelihoods
 process alleleFrequencyEstimation_angsd {
