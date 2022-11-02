@@ -3736,7 +3736,7 @@ process downloadAnnotsvAnnotationReferences_annotsv {
     """
     mkdir -p "${cached_ref_dir_annotsv}" && \
     cd "${cached_ref_dir_annotsv}" && \
-    curl -C - -LO https://www.lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
+    curl -C - -LO https://lbgi.fr/~geoffroy/Annotations/Annotations_Human_3.1.1.tar.gz && \
     tar -zxf Annotations_Human_3.1.1.tar.gz && \
     rm Annotations_Human_3.1.1.tar.gz
     """
