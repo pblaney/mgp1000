@@ -10,7 +10,7 @@ Help()
 	echo "run command and then submit this to the scheduler"
 	echo ""
 	echo "Syntax:"
-	echo '	./nextflow_run_slurm_submitter.sh [-h] [pipelineStepScript] [runId] [userEmail]'
+	echo '	./bin/nextflow_run_slurm_submitter.sh [-h] [pipelineStepScript] [runId] [userEmail]'
 	echo '	[estimatedRuntime] "[moduleLoadCmd]" "[pipelineStepOptions]" "[additionalSlurmOptions]"'
 	echo ""
 	echo "Argument Descriptions:"
@@ -89,7 +89,6 @@ echo 'export NXF_OPTS="-Xms500M -Xmx2G -Dleveldb.mmap=false"' >> "${submissionSc
 
 runCommand="
 ./nextflow run \
--resume \
 ${pipelineStepScript} \
 --run_id ${runId} \
 --email ${userEmail} \
