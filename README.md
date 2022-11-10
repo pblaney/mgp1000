@@ -1,5 +1,5 @@
 <div align="center">
-	<img alt="MGP1000 logo" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/mgp1000Logo.svg" width="300" />
+	<img alt="MGP1000 logo" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/mgp1000Logo.svg" width="275" />
 
 # Myeloma Genome Pipeline 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to delineate the broad spectrum of somatic events
@@ -10,7 +10,7 @@ In order to analyze over one thousand matched tumor/normal whole-genome samples 
 
 The entire pipeline is divided into 3 modules: Preprocessing, Germline, and Somatic
 <div align="center">
-	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/master/docs/pipelineArchitectureForGitHub.png?raw=true" width="625" />
+	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/development/docs/pipelineArchitectureForGitHub.png?raw=true" width="575" />
 </div>
 
 ## Deploying the Pipeline
