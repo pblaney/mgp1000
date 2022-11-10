@@ -1,5 +1,5 @@
 <div align="center">
-	<img alt="MGP1000 logo" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/mgp1000Logo.svg" width="350" />
+	<img alt="MGP1000 logo" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/mgp1000Logo.svg" width="275" />
 
 # Myeloma Genome Pipeline 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to delineate the broad spectrum of somatic events
@@ -10,7 +10,7 @@ In order to analyze over one thousand matched tumor/normal whole-genome samples 
 
 The entire pipeline is divided into 3 modules: Preprocessing, Germline, and Somatic
 <div align="center">
-	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/master/docs/pipelineArchitectureForGitHub.png?raw=true" width="700" />
+	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/master/docs/pipelineArchitectureForGitHub.png?raw=true" width="550" />
 </div>
 
 ## Deploying the Pipeline
@@ -32,7 +32,7 @@ In an effort to containerize the pipeline further, all the necessary reference f
 
 **NOTE: Many HPC environments may already have this dependency installed, if so users only need to run the last two code blocks.**
 
-If required, a `make` command will complete the installation of Linux AMD64 binary executible git-lfs file (v3.0.2). Other binary files available [here](https://github.com/git-lfs/git-lfs/releases)
+If required, a `make` command will complete the installation of Linux AMD64 binary executible git-lfs file (v3.2.0). Other binary files available [here](https://github.com/git-lfs/git-lfs/releases)
 
 
 ```
@@ -182,7 +182,7 @@ make preprocessing-completion
 The most important component of this module of the pipeline is the user-provided sample sheet CSV. This file includes two comma-separated columns: filename of normal sample BAMs and filename of corresponding paired tumor sample BAMs. An example of this is provided in `samplesheet.csv` within the `testSamples` directory. The sample sheet file should typically be within the main `mgp1000` directory.
 
 ### Note on Parameters
-There are two parameters that will prepare necessary reference files as part of this module of the pipeline, `--vep_ref_cached` and `--ref_vcf_concatenated`. These parameters only need be set to `no` for the **first run** of the Germline module.
+There are is a parameter that will prepare necessary reference files as part of this module of the pipeline, `--vep_ref_cached`. This parameter only need be set to `no` for the **first run** of the Germline module.
 
 ```
 nextflow run germline.nf \
@@ -192,7 +192,6 @@ nextflow run germline.nf \
   --cohort_name wgs_set \
   --email user@example.com \
   --vep_ref_cached no \
-  --ref_vcf_concatenated no \
   -profile germline
 ```
 
@@ -202,9 +201,8 @@ $ nextflow run germline.nf --help
 
 Usage:
   nextflow run germline.nf --run_id STR --sample_sheet FILE --cohort_name STR -profile germline
-  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--vep_ref_cached STR]
-  [--ref_vcf_concatenated STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR]
-  [--help]
+  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix_only STR]
+  [--vep_ref_cached STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 Mandatory Arguments:
   --run_id                       STR  Unique identifier for pipeline run
@@ -233,17 +231,14 @@ Main Options:
                                       [Default: output/]
   --email                        STR  Email address to send workflow completion/stoppage
                                       notification
+  --fastngsadmix_only            STR  Indicates whether or not to only run the fastNGSadmix
+                                      workflow
+                                      [Default: no | Available: no, yes]
   --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
                                       for annotation have been downloaded/cached locally,
                                       this will be done in a process of the pipeline if it
                                       has not, this does not need to be done for every
                                       separate run after the first
-                                      [Default: yes | Available: yes, no]
-  --ref_vcf_concatenated         STR  Indicates whether or not the 1000 Genomes Project
-                                      reference VCF used for ADMIXTURE analysis has been
-                                      concatenated, this will be done in a process of the
-                                      pipeline if it has not, this does not need to be done
-                                      for every separate run after the first
                                       [Default: yes | Available: yes, no]
   --cpus                         INT  Globally set the number of cpus to be allocated
   --memory                       STR  Globally set the amount of memory to be allocated,
@@ -256,7 +251,7 @@ Main Options:
 ```
 
 ### Germline Output Description
-This module of the pipeline generates a per-cohort joint genotyped VCF and ADMIXTURE estimation of individual ancestries in the context of the 26 populations outlined in the 1000 Genomes Project. By default, all output files are stored into a subdirectory which is named based on the user-defined `--cohort_name` parameter within the `output/` directory.
+This module of the pipeline generates a per-cohort joint genotyped VCF and admixture estimation of individual ancestries in the context of 23 populations outlined in the 1000 Genomes Project. By default, all output files are stored into a subdirectory which is named based on the user-defined `--cohort_name` parameter within the `output/` directory.
 
 Here is a snapshot of the expected subdirectories within the `output/germline/[cohort_name]` base directory after a successful run of the [Germline module](https://github.com/pblaney/mgp1000/wiki/Germline):
 
@@ -264,14 +259,7 @@ Here is a snapshot of the expected subdirectories within the `output/germline/[c
 | --- | --- |
 | `*.germline.annotated.vcf.gz` | filtered and annotated germline SNP VCF |
 | `*.germline.vep.summary.html` | annotation summary HTML file for SNPs |
-| `*.hardfiltered.refmerged.stats.txt` | number of SNP sites filtered out before use in ADMIXTURE analysis |
-| `*.maf.gt.filtered.refmerged.stats.txt` | number of SNP sites filtered out based on MAF > 0.05 and missing genotypes |
-| `*.pruned.maf.gt.filtered.refmerged.stats.txt` | number of SNP sites filtered out based on linkage disequilibrium |
-| `*.pruned.maf.gt.filtered.refmerged.pop` | population file used for supervised analysis |
-| `*.pruned.maf.gt.filtered.refmerged.fam` | family pedigree file used for supervised analysis |
-| `*.pruned.maf.gt.filtered.refmerged.26.Q` | ADMIXTURE ancestry fractions |
-| `*.pruned.maf.gt.filtered.refmerged.26.P` | ADMIXTURE population allele frequencies |
-| `*.pruned.maf.gt.filtered.refmerged.26.Q_se` | standard error of ADMIXTURE ancestry fractions |
+| `*.fastngsadmix.23.qopt` | per patient estimated admixture proportions, first two rows with the names of the populations analyzed and the converged upon estimates, and then 100 rows with the bootstrapping estimates |
 
 Upon completion of the Germline module there is a `make germline-completion` command that is useful for collecting the run-related logs.
 ```

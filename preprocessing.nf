@@ -474,21 +474,21 @@ process alignment_bwa {
 	-M \
 	-K 100000000 \
 	-v 1 \
-	-t ${task.cpus - 2} \
+	-t ${task.cpus - 1} \
 	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
 	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
 	"${fastq_R1}" "${fastq_R2}" \
 	| \
 	sambamba view \
 	--sam-input \
-	--nthreads=${task.cpus - 2} \
+	--nthreads=${task.cpus - 1} \
 	--filter='mapping_quality>=10' \
 	--format=bam \
 	--compression-level=0 \
 	/dev/stdin \
 	| \
 	sambamba sort \
-	--nthreads=${task.cpus - 2} \
+	--nthreads=${task.cpus - 1} \
 	--tmpdir=. \
 	--memory-limit=8GB \
 	--sort-by-name \
@@ -512,6 +512,7 @@ process postAlignmentFlagstats_sambamba {
 	bam_flagstat_log = "${sample_id}.alignment.flagstat.log"
 	"""
 	sambamba flagstat \
+	--nthreads=${task.cpus} \
 	"${bam_aligned}" > "${bam_flagstat_log}"
 	"""
 }
@@ -531,7 +532,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx24576m -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx24G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
@@ -542,7 +543,7 @@ process fixMateInformationAndSort_gatk {
 	--OUTPUT "${bam_fixed_mate_unsorted}"
 
 	gatk SortSam \
-	--java-options "-Xmx24576m -Djava.io.tmpdir=." \
+	--java-options "-Xmx24G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--SORT_ORDER coordinate \
@@ -583,9 +584,11 @@ process markDuplicatesAndIndex_sambamba {
 	2> "${markdup_output_log}"
 
 	sambamba flagstat \
+	--nthreads ${task.cpus} \
 	"${bam_marked_dup}" > "${bam_markdup_flagstat_log}"
 
 	sambamba index \
+	--nthreads ${task.cpus} \
 	"${bam_marked_dup}" "${bam_marked_dup_index}"
 	"""	
 }
