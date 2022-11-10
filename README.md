@@ -17,7 +17,7 @@ The entire pipeline is divided into 3 modules: Preprocessing, Germline, and Soma
 The pipeline was developed to be run on various HPCs without concern of environment incompatibilities, version issues, or missing dependencies. None of the commands require admin access or `sudo` to be completed. However, there are a few assumptions regarding initial setup of the pipeline but the required software should be readily available on nearly all HPC systems.
 * Git
 * GNU Utilities
-* Java 8 (or later)
+* Java 11 (or later)
 * Singularity (validated on v3.1, v3.5.2, v3.7.1, v3.9.8 other versions will be tested)
 
 
@@ -58,10 +58,13 @@ To facilitate ease of use, reproducibility, and consistency between all users of
 For the same reasons as with the reference data, the Singularity image files needed for each tool's container is provided within the `containers/` directory. All containers were originally developed with Docker and all tags can be found on the associated [DockerHub](https://hub.docker.com/r/patrickblaneynyu/mgp1000).
 
 ## Install Nextflow
-This series of commands will install Nextflow.
+This series of commands will install Nextflow. The most current version of Nextflow requires Java 11 or later. Therefore, the user may need to load this version of Java to complete the install.
 
 **NOTE: Many HPC environments may already have this dependency installed, if so this section can be skipped.**
 
+```
+java -version
+```
 ```
 make install-nextflow
 ```
