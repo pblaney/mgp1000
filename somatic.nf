@@ -1527,12 +1527,18 @@ process downloadBattenbergReferences_battenberg {
   	params.battenberg == "on" && params.battenberg_ref_cached == "no"
 
   	script:
-  	battenberg_references = "battenberg_reference"
+  	battenberg_references = "battenberg_reference/"
   	"""
-  	mkdir -p "${battenberg_references}"
-  	cd "${battenberg_references}/"
+  	mkdir -p ${battenberg_references}
+  	cd ${battenberg_references}/
+  	mkdir -p temp/
   	mkdir -p GC_correction_hg38/
   	mkdir -p RT_correction_hg38/
+  	mkdir -p shapeit2/
+  	mkdir -p imputation/
+  	mkdir -p 1000G_loci_hg38/
+  	mkdir -p probloci/
+  	mkdir -p beagle5/
 
   	battenberg_reference_downloader.sh
   	"""
@@ -1587,6 +1593,8 @@ process cnvCalling_battenberg {
   	battenberg_purity_and_ploidy = "${tumor_normal_sample_id}.battenberg.purity.ploidy.txt"
   	battenberg_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.cnv.png"
   	"""
+  	cp /opt/downloads/beagle.08Feb22.fa4.jar ${battenberg_ref_dir}/beagle5/
+
   	sex=\$(cut -d ' ' -f 1 "${sample_sex}")
 
   	battenberg_executor.sh \

@@ -5,50 +5,108 @@
 battenbergRefDownload() {
 
 	# GC Correction
+	echo "Beginning GC Correction Download....."
 	wget -q -O GC_correction_hg38_chr.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AADQD4DTJOF75YmhBDDoQ9nla/GC_correction_hg38?dl=0&lst=" && \
-  	unzip GC_correction_hg38_chr.zip
-	mv 1000G_GC_chr*.txt.gz GC_correction_hg38/ && \
-	rm GC_correction_hg38_chr.zip
+  	unzip GC_correction_hg38_chr.zip -x /
+  	rm GC_correction_hg38_chr.zip && \
+	mv 1000G_GC_chr*.txt.gz GC_correction_hg38/
+
+	echo 
+	echo "GC Correction  }}}---->>>  D O N E"
+	echo 
+	sleep 5
 
 	# RT Correction
+	echo "Beginning RT Correction Download....."
   	wget -q -O RT_correction_hg38.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AABZ2uM13YMYB_q6X1pP1McJa/RT_correction_hg38?dl=0&lst=" && \
-  	unzip RT_correction_hg38.zip
-  	mv 1000G_RT_chr*.txt.gz RT_correction_hg38/ && \
-  	rm RT_correction_hg38.zip
+  	unzip RT_correction_hg38.zip -x /
+  	rm RT_correction_hg38.zip && \
+  	mv 1000G_RT_chr*.txt.gz RT_correction_hg38/
 
+  	echo 
+  	echo "RT Correction  }}}---->>>  D O N E"
+  	echo 
+  	sleep 5
+  	
   	# Shapeit2
-  	wget -q -O shapeit2_chr.zip "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=shapeit2_chr.zip&type_of_work=Dataset" && \
-  	unzip shapeit2_chr.zip
-  	rm shapeit2_chr.zip
+  	echo "Beginning Shapeit2 Download....."
+  	wget -q -O shapeit2_chr.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AAAbmJCGL04zOqNm7v7HRfjza/shapeit2?dl=0&lst=" && \
+  	unzip shapeit2_chr.zip -x /
+  	rm shapeit2_chr.zip && \
+  	mv ALL.v1a.shapeit2_integrated_chr*.GRCh38.20181129.phased.hap.gz shapeit2/ && \
+  	mv ALL.v1a.shapeit2_integrated_chr*.GRCh38.20181129.phased.legend temp/
+  	for i in {1..22}; do cat "temp/ALL.v1a.shapeit2_integrated_chr${i}.GRCh38.20181129.phased.legend" | sed -E 's|^'${i}'|chr'${i}'|' > "ALL.v1a.shapeit2_integrated_chr${i}.GRCh38.20181129.phased.legend"; done
+  	for i in X_PAR1 X_PAR2 X_nonPAR; do cat "temp/ALL.v1a.shapeit2_integrated_chr${i}.GRCh38.20181129.phased.legend" | sed -E 's|^X|chrX|' > "ALL.v1a.shapeit2_integrated_chr${i}.GRCh38.20181129.phased.legend"; done
+  	mv ALL.v1a.shapeit2_integrated_chr*.GRCh38.20181129.phased.legend shapeit2/
+  	rm temp/*
+
+  	echo 
+  	echo "Shapeit2  }}}---->>>  D O N E"
+  	echo 
+  	sleep 5
 
   	# Impute
-  	wget -q -O imputation_chr.zip "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=imputation_chr.zip&type_of_work=Dataset" && \
-  	unzip imputation_chr.zip
-  	rm imputation_chr.zip
+  	echo "Beginning Imputation Download....."
+  	wget -q -O imputation_chr.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AABkSpOJdQthXn5ELVZatnrxa/imputation?dl=0&lst=" && \
+	unzip imputation_chr.zip -x /
+	rm imputation_chr.zip && \
+	mv genetic_map_chr*_combined_b38.txt imputation/
+
+	echo 
+	echo "Imputation  }}}---->>>  D O N E"
+	echo 
+	sleep 5
 
   	# 1000G
-  	wget -q -O 1000G_loci_hg38_chr.zip "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=1000G_loci_hg38_chr.zip&type_of_work=Dataset" && \
-  	unzip 1000G_loci_hg38_chr.zip
-  	rm 1000G_loci_hg38_chr.zip
-  	sed -E -i 's|^X|chrX|' 1000G_loci_hg38/1kg.phase3.v5a_GRCh38nounref_loci_chrX.txt
+  	echo "Beginning 1000 Genome Loci Download....."
+  	wget -q -O 1000G_loci_hg38_chr.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AAD8szWaYFjkeFElpIn9Kxcra/1000G_loci_hg38?dl=0&lst=" && \
+  	unzip 1000G_loci_hg38_chr.zip -x /
+  	rm 1000G_loci_hg38_chr.zip && \
+  	rm 1kg.phase3.v5a_GRCh38nounref_loci_chrstring_chr*.txt && \
+  	mv 1kg.phase3.v5a_GRCh38nounref_allele_index_chr*.txt 1000G_loci_hg38/ && \
+  	mv 1kg.phase3.v5a_GRCh38nounref_loci_chr*.txt temp/
+  	for i in {1..22} X; do cat "temp/1kg.phase3.v5a_GRCh38nounref_loci_chr${i}.txt" | sed -E 's|^'${i}'|chr'${i}'|' > "1kg.phase3.v5a_GRCh38nounref_loci_chr${i}.txt"; done
+	mv 1kg.phase3.v5a_GRCh38nounref_loci_chr*.txt 1000G_loci_hg38/ && \
+	rm temp/*
+
+	echo 
+	echo "1000 Genome Loci  }}}---->>>  D O N E"
+	echo 
+	sleep 5
 
   	# Probloci
-  	wget -q -O probloci_chr.zip "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=probloci_chr.zip&type_of_work=Dataset" && \
-  	unzip probloci_chr.zip
-  	rm probloci_chr.zip
+  	echo "Beginning Problem Loci Download....."
+  	wget -q -O probloci_chr.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AAByAZhtoyceFWiLHQ4VVVHLa/probloci?dl=0&lst=" && \
+  	unzip probloci_chr.zip -x /
+  	rm probloci_chr.zip && \
+  	mv probloci.txt.gz probloci/
+
+  	echo 
+  	echo "Problem Loci  }}}---->>>  D O N E"
+  	echo 
+  	sleep 5
 
   	# Beagle5
-  	wget -q -O beagle_chr.zip "https://ora.ox.ac.uk/objects/uuid:08e24957-7e76-438a-bd38-66c48008cf52/download_file?file_format=&safe_filename=beagle_chr.zip&type_of_work=Dataset" && \
-  	unzip beagle_chr.zip
+  	echo "Beginning Beagle5 Download....."
+  	wget -q -O beagle_chr.zip "https://www.dropbox.com/sh/bize1n830t0mgzb/AADTvENGArNqA72vUf_OHRhza/beagle5?dl=0&lst=" && \
+  	unzip beagle_chr.zip -x /
   	rm beagle_chr.zip && \
-  	mv beagle/ beagle5/ && \
-  	cd beagle5/ && \
-  	mkdir -p tmp/ && \
-  	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz tmp/ && \
-  	for i in {1..22} X; do zcat "tmp/chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz" | sed -E 's|^'${i}'|chr'${i}'|' | gzip > "chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz"; done && \
-  	rm -rf tmp/ && \
-  	cd ../
+  	rm combine_chrX_plink.R && \
+  	mv plink.chr*.GRCh38.map beagle5/ && \
+  	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz temp/
+  	for i in {1..22} X; do zcat "temp/chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz" | sed -E 's|^'${i}'|chr'${i}'|' | gzip > "chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz"; done
+  	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz beagle5/ && \
+  	rm -rf temp/
+
+  	echo 
+  	echo "Beagle5  }}}---->>>  D O N E"
+  	echo 
+  	sleep 5
+
 }
 
 #Function call
 battenbergRefDownload
+
+echo "D O N E"
+echo 
