@@ -1593,7 +1593,9 @@ process cnvCalling_battenberg {
   	battenberg_purity_and_ploidy = "${tumor_normal_sample_id}.battenberg.purity.ploidy.txt"
   	battenberg_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.cnv.png"
   	"""
-  	cp /opt/downloads/beagle.08Feb22.fa4.jar ${battenberg_ref_dir}/beagle5/
+  	if [ ! -s ${battenberg_ref_dir}/beagle5/beagle.08Feb22.fa4.jar ]; then
+  		cp /opt/downloads/beagle.08Feb22.fa4.jar ${battenberg_ref_dir}/beagle5/
+  	fi
 
   	sex=\$(cut -d ' ' -f 1 "${sample_sex}")
 
