@@ -90,6 +90,7 @@ echo 'export NXF_OPTS="-Xms500M -Xmx2G -Dleveldb.mmap=false"' >> "${submissionSc
 runCommand="
 ./nextflow run \
 ${pipelineStepScript} \
+-resume \
 --run_id ${runId} \
 --email ${userEmail} \
 -profile ${pipelineStep} \
