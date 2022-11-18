@@ -51,6 +51,9 @@ battenbergRefDownload() {
 	unzip imputation_chr.zip -x /
 	rm imputation_chr.zip && \
 	mv genetic_map_chr*_combined_b38.txt imputation/
+	mv impute_info.txt temp/ && \
+	awk 'BEGIN {OFS="\t"} {print "chr"$1,$2,$3,$4,$5,$6}' temp/impute_info.txt > impute_info.txt
+	rm temp/*
 
 	echo 
 	echo "Imputation  }}}---->>>  D O N E"
@@ -92,10 +95,13 @@ battenbergRefDownload() {
   	unzip beagle_chr.zip -x /
   	rm beagle_chr.zip && \
   	rm combine_chrX_plink.R && \
-  	mv plink.chr*.GRCh38.map beagle5/ && \
   	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz temp/
   	for i in {1..22} X; do zcat "temp/chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz" | sed -E 's|^'${i}'|chr'${i}'|' | gzip > "chr${i}.1kg.phase3.v5a_GRCh38nounref.vcf.gz"; done
   	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz beagle5/ && \
+  	rm -rf temp/
+  	mv plink.chr*.GRCh38.map temp/ && \
+  	for i in {1..22} X; do zcat "temp/plink.chr${i}.GRCh38.map" | sed -E 's|^'${i}'|chr'${i}'|' > "plink.chr${i}.GRCh38.map"; done
+  	mv plink.chr*.GRCh38.map beagle5/ && \
   	rm -rf temp/
 
   	echo 

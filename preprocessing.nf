@@ -490,7 +490,7 @@ process alignment_bwa {
 	sambamba sort \
 	--nthreads=${task.cpus - 1} \
 	--tmpdir=. \
-	--memory-limit=8GB \
+	--memory-limit=24GB \
 	--sort-by-name \
 	--out=${bam_aligned} \
 	/dev/stdin
