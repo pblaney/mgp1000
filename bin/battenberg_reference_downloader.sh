@@ -100,7 +100,7 @@ battenbergRefDownload() {
   	mv chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz beagle5/ && \
   	rm temp/*
   	mv plink.chr*.GRCh38.map temp/ && \
-  	for i in {1..22} X; do zcat "temp/plink.chr${i}.GRCh38.map" | sed -E 's|^'${i}'|chr'${i}'|' > "plink.chr${i}.GRCh38.map"; done
+  	for i in {1..22} X; do cat "temp/plink.chr${i}.GRCh38.map" | sed -E 's|^'${i}'|chr'${i}'|' > "plink.chr${i}.GRCh38.map"; done
   	mv plink.chr*.GRCh38.map beagle5/ && \
   	rm -rf temp/
 
