@@ -662,7 +662,7 @@ process downsampleBam_gatk {
 	tuple val(sample_id), path(bam_for_downsample) from bams_forDownsampleBam
 
 	output:
-	tuple val(sample_id), path bam_downsampled into downsampled_bams
+	tuple val(sample_id), path(bam_downsampled) into downsampled_bams
 
 	script:
 	bam_downsampled = "${bam_for_downsample}".replaceFirst(/\.bam/, ".downsampled.bam")
