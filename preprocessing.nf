@@ -96,8 +96,6 @@ if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directo
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
-if( params.seq_protocol != "wgs" | params.seq_protocol != "wxs" ) exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'wgs' for whole-genome or 'wxs' for whole-exome."
-
 if( params.input_format == null ) exit 1, "The run command issued does not have the '--input_format' parameter set. Please set the '--input_format' parameter to either bam or fastq depending on input data."
 
 if( params.input_format == "bam" & params.skip_trimming == "yes" ) exit 1, "This run command cannot be executed. If '--input_format' parameter is 'bam', then trimming must be performed. Please set '--skip_trimming to 'no'."
