@@ -871,6 +871,7 @@ process collectHsMetrics_gatk {
     --java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
     --VERBOSITY ERROR \
     --TMP_DIR . \
+    --COVERAGE_CAP 500 \
     --BAIT_INTERVALS "${targets_list}" \
     --TARGET_INTERVALS "${targets_list}" \
     --INPUT "${bam_preprocessed_final}" \
