@@ -115,7 +115,8 @@ Channel
 		   reference_genome_fasta_forBaseRecalibrator;
 	       reference_genome_fasta_forApplyBqsr;
 	       reference_genome_fasta_forCollectWgsMetrics;
-	       reference_genome_fasta_forCollectGcBiasMetrics }
+	       reference_genome_fasta_forCollectGcBiasMetrics;
+	       reference_genome_fasta_forCollectHsMetrics }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
@@ -123,7 +124,8 @@ Channel
 	       reference_genome_fasta_index_forBaseRecalibrator;
 	       reference_genome_fasta_index_forApplyBqsr;
 	       reference_genome_fasta_index_forCollectWgsMetrics;
-	       reference_genome_fasta_index_forCollectGcBiasMetrics }
+	       reference_genome_fasta_index_forCollectGcBiasMetrics;
+	       reference_genome_fasta_index_forCollectHsMetrics }
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
@@ -131,7 +133,8 @@ Channel
 	       reference_genome_fasta_dict_forBaseRecalibrator;
 	       reference_genome_fasta_dict_forApplyBqsr;
 	       reference_genome_fasta_dict_forCollectWgsMetrics;
-	       reference_genome_fasta_dict_forCollectGcBiasMetrics }
+	       reference_genome_fasta_dict_forCollectGcBiasMetrics;
+	       reference_genome_fasta_dict_forCollectHsMetrics }
 
 if( params.seq_protocol == "wgs" ) {
     Channel
@@ -847,13 +850,18 @@ process collectGcBiasMetrics_gatk {
 	"""
 }
 
+// Create additional channel for the reference FASTA to be used in GATK CollectHsMetrics process
+reference_genome_fasta_forCollectHsMetrics.combine( reference_genome_fasta_index_forCollectHsMetrics )
+	.combine( reference_genome_fasta_dict_forCollectHsMetrics )
+	.set{ reference_genome_bundle_forCollectHsMetrics }
+
 // GATK CollectHsMetrics ~ generate exome capture coverage data in final BAM
 process collectHsMetrics_gatk {
     publishDir "${params.output_dir}/preprocessing/hsMetrics", mode: 'copy'
     tag "${sample_id}"
 
     input:
-    tuple val(sample_id), path(bam_preprocessed_final) from final_preprocessed_bams_forCollectHsMetrics
+    tuple val(sample_id), path(bam_preprocessed_final), path(reference_genome_fasta_forCollectHsMetrics), path(reference_genome_fasta_index_forCollectHsMetrics), path(reference_genome_fasta_dict_forCollectHsMetrics) from final_preprocessed_bams_forCollectHsMetrics.combine(reference_genome_bundle_forCollectHsMetrics)
     path targets_list from target_regions
 
     output:
@@ -870,6 +878,7 @@ process collectHsMetrics_gatk {
     --VERBOSITY ERROR \
     --TMP_DIR . \
     --COVERAGE_CAP 500 \
+    --REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectHsMetrics}" \
     --BAIT_INTERVALS "${targets_list}" \
     --TARGET_INTERVALS "${targets_list}" \
     --INPUT "${bam_preprocessed_final}" \
