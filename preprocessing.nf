@@ -1,4 +1,4 @@
-// Myeloma Genome Project 1000
+// Myeloma Genome Pipeline 1000
 // Comprehensive pipeline for analysis of matched T/N Multiple Myeloma WGS data
 // https://github.com/pblaney/mgp1000
 
@@ -140,6 +140,10 @@ if( params.seq_protocol == "wgs" ) {
     Channel
         .value( file('references/hg38/wgs_calling_regions.hg38.interval_list') )
         .set{ target_regions }
+
+    Channel
+        .empty()
+        .set{ target_regions_bed }
 } else if( params.seq_protocol == "wxs" ) {
     Channel
         .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed') )
