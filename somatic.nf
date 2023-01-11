@@ -761,7 +761,7 @@ process snvAndIndelCalling_varscan {
 	--fasta-ref "${reference_genome_fasta_forVarscanSamtoolsMpileup}" \
 	"${normal_bam}" "${tumor_bam}" \
 	| \
-	java -jar \${VARSCAN} somatic \
+	java -Xmx2G -XX:ParallelGCThreads=2 -jar \${VARSCAN} somatic \
 	--mpileup 1 \
 	--min-coverage-normal 8 \
 	--min-coverage-tumor 6 \
