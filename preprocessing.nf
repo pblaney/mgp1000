@@ -559,7 +559,7 @@ process fixMateInformationAndSort_gatk {
 	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
 	"""
 	gatk FixMateInformation \
-	--java-options "-Xmx24G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx16G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY SILENT \
 	--ADD_MATE_CIGAR true \
@@ -570,7 +570,7 @@ process fixMateInformationAndSort_gatk {
 	--OUTPUT "${bam_fixed_mate_unsorted}"
 
 	gatk SortSam \
-	--java-options "-Xmx24G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
+	--java-options "-Xmx16G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--SORT_ORDER coordinate \
