@@ -52,23 +52,23 @@ strand_bias_proportion_tester <- function(strand_metrics_file) {
     reverse_proportion <- sum(strand_read_tibble$reverse_strand_reads) / sum(strand_read_tibble)
     minimum_sb_proportion <- min(forward_proportion, reverse_proportion)
     
-    # Populate tibble with evaluation of each strand bias proportion test
-    strand_bias_filter_bed_file$chrom[i] <- strand_metrics$chrom[i]
-    strand_bias_filter_bed_file$start[i] <- strand_metrics$start[i]
-    strand_bias_filter_bed_file$end[i] <- strand_metrics$start[i]
-    strand_bias_filter_bed_file$minimum_sb_proportion[i] <- minimum_sb_proportion
-    strand_bias_filter_bed_file$forward_reads_ref[i] <- forward_strand_reads[1]
-    strand_bias_filter_bed_file$forward_reads_alt[i] <- forward_strand_reads[2]
-    strand_bias_filter_bed_file$reverse_reads_ref[i] <- reverse_strand_reads[1]
-    strand_bias_filter_bed_file$reverse_reads_alt[i] <- reverse_strand_reads[2]
+    # Populate tibble with evaluation of each strand bias proportion test if the min strand bias proportion <0.10
+    if(minimum_sb_proportion < 0.10) {
+
+      strand_bias_filter_bed_file$chrom[i] <- strand_metrics$chrom[i]
+      strand_bias_filter_bed_file$start[i] <- strand_metrics$start[i]
+      strand_bias_filter_bed_file$end[i] <- strand_metrics$start[i]
+      strand_bias_filter_bed_file$minimum_sb_proportion[i] <- minimum_sb_proportion
+      strand_bias_filter_bed_file$forward_reads_ref[i] <- forward_strand_reads[1]
+      strand_bias_filter_bed_file$forward_reads_alt[i] <- forward_strand_reads[2]
+      strand_bias_filter_bed_file$reverse_reads_ref[i] <- reverse_strand_reads[1]
+      strand_bias_filter_bed_file$reverse_reads_alt[i] <- reverse_strand_reads[2]
+    }
   }
   
-  # Write out BED line for variant to be filtered out based on minimum strand bias proportion < 0.05
+  # Write out BED line for variant to be filtered out based on minimum strand bias proportion
   print("Printing output BED file for filtering.....")
-  output_file <- strand_bias_filter_bed_file %>%
-    filter(minimum_sb_proportion < 0.10)
-  
-  return(output_file)
+  return(strand_bias_filter_bed_file)
 }
 
 #########################
