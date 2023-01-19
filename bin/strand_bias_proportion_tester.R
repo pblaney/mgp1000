@@ -24,14 +24,7 @@ strand_bias_proportion_tester <- function(strand_metrics_file) {
                                col_types = "cicc")
   
   # Create output data frame that holds BED lines
-  strand_bias_filter_bed_file <- tibble("chrom" = rep(NA, dim(strand_metrics)[1]),
-                                        "start" = rep(NA, dim(strand_metrics)[1]),
-                                        "end" = rep(NA, dim(strand_metrics)[1]),
-                                        "minimum_sb_proportion" = rep(NA, dim(strand_metrics)[1]),
-                                        "forward_reads_ref" = rep(NA, dim(strand_metrics)[1]),
-                                        "forward_reads_alt" = rep(NA, dim(strand_metrics)[1]),
-                                        "reverse_reads_ref" = rep(NA, dim(strand_metrics)[1]),
-                                        "reverse_reads_alt" = rep(NA, dim(strand_metrics)[1]))
+  strand_bias_filter_bed_file <- tibble()
   
   # Loop through each entry in the strand metrics file and perform test of minimum proportion
   print("Performing test of minimum proportion per entry.....")
@@ -55,14 +48,15 @@ strand_bias_proportion_tester <- function(strand_metrics_file) {
     # Populate tibble with evaluation of each strand bias proportion test if the min strand bias proportion <0.10
     if(minimum_sb_proportion < 0.10) {
 
-      strand_bias_filter_bed_file$chrom[i] <- strand_metrics$chrom[i]
-      strand_bias_filter_bed_file$start[i] <- strand_metrics$start[i]
-      strand_bias_filter_bed_file$end[i] <- strand_metrics$start[i]
-      strand_bias_filter_bed_file$minimum_sb_proportion[i] <- minimum_sb_proportion
-      strand_bias_filter_bed_file$forward_reads_ref[i] <- forward_strand_reads[1]
-      strand_bias_filter_bed_file$forward_reads_alt[i] <- forward_strand_reads[2]
-      strand_bias_filter_bed_file$reverse_reads_ref[i] <- reverse_strand_reads[1]
-      strand_bias_filter_bed_file$reverse_reads_alt[i] <- reverse_strand_reads[2]
+      strand_bias_filter_bed_file <- rbind(strand_bias_filter_bed_file,
+                                           tibble("chrom" = strand_metrics$chrom[i],
+                                                  "start" = strand_metrics$start[i],
+                                                  "end" = strand_metrics$start[i],
+                                                  "minimum_sb_proportion" = minimum_sb_proportion,
+                                                  "forward_reads_ref" = forward_strand_reads[1],
+                                                  "forward_reads_alt" = forward_strand_reads[2],
+                                                  "reverse_reads_ref" = reverse_strand_reads[1],
+                                                  "reverse_reads_alt" = reverse_strand_reads[2]))
     }
   }
   
