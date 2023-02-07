@@ -1585,7 +1585,7 @@ process snpPileup_fragcounter {
     echo -e "seqname\tstart\tend\talt.count.t\tref.count.t\talt.count.n\tref.count.n" > "${tumor_normal_sample_id}.snp_pileup.txt"
     grep -v 'Chromosome' "${tumor_normal_sample_id}.snp_pileup.csv" \
     | \
-    awk -F ',' 'BEGIN {OFS="\t"} {print $1,$2,$2,$6,$5,$10,$9}' >> "${tumor_normal_sample_id}.snp_pileup.txt"
+    awk -F ',' 'BEGIN {OFS="\t"} {print \$1,\$2,\$2,\$6,\$5,\$10,\$9}' >> "${tumor_normal_sample_id}.snp_pileup.txt"
 
     gzip "${tumor_normal_sample_id}.snp_pileup.txt"
     """
