@@ -103,7 +103,7 @@ def helpMessage() {
 	                                      [Default: on | Available: off, on]
 	  --strelka                      STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
-	  --copycat                      STR  Indicates whether or not to use this tool
+	  --fragcounter                  STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --battenberg                   STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
@@ -179,7 +179,7 @@ params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
 params.strelka = "on"
-params.copycat = "on"
+params.fragcounter = "on"
 params.battenberg = "on"
 params.controlfreec = "on"
 params.sclust = "on"
@@ -398,8 +398,19 @@ Channel
 
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38_autosome_sex_chrom_sizes.txt' )
-	.into{ autosome_sex_chromosome_sizes_forControlFreec;
-	       autosome_sex_chromosome_sizes_forCopycat }
+	.set{ autosome_sex_chromosome_sizes_forControlFreec }
+
+Channel
+    .fromPath( 'references/hg38' )
+    .set{ fragcounter_gc_mappability_dir }
+
+Channel
+	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz' )
+	.set{ hapmap_ref_snps_vcf_forFragCounter }
+
+Channel
+	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz.tbi' )
+	.set{ hapmap_ref_snps_vcf_index_forFragCounter }
 
 Channel
 	.fromPath( 'references/hg38/common_all_20180418.vcf.gz' )
@@ -534,7 +545,8 @@ process identifySampleSex_allelecount {
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forVarscanBamReadcount
 	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forControlFreecCalling
-	tuple val(tumor_normal_sample_id), path(tumor_bam) into bam_forCopycat
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFragCounter
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFragCounterPileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forBattenberg
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFacetsPileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
@@ -1477,35 +1489,105 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~~~~~~~ Copycat ~~~~~~~~~~~~~~~~ \\
+// ~~~~~~~~~~~~~~ fragCounter ~~~~~~~~~~~~~~ \\
 // START
 
-// Copycat ~ capture and bin the read coverage across a genome for CNV and SV support
-process binReadCoverage_copycat {
-    publishDir "${params.output_dir}/somatic/copycat", mode: 'copy', pattern: '*.{csv.gz,seg}'
+// fragCounter ~ GC and mappability corrected fragment coverage across a genome for CNV and SV support
+process binReadCoverage_fragcounter {
+    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(autosome_sex_chromosome_sizes) from bam_forCopycat.combine(autosome_sex_chromosome_sizes_forCopycat)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(fragcounter_gc_mappability_dir) from bams_forFragCounter.combine(fragcounter_gc_mappability_dir)
      
     output:
-    path tumor_copycat_coverage_csv
-    path tumor_copycat_coverage_seg
+    path normal_fragcounter_cov_rds
+    path normal_fragcounter_cov_bw
+    path tumor_fragcounter_cov_rds
+    path tumor_fragcounter_cov_bw
 
     when:
-    params.copycat == "on"
+    params.fragcounter == "on"
+
+    script:
+    normal_results_dir = "results_normal"
+    tumor_results_dir = "results_tumor"
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+    normal_fragcounter_cov_rds = "${normal_id}.fragcounter.cov.rds"
+    normal_fragcounter_cov_bw = "${normal_id}.fragcounter.cov.corrected.bw"
+    tumor_fragcounter_cov_rds = "${tumor_id}.fragcounter.cov.rds"
+    tumor_fragcounter_cov_bw = "${tumor_id}.fragcounter.cov.corrected.bw"
+    """
+    echo "##### Normal sample first....."
+    echo 
+    mkdir -p "${normal_results_dir}"
+
+    frag \
+    --bam "${normal_bam}" \
+    --window 200 \
+    --gcmapdir "${fragcounter_gc_mappability_dir}" \
+    --paired TRUE \
+    --chrsub FALSE \
+    --outdir "${normal_results_dir}"
+
+    mv "${normal_results_dir}/cov.rds" "${normal_fragcounter_cov_rds}"
+    mv "${normal_results_dir}/cov.corrected.bw" "${normal_fragcounter_cov_bw}"
+
+    echo 
+    echo "##### Tumor sample second....."
+    echo 
+    mkdir -p "${tumor_results_dir}"
+
+    frag \
+    --bam "${tumor_bam}" \
+    --window 200 \
+    --gcmapdir "${fragcounter_gc_mappability_dir}" \
+    --paired TRUE \
+    --chrsub FALSE \
+    --outdir "${tumor_results_dir}"
+
+    mv "${tumor_results_dir}/cov.rds" "${tumor_fragcounter_cov_rds}"
+    mv "${tumor_results_dir}/cov.corrected.bw" "${tumor_fragcounter_cov_bw}"
+    """
+}
+
+// SNP-Pileup ~ generate SNP read count pileups for CNV calling
+process snpPileup_fragcounter {
+    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{txt.gz}'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(hapmap_ref_snps_vcf), path(hapmap_ref_snps_vcf_index) from bams_forFragCounterPileup.combine(hapmap_ref_snps_vcf_forFragCounter).combine(hapmap_ref_snps_vcf_index_forFragCounter)
+
+    output:
+    tuple val(tumor_normal_sample_id), path(fragcounter_snp_pileup)
+
+    when:
+    params.fragcounter == "on"
 
     script:
     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-    tumor_copycat_coverage_csv = "${tumor_id}.coverage.10kb.csv.gz"
-    tumor_copycat_coverage_seg = "${tumor_id}.coverage.10kb.igv.seg"
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+    fragcounter_snp_pileup = "${tumor_normal_sample_id}.snp_pileup.txt.gz"
     """
-    copycat.sh \
+    snp-pileup \
+    --min-map-quality 0 \
+    --min-base-quality 20 \
+    --min-read-counts 3 \
+    "${hapmap_ref_snps_vcf}" \
+    "${tumor_normal_sample_id}.snp_pileup.csv" \
     "${tumor_bam}" \
-    "${autosome_sex_chromosome_sizes}" \
-    "${tumor_id}"
+    "${normal_bam}"
 
-    mv "${tumor_id}.coverage.10kb.for_IGV.seg" "${tumor_copycat_coverage_seg}"
+    echo -e "seqname\tstart\tend\talt.count.t\tref.count.t\talt.count.n\tref.count.n" > "${tumor_normal_sample_id}.snp_pileup.txt"
+    grep -v 'Chromosome' "${tumor_normal_sample_id}.snp_pileup.csv" \
+    | \
+    awk -F ',' 'BEGIN {OFS="\t"} {print $1,$2,$2,$6,$5,$10,$9}' >> "${tumor_normal_sample_id}.snp_pileup.txt"
+
+    gzip "${tumor_normal_sample_id}.snp_pileup.txt"
     """
 }
 
