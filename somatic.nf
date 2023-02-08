@@ -1495,7 +1495,7 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 // fragCounter ~ GC and mappability corrected fragment coverage across a genome for CNV and SV support
 process binReadCoverageInNormal_fragcounter {
     publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
-    tag "${tumor_normal_sample_id S=Normal}"
+    tag "${tumor_normal_sample_id} S=Normal"
 
     input:
     tuple val(tumor_normal_sample_id), path(normal_bam), path(normal_bam_index), path(fragcounter_gc_mappability_dir) from normal_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterNormal)
