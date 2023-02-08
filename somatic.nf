@@ -402,7 +402,8 @@ Channel
 
 Channel
     .fromPath( 'references/hg38' )
-    .set{ fragcounter_gc_mappability_dir }
+    .into{ fragcounter_gc_mappability_dir_forFragCounterNormal;
+           fragcounter_gc_mappability_dir_forFragCounterTumor }
 
 Channel
 	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz' )
