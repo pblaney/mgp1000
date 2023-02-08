@@ -1493,35 +1493,26 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 // START
 
 // fragCounter ~ GC and mappability corrected fragment coverage across a genome for CNV and SV support
-process binReadCoverage_fragcounter {
+process binReadCoverageInNormal_fragcounter {
     publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
-    tag "${tumor_normal_sample_id}"
+    tag "${tumor_normal_sample_id S=Normal}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(fragcounter_gc_mappability_dir) from bams_forFragCounter.combine(fragcounter_gc_mappability_dir)
+    tuple val(tumor_normal_sample_id), path(normal_bam), path(normal_bam_index), path(fragcounter_gc_mappability_dir) from normal_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterNormal)
      
     output:
     path normal_fragcounter_cov_rds
     path normal_fragcounter_cov_bw
-    path tumor_fragcounter_cov_rds
-    path tumor_fragcounter_cov_bw
 
     when:
     params.fragcounter == "on"
 
     script:
-    normal_results_dir = "results_normal"
-    tumor_results_dir = "results_tumor"
     normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+    normal_results_dir = "results_normal"
     normal_fragcounter_cov_rds = "${normal_id}.fragcounter.cov.rds"
     normal_fragcounter_cov_bw = "${normal_id}.fragcounter.cov.corrected.bw"
-    tumor_fragcounter_cov_rds = "${tumor_id}.fragcounter.cov.rds"
-    tumor_fragcounter_cov_bw = "${tumor_id}.fragcounter.cov.corrected.bw"
     """
-    echo "##### Normal sample first....."
-    echo 
     mkdir -p "${normal_results_dir}"
 
     frag \
@@ -1534,10 +1525,29 @@ process binReadCoverage_fragcounter {
 
     mv "${normal_results_dir}/cov.rds" "${normal_fragcounter_cov_rds}"
     mv "${normal_results_dir}/cov.corrected.bw" "${normal_fragcounter_cov_bw}"
+    """
+}
 
-    echo 
-    echo "##### Tumor sample second....."
-    echo 
+process binReadCoverageInTumor_fragcounter {
+    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
+    tag "${tumor_normal_sample_id} S=Tumor"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(fragcounter_gc_mappability_dir) from tumor_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterTumor)
+     
+    output:
+    path tumor_fragcounter_cov_rds
+    path tumor_fragcounter_cov_bw
+
+    when:
+    params.fragcounter == "on"
+
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_results_dir = "results_tumor"
+    tumor_fragcounter_cov_rds = "${tumor_id}.fragcounter.cov.rds"
+    tumor_fragcounter_cov_bw = "${tumor_id}.fragcounter.cov.corrected.bw"
+    """
     mkdir -p "${tumor_results_dir}"
 
     frag \
