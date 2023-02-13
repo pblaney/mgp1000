@@ -148,6 +148,10 @@ def helpMessage() {
 	                                      [Default: on | Available: off, on]
 	  --delly                        STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
+	  --delly_strict                 STR  Enforce stricter thresholds for calling SVs with DELLY
+	                                      to overcome libraries with extraordinary number of
+	                                      interchromosomal reads
+	                                      [Default: off | Available: off, on]
 	  --igcaller                     STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 
@@ -1515,15 +1519,12 @@ process binReadCoverageInNormal_fragcounter {
     normal_fragcounter_cov_rds = "${normal_id}.fragcounter.cov.rds"
     normal_fragcounter_cov_bw = "${normal_id}.fragcounter.cov.corrected.bw"
     """
-    mkdir -p "${normal_results_dir}"
-
-    frag \
-    --bam "${normal_bam}" \
-    --window 200 \
-    --gcmapdir "${fragcounter_gc_mappability_dir}" \
-    --paired TRUE \
-    --chrsub FALSE \
-    --outdir "${normal_results_dir}"
+    fragCounter_executor.sh \
+	"${normal_bam}" \
+	"${fragcounter_gc_mappability_dir}" \
+	"TRUE" \
+	"FALSE" \
+	"${normal_results_dir}"
 
     mv "${normal_results_dir}/cov.rds" "${normal_fragcounter_cov_rds}"
     mv "${normal_results_dir}/cov.corrected.bw" "${normal_fragcounter_cov_bw}"
@@ -1550,15 +1551,12 @@ process binReadCoverageInTumor_fragcounter {
     tumor_fragcounter_cov_rds = "${tumor_id}.fragcounter.cov.rds"
     tumor_fragcounter_cov_bw = "${tumor_id}.fragcounter.cov.corrected.bw"
     """
-    mkdir -p "${tumor_results_dir}"
-
-    frag \
-    --bam "${tumor_bam}" \
-    --window 200 \
-    --gcmapdir "${fragcounter_gc_mappability_dir}" \
-    --paired TRUE \
-    --chrsub FALSE \
-    --outdir "${tumor_results_dir}"
+    fragCounter_executor.sh \
+	"${tumor_bam}" \
+	"${fragcounter_gc_mappability_dir}" \
+	"TRUE" \
+	"FALSE" \
+	"${tumor_results_dir}"
 
     mv "${tumor_results_dir}/cov.rds" "${tumor_fragcounter_cov_rds}"
     mv "${tumor_results_dir}/cov.corrected.bw" "${tumor_fragcounter_cov_bw}"
@@ -2841,8 +2839,6 @@ process svAndIndelCalling_delly {
 
 	output:
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) into delly_sv_vcf_forPostprocessing
-	path delly_germline_sv_vcf
-	path delly_germline_sv_vcf_index
 
 	when:
 	params.delly == "on"
@@ -2851,12 +2847,12 @@ process svAndIndelCalling_delly {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 20 --qual-tra 35 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
 	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
 	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
-	delly_germline_sv_vcf = "${tumor_normal_sample_id}.delly.germline.sv.vcf.gz"
-	delly_germline_sv_vcf_index = "${delly_germline_sv_vcf}.tbi"
 	"""
 	delly call \
+	"${delly_call_parameters}" \
 	--genome "${reference_genome_fasta_forDelly}" \
 	--exclude "${gatk_bundle_wgs_bed_blacklist_0based_forDelly}" \
 	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
@@ -2869,30 +2865,16 @@ process svAndIndelCalling_delly {
 	delly filter \
 	--filter somatic \
 	--pass \
-	--altaf 0.1 \
+	--altaf 0.05 \
 	--minsize 51 \
 	--coverage 10 \
 	--samples samples.tsv \
-	--outfile "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" \
-	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf"
-
-	bcftools isec \
-	--complement \
-	--write 1 \
-	--output-type u \
 	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
-	"${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" \
 	| \
-	bcftools filter \
-	--output-type z \
-	--include 'FILTER="PASS"' \
-	--output "${delly_germline_sv_vcf}"
-
-	tabix "${delly_germline_sv_vcf}"
-
 	bcftools view \
-	--output-type z \
-	"${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.bcf" > "${delly_somatic_sv_vcf}"
+    --output-type z \
+    --threads ${task.cpus} \
+    --output-file "${delly_somatic_sv_vcf}"
 
 	tabix "${delly_somatic_sv_vcf}"
 	"""
