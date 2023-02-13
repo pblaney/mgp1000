@@ -2852,7 +2852,7 @@ process svAndIndelCalling_delly {
 	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
 	"""
 	delly call \
-	"${delly_call_parameters}" \
+	${delly_call_parameters} \
 	--genome "${reference_genome_fasta_forDelly}" \
 	--exclude "${gatk_bundle_wgs_bed_blacklist_0based_forDelly}" \
 	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
