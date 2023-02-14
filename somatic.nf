@@ -2847,7 +2847,7 @@ process svAndIndelCalling_delly {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 20 --qual-tra 35 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
+	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 30 --qual-tra 40 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
 	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
 	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
 	"""
