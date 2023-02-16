@@ -191,6 +191,7 @@ params.facets = "on"
 params.manta = "on"
 params.svaba = "on"
 params.delly = "on"
+params.delly_strict = "off"
 params.igcaller = "on"
 params.conpair_min_cov = 10
 params.battenberg_min_depth = 10
