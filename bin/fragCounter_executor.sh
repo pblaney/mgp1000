@@ -13,7 +13,8 @@ subChrString=$4
 outputDir=$5
 
 # Remove she-bang header to allow for execution as vanilla .R script
-grep -v 'Rscript' /usr/local/lib/R/library/fragCounter/extdata/frag > fragCounter.R
+grep -v 'Rscript' /opt/toolshed/R/library/fragCounter/extdata/frag > fragCounter.R
+chmod 755 fragCounter.R
 
 # Make user-defined directory for output
 mkdir -p "${outputDir}"
