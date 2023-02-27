@@ -901,7 +901,7 @@ process filterRawSnvAndIndels_varscan {
 	"""
 	zcat "${raw_snv_vcf}" \
 	| \
-	java -jar \${VARSCAN} processSomatic \
+	java -Xmx2G -XX:ParallelGCThreads=2 -jar \${VARSCAN} processSomatic \
 	"${tumor_normal_sample_id}.snv" \
 	--min-tumor-freq 0.10 \
 	--max-normal-freq 0.05 \
@@ -912,7 +912,7 @@ process filterRawSnvAndIndels_varscan {
 
 	zcat "${raw_indel_vcf}" \
 	| \
-	java -jar \${VARSCAN} processSomatic \
+	java -Xmx2G -XX:ParallelGCThreads=2 -jar \${VARSCAN} processSomatic \
 	"${tumor_normal_sample_id}.indel" \
 	--min-tumor-freq 0.10 \
 	--max-normal-freq 0.05 \
@@ -987,7 +987,7 @@ process falsePositivefilterSnvAndIndels_varscan {
 	"""
 	gunzip -f "${high_confidence_snv_vcf}"
 
-	java -jar \$VARSCAN fpfilter \
+	java -Xmx2G -XX:ParallelGCThreads=2 -jar \$VARSCAN fpfilter \
 	"${unzipped_hc_snv_vcf}" \
 	"${snv_readcount_file}" \
 	--filtered-file "${tumor_normal_sample_id}.snv.failed.vcf" \
@@ -999,7 +999,7 @@ process falsePositivefilterSnvAndIndels_varscan {
 
 	gunzip -f "${high_confidence_indel_vcf}"
 
-	java -jar \$VARSCAN fpfilter \
+	java -Xmx2G -XX:ParallelGCThreads=2 -jar \$VARSCAN fpfilter \
 	"${unzipped_hc_indel_vcf}" \
 	"${indel_readcount_file}" \
 	--filtered-file "${tumor_normal_sample_id}.indel.failed.vcf" \
