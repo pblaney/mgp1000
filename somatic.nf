@@ -122,6 +122,8 @@ def helpMessage() {
 	                                      [Default: 0.8]
 	  --controlfreec_ploidy          INT  Manually set the ploidy value
 	                                      [Default: 2 | Available: 3, 4]
+	  --controlfreec_contam_adj      STR  Indicates whether or not to set this parameter
+	                                      [Default: TRUE | Available: FALSE, TRUE]
 	  --sclust                       STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --sclust_minp                FLOAT  Manually set the minimal expected ploidy
@@ -198,6 +200,7 @@ params.battenberg_min_depth = 10
 params.controlfreec_read_length = 151
 params.controlfreec_bp_threshold = 0.8
 params.controlfreec_ploidy = 2
+params.controlfreec_contam_adj = "TRUE"
 params.sclust_minp = 1.5
 params.sclust_maxp = 4.5
 params.sclust_mutclustering = "on"
@@ -1883,7 +1886,7 @@ process cnvCalling_controlfreec {
 	echo "breakPointType = 2" >> "${control_freec_config_file}"
 	echo "chrFiles = \${PWD}/${autosome_sex_chromosome_fasta_dir}" >> "${control_freec_config_file}"
 	echo "chrLenFile = \${PWD}/${autosome_sex_chromosome_sizes}" >> "${control_freec_config_file}"
-	echo "contaminationAdjustment = TRUE" >> "${control_freec_config_file}"
+	echo "contaminationAdjustment = ${params.controlfreec_contam_adj}" >> "${control_freec_config_file}"
 	echo "forceGCcontentNormalization = 1" >> "${control_freec_config_file}"
 	echo "gemMappabilityFile = \${PWD}/\${gemFile}" >> "${control_freec_config_file}"
 	echo "minimalSubclonePresence = 20" >> "${control_freec_config_file}"
