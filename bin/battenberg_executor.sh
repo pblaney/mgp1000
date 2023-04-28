@@ -18,6 +18,12 @@ cpus=$7
 
 minDepth=$8
 
+presetRhoPis=$9
+
+rho=${10}
+
+psi=${11}
+
 # Update the path to the reference files for use
 sed -E 's|\$\{REF_PATH\}|'${PWD}'/battenberg_reference|g' battenberg_reference/impute_info.txt > battenberg_reference/imputation/impute_info.txt
 
@@ -40,4 +46,7 @@ Rscript --vanilla battenberg_wgs.R \
 --sex "${sex}" \
 -o "${outputDir}" \
 --cpu ${cpus} \
--g "hg38"
+-g "hg38" \
+--prp ${presetRhoPis} \
+--rho ${rho} \
+--psi ${psi}
