@@ -111,6 +111,13 @@ def helpMessage() {
 	                                      sample for SNP filtering in BAF calculations,
 	                                      default is for 30x coverage
 	                                      [Default: 10]
+	  --battenberg_preset_rho_psi    STR  Wish to manually set the rho/psi for this run?
+	                                      If TRUE, must set both rho and psi.
+	                                      [Default: FALSE | Available: FALSE, TRUE]
+	  --battenberg_preset_rho        INT  Manually set the value of rho (purity)
+	                                      [Default: NA]
+	  --battenberg_preset_psi        INT  Manually set the value of psi (ploidy)
+	                                      [Default: NA]
 	  --controlfreec                 STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --controlfreec_read_length     STR  Manually set the read length to be used for the
@@ -197,6 +204,9 @@ params.delly_strict = "off"
 params.igcaller = "on"
 params.conpair_min_cov = 10
 params.battenberg_min_depth = 10
+params.battenberg_preset_rho_psi = FALSE
+params.battenberg_preset_rho = NA
+params.battenberg_preset_psi = NA
 params.controlfreec_read_length = 151
 params.controlfreec_bp_threshold = 0.8
 params.controlfreec_ploidy = 2
@@ -1701,7 +1711,10 @@ process cnvCalling_battenberg {
   	"\${sex}" \
   	"${output_dir}" \
   	"${task.cpus}" \
-  	"${params.battenberg_min_depth}"
+  	"${params.battenberg_min_depth}" \
+  	${params.battenberg_preset_rho_psi} \
+    ${params.battenberg_preset_rho} \
+    ${params.battenberg_preset_psi}
 
   	cp "${output_dir}/${tumor_id}_subclones.txt" "${battenberg_cnv_profile}"
   	cp "${output_dir}/${tumor_id}_rho_and_psi.txt" "${battenberg_rho_and_psi}"
