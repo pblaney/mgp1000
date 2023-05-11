@@ -3138,11 +3138,6 @@ process consensusSnvMpileup_bcftools {
 	--annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP \
 	"${normal_bam}" "${tumor_bam}" \
 	| \
-	bcftools call \
-	--variants-only \
-	--multiallelic-caller \
-	--output-type v \
-	| \
 	bcftools norm \
 	--threads ${task.cpus} \
 	--multiallelics - \
@@ -3423,11 +3418,6 @@ process consensusIndelMpileup_bcftools {
 	--samples ${normal_id},${tumor_id} \
 	--annotate FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/DP \
 	"${normal_bam}" "${tumor_bam}" \
-	| \
-	bcftools call \
-	--variants-only \
-	--multiallelic-caller \
-	--output-type v \
 	| \
 	bcftools norm \
 	--threads ${task.cpus} \
