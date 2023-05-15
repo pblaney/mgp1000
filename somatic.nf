@@ -2783,6 +2783,7 @@ process prepGermlineBedForCaveman_bedops {
 // Combine all needed reference FASTA files into one channel for CaVEMan processes
 reference_genome_fasta_forCaveman.combine( reference_genome_fasta_index_forCaveman )
 	.combine( reference_genome_fasta_dict_forCaveman )
+	.set{ reference_genome_bundle_forCaveman }
 
 // CaVEMan setup ~ generate configuration files for all execution steps
 process setup_caveman {
