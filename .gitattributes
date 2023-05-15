@@ -23,3 +23,11 @@ references/hg38/mappability_track_85m2.hg38.zip filter=lfs diff=lfs merge=lfs -t
 references/hg38/mappability_track_150m2.hg38.zip filter=lfs diff=lfs merge=lfs -text
 references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed filter=lfs diff=lfs merge=lfs -text
 references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.interval_list filter=lfs diff=lfs merge=lfs -text
+references/hg38/centromeric_repeats.hg38.bed.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/centromeric_repeats.hg38.bed.gz.tbi filter=lfs diff=lfs merge=lfs -text
+references/hg38/simple_repeats.hg38.bed.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/simple_repeats.hg38.bed.gz.tbi filter=lfs diff=lfs merge=lfs -text
+references/hg38/dbsnp138.hg38.bed.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/dbsnp138.hg38.bed.gz.tbi filter=lfs diff=lfs merge=lfs -text
+references/hg38/unmatchedNormal.bed.gz filter=lfs diff=lfs merge=lfs -text
+references/hg38/unmatchedNormal.bed.gz.tbi filter=lfs diff=lfs merge=lfs -text
