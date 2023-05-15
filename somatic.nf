@@ -257,6 +257,7 @@ Channel
 	       reference_genome_fasta_forManta;
 	       reference_genome_fasta_forStrelka;
 	       reference_genome_fasta_forStrelkaBcftools;
+	       reference_genome_fasta_forCaveman;
 	       reference_genome_fasta_forSvabaBcftools;
 	       reference_genome_fasta_forDelly;
 	       reference_genome_fasta_forIgCaller;
@@ -282,6 +283,7 @@ Channel
 	       reference_genome_fasta_index_forManta;
 	       reference_genome_fasta_index_forStrelka;
 	       reference_genome_fasta_index_forStrelkaBcftools;
+	       reference_genome_fasta_index_forCaveman;
 	       reference_genome_fasta_index_forSvabaBcftools;
 	       reference_genome_fasta_index_forDelly;
 	       reference_genome_fasta_index_forIgCaller;
@@ -306,6 +308,7 @@ Channel
 	       reference_genome_fasta_dict_forManta;
 	       reference_genome_fasta_dict_forStrelka;
 	       reference_genome_fasta_dict_forStrelkaBcftools;
+	       reference_genome_fasta_dict_forCaveman;
 	       reference_genome_fasta_dict_forSvaba;
 	       reference_genome_fasta_dict_forSvabaBcftools;
 	       reference_genome_fasta_dict_forDelly;
@@ -338,7 +341,8 @@ Channel
 	       chromosome_list_forMutectPileup;
 	       chromosome_list_forControlFreecSamtoolsMpileup;
 	       chromosome_list_forControlFreecMerge;
-	       chromosome_list_forSclustBamprocess }
+	       chromosome_list_forSclustBamprocess;
+	       chromosome_list_forCavemanSplit }
 
 Channel
 	.fromPath( 'references/hg38/sex_identification_loci.chrY.hg38.txt' )
