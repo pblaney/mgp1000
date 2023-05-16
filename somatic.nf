@@ -3046,7 +3046,7 @@ process splitConcat_caveman {
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
-	.splitText(elem: 18, by:1)
+	.splitText(elem: 19, by:1)
 	.set{ input_forCavemanMstep }
 
 // CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
