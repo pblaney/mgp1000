@@ -3109,7 +3109,7 @@ process mstep_caveman {
 	-unmatched-vcf "${unmatched_normal}" \
 	-seqType genome \
 	-threads ${task.cpus} \
-	-normal-contamination ${normal_contamination} \
+	-normal-contamination \${normal_contamination} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 3000000 \
 	-process mstep \
@@ -3182,7 +3182,7 @@ process merge_caveman {
 	-unmatched-vcf "${unmatched_normal}" \
 	-seqType genome \
 	-threads ${task.cpus} \
-	-normal-contamination ${normal_contamination} \
+	-normal-contamination \${normal_contamination} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 3000000 \
 	-process merge \
