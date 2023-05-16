@@ -2881,7 +2881,7 @@ process setup_caveman {
 
 	touch "${normal_cnv_profile_bed}"
 
-	normal_contamination="\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') / 100"
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
 
 	caveman.pl \
 	-outdir . \
@@ -2947,7 +2947,7 @@ process split_caveman {
 	mkdir -p tmpCaveman/
 	mv "${config_file}" tmpCaveman/
 
-	normal_contamination="\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') / 100"
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
 
 	i=\$(grep -wn "${chromosome}" "${reference_genome_fasta_index_forCaveman}" | cut -f 1 | cut -d ':' -f 1)
 
@@ -3016,7 +3016,7 @@ process splitConcat_caveman {
 	mv splitList.chr* tmpCaveman/
 	mv readpos.chr* tmpCaveman/
 
-	normal_contamination="\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') / 100"
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
 
 	caveman.pl \
 	-outdir . \
