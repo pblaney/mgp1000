@@ -3275,7 +3275,7 @@ process snvCalling_caveman {
 setup_forCavemanFlag.join(split_per_chromosome_forCavemanFlag.groupTuple())
 	.join(raw_vcfs_forCavemanFlag.groupTuple())
 	.join(split_concat_forCavemanFlag)
-	.splitText(elem: 19, by:1)
+	.splitText(elem: 20, by:1)
 	.set{ input_forCavemanFlag }
 
 // CaVEMan flag ~ apply filtering on raw VCF calls generated using CaVEMan
