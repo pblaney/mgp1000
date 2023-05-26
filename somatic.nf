@@ -3346,7 +3346,7 @@ process flag_caveman {
 		done
 
 	mkdir -p "${flag_results_directory_per_index}"
-	cp -a results_estep_${index}/* "${flag_results_directory_per_index}/"
+	cp -a results_estep_${index}/* "${flag_results_directory_per_index}"
 	"""
 }
 
@@ -3356,7 +3356,7 @@ process mergeResults_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(flag_results_directory_per_index) from setup_forCavemanResults.join(split_per_chromosome_forCavemanResults.groupTuple()).join(split_concat_forCavemanResults).join(postprocessing_output_forCavemanResults.groupTuple())
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(flag_results_directory_per_index) from setup_forCavemanResults.join(split_per_chromosome_forCavemanResults.groupTuple()).join(split_concat_forCavemanResults).join(postprocessing_output_forCavemanResults.groupTuple())
 	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
@@ -3392,7 +3392,7 @@ process mergeResults_caveman {
 	mv splitList.chr* tmpCaveman/
 	mv readpos.chr* tmpCaveman/
 	mkdir -p tmpCaveman/results
-	cp -a results_flag_*/* tmpCaveman/results/
+	cp -a results_flag_*/*/* tmpCaveman/results/
 
 	mergeCavemanResults \
 	--output "${tumor_normal_sample_id}.caveman.somatic.vcf" \
