@@ -192,7 +192,7 @@ params.conpair = "on"
 params.varscan = "on"
 params.mutect = "on"
 params.strelka = "on"
-params.caveman = "on"
+params.caveman = "off"
 params.fragcounter = "on"
 params.battenberg = "on"
 params.controlfreec = "on"
@@ -494,9 +494,6 @@ if( params.vep_ref_cached == "yes" ) {
 		.set{ vep_ref_dir_preDownloaded }
 }
 
-
-
-
 Channel
 	.value( file('references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed') )
 	.set{ gatk_bundle_wgs_bed_blacklist_1based_forCaveman }
@@ -532,9 +529,6 @@ Channel
 Channel
 	.value( file('references/hg38/dbsnp138.hg38.bed.gz.tbi') )
 	.set{ dbsnp_bed_index }
-
-
-
 
 
 // #################################################### \\
@@ -2718,25 +2712,6 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~ \\
 // START
 
@@ -3410,21 +3385,6 @@ process mergeResults_caveman {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
