@@ -3041,12 +3041,12 @@ process igRearrangementsAndTranslocations_igcaller {
     tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forIgCaller), path(reference_genome_fasta_index_forIgCaller), path(reference_genome_fasta_dict_forIgCaller) from tumor_normal_pair_forIgCaller.combine(reference_genome_bundle_forIgCaller)
      
     output:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(igcaller_oncogenic_rearrangements_tsv) into igcaller_onco_tsv_forConsensus
     path igcaller_csr_tsv
     path igcaller_igk_tsv
     path igcaller_igl_tsv
     path igcaller_igh_tsv
     path igcaller_filtered_calls_tsv
-    path igcaller_oncogenic_rearrangements_tsv
 
     when:
     params.igcaller == "on"
@@ -3108,7 +3108,7 @@ process unionAndConsensusSnvCalls_devgru {
     hq_union_consensus_snv_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt"
     hq_union_consensus_snv_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.rds"
     """
-    union_consensus_polisher.R \
+    snvindel_union_consensus_polisher.R \
     . \
     snv \
     . \
@@ -3137,7 +3137,7 @@ process unionAndConsensusIndelCalls_devgru {
     hq_union_consensus_indel_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt"
     hq_union_consensus_indel_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.rds"
     """
-    union_consensus_polisher.R \
+    snvindel_union_consensus_polisher.R \
     . \
     indel \
     . \
@@ -3162,7 +3162,7 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed), path(facets_somatic_cnv_bed), path(facets_somatic_alleles_bed) from final_battenberg_cnv_profile_forConsensus.join(final_facets_cnv_profile_forConsensus)
 
     output:
-    #tuple val(tumor_normal_sample_id), path(two_way_consensus_merged_cnv_alleles_bed) into two_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+    //tuple val(tumor_normal_sample_id), path(two_way_consensus_merged_cnv_alleles_bed) into two_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
     when:
     params.battenberg == "on" && params.facets == "on"
@@ -3262,6 +3262,18 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
 
 // ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
 // START
+
+
+
+
+
+
+
+
+
+
+
+
 
 // SURVIVOR ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_survivor {
