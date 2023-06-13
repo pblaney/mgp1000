@@ -83,22 +83,6 @@ def helpMessage() {
 	  --help                        FLAG  Prints this message
 
 	Toolbox Options:
-	  --telomerecat                  STR  Indicates whether or not to use this tool
-	                                      [Default: off | Available: off, on]
-	  --telomerehunter               STR  Indicates whether or not to use this tool
-	                                      [Default: off | Available: off, on]
-	  --conpair                      STR  Indicates whether or not to use this tool
-	                                      [Default: on | Available: off, on]
-	  --conpair_min_cov              INT  Manually set the minimum coverage
-	                                      [Default: 10]
-	  --varscan                      STR  Indicates whether or not to use this tool
-	                                      [Default: on | Available: off, on]
-	  --mutect                       STR  Indicates whether or not to use this tool
-	                                      [Default: on | Available: off, on]
-	  --strelka                      STR  Indicates whether or not to use this tool
-	                                      [Default: on | Available: off, on]
-	  --fragcounter                  STR  Indicates whether or not to use this tool
-	                                      [Default: on | Available: off, on]
 	  --battenberg                   STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --battenberg_min_depth         STR  Manually set the minimum read depth in the normal
@@ -130,6 +114,22 @@ def helpMessage() {
 	                                      [Default: off | Available: off, on]
 	  --igcaller                     STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
+	  --varscan                      STR  Indicates whether or not to use this tool
+	                                      [Default: on | Available: off, on]
+	  --mutect                       STR  Indicates whether or not to use this tool
+	                                      [Default: on | Available: off, on]
+	  --strelka                      STR  Indicates whether or not to use this tool
+	                                      [Default: on | Available: off, on]
+	  --conpair                      STR  Indicates whether or not to use this tool
+	                                      [Default: on | Available: off, on]
+	  --conpair_min_cov              INT  Manually set the minimum coverage
+	                                      [Default: 10]
+	  --fragcounter                  STR  Indicates whether or not to use this tool
+	                                      [Default: on | Available: off, on]
+	  --telomerecat                  STR  Indicates whether or not to use this tool
+	                                      [Default: off | Available: off, on]
+	  --telomerehunter               STR  Indicates whether or not to use this tool
+	                                      [Default: off | Available: off, on]
 
 	""".stripIndent()
 }
@@ -188,6 +188,18 @@ if( params.sample_sheet == null ) exit 1, "The run command issued does not have 
 if( params.strelka == "on" && params.manta == "off" ) exit 1, "Strelka requires output from Manta to run so both must be turned on"
 
 // Set channels for reference files
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.fasta') )
+    .set{ ref_genome_fasta_file }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.fasta.fai') )
+    .set{ ref_genome_fasta_index_file }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.dict') )
+    .set{ ref_genome_fasta_dict_file }
+
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta' )
 	.into{ reference_genome_fasta_forConpairPileup;
@@ -549,160 +561,960 @@ process identifySampleSex_allelecount {
 	"""
 }
 
-// Telomerecat bam2length ~  estimating the average telomere length
-process telomereLengthEstimation_telomerecat {
-    publishDir "${params.output_dir}/somatic/telomerecat", mode: 'copy', pattern: '*.{csv}'
+
+// ~~~~~~~~~~~~~~~ Battenberg ~~~~~~~~~~~~~~ \\
+// START
+
+// Battenberg ~ download the reference files needed to run Battenberg
+process downloadBattenbergReferences_battenberg {
+  	publishDir "references/hg38", mode: 'copy'
+
+  	output:
+  	path battenberg_references into battenberg_ref_dir_fromProcess
+
+  	when:
+  	params.battenberg == "on" && params.battenberg_ref_cached == "no"
+
+  	script:
+  	battenberg_references = "battenberg_reference/"
+  	"""
+  	mkdir -p ${battenberg_references}
+  	cd ${battenberg_references}/
+  	mkdir -p temp/
+  	mkdir -p GC_correction_hg38/
+  	mkdir -p RT_correction_hg38/
+  	mkdir -p shapeit2/
+  	mkdir -p imputation/
+  	mkdir -p 1000G_loci_hg38/
+  	mkdir -p probloci/
+  	mkdir -p beagle5/
+
+  	battenberg_reference_downloader.sh
+  	"""
+}
+
+// Depending on whether the reference files used for Battenberg was pre-downloaded, set the input
+// channel for the Battenberg process
+if( params.battenberg_ref_cached == "yes" ) {
+	battenberg_ref_dir = battenberg_ref_dir_preDownloaded
+}
+else {
+	battenberg_ref_dir = battenberg_ref_dir_fromProcess
+}
+
+// Battenberg ~ whole genome sequencing subclonal copy number caller
+process cnvCalling_battenberg {
+  	publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
+  	tag "${tumor_normal_sample_id}"
+
+  	input:
+  	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(battenberg_references) from bams_and_sex_of_sample_forBattenberg.combine(battenberg_ref_dir)
+
+  	output:
+  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) into final_battenberg_cnv_profile_forConsensusPrep
+  	tuple path(battenberg_rho_and_psi), path(battenberg_purity_and_ploidy), path(battenberg_cnv_profile_png)
+  	path "${output_dir}/*.tumour.png"
+  	path "${output_dir}/*.germline.png"
+  	path "${output_dir}/*_distance.png"
+  	path "${output_dir}/*_coverage.png"
+  	path "${output_dir}/*_alleleratio.png"
+  	path "${output_dir}/*_BattenbergProfile_subclones.png"
+  	path "${output_dir}/*chr*_heterozygousData.png"
+  	path "${output_dir}/*_nonroundedprofile.png"
+  	path "${output_dir}/*_segment_chr*.png"
+  	path "${output_dir}/*_GCwindowCorrelations_*Correction.txt"
+  	path "${output_dir}/*_refit_suggestion.txt"
+  	path "${output_dir}/*_segment_masking_details.txt"
+  	path "${output_dir}/*_subclones_alternatives.txt"
+  	path "${output_dir}/*_subclones_chr*.png"
+  	path "${output_dir}/*_totalcn_chrom_plot.png"
+  	path "${output_dir}/*_copynumberprofile.png"
+  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) into tumor_cnv_profile_forCaveman
+
+  	when:
+  	params.battenberg == "on"
+
+  	script:
+  	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+  	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+  	output_dir = "${tumor_normal_sample_id}_results"
+  	battenberg_cnv_profile = "${tumor_normal_sample_id}.battenberg.cnv.txt"
+  	battenberg_rho_and_psi = "${tumor_normal_sample_id}.battenberg.rho.psi.txt"
+  	battenberg_purity_and_ploidy = "${tumor_normal_sample_id}.battenberg.purity.ploidy.txt"
+  	battenberg_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.cnv.png"
+  	"""
+  	cp /opt/downloads/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
+
+  	sex=\$(cut -d ' ' -f 1 "${sample_sex}")
+
+  	battenberg_executor.sh \
+  	"${tumor_id}" \
+  	"${normal_id}" \
+  	"${tumor_bam}" \
+  	"${normal_bam}" \
+  	"\${sex}" \
+  	"${output_dir}" \
+  	"${task.cpus}" \
+  	"${params.battenberg_min_depth}" \
+  	${params.battenberg_preset_rho_psi} \
+    ${params.battenberg_preset_rho} \
+    ${params.battenberg_preset_psi}
+
+  	cp "${output_dir}/${tumor_id}_subclones.txt" "${battenberg_cnv_profile}"
+  	cp "${output_dir}/${tumor_id}_rho_and_psi.txt" "${battenberg_rho_and_psi}"
+  	cp "${output_dir}/${tumor_id}_purity_ploidy.txt" "${battenberg_purity_and_ploidy}"
+  	cp "${output_dir}/${tumor_id}_BattenbergProfile_average.png" "${battenberg_cnv_profile_png}"
+  	"""
+}
+
+// Battenberg Consensus CNV Prep ~ extract and prepare CNV output for consensus
+process consensusCnvPrep_battenberg {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forTelomerecat
+    tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
 
     output:
-    path normal_telomere_estimates
-    path tumor_telomere_estimates
+    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed) into final_battenberg_cnv_profile_forConsensus
+    tuple val(tumor_normal_sample_id), path(battenberg_subclones_file) into battenberg_subclones_forConsensusSubclones
 
     when:
-    params.telomerecat == "on"
+    params.battenberg == "on"
+
+    script:
+    battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
+    battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
+    battenberg_subclones_file = "${tumor_normal_sample_id}.battenberg.subclones.txt"
+    """
+    battenberg_clonal_and_subclonal_extractor.py \
+    <(grep -v 'startpos' "${battenberg_cnv_profile}" | cut -f 1-3,8-13) \
+    "${battenberg_somatic_cnv_bed}" \
+    "${battenberg_somatic_alleles_bed}" \
+    "${battenberg_subclones_file}"
+    """
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~~ FACETS ~~~~~~~~~~~~~~~~ \\
+// START
+
+// FACETS ~ generate SNP read count pileups for CNV calling
+process snpPileup_facets {
+    publishDir "${params.output_dir}/somatic/facets", mode: 'copy'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(common_dbsnp_sites_vcf), path(common_dbsnp_sites_vcf_index) from bams_forFacetsPileup.combine(common_dbsnp_ref_vcf_forFacets).combine(common_dbsnp_ref_vcf_index_forFacets)
+
+    output:
+    tuple val(tumor_normal_sample_id), path(facets_snp_pileup) into snp_pileup_forFacets
+
+    when:
+    params.facets == "on"
 
     script:
     tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
     normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
     tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-    normal_telomere_estimates = "${normal_id}.telomerecat.csv"
-    tumor_telomere_estimates = "${tumor_id}.telomerecat.csv"
+    facets_snp_pileup = "${tumor_normal_sample_id}.facets.snp_pileup.csv.gz"
     """
-    telomerecat bam2length \
-    -p ${task.cpus} \
-    -v 1 \
-    --output "${tumor_telomere_estimates}" \
+    snp-pileup \
+    --gzip \
+    --min-map-quality 15 \
+    --min-base-quality 20 \
+    --pseudo-snps 100 \
+    --min-read-counts ${params.facets_min_depth} \
+    "${common_dbsnp_sites_vcf}" \
+    "${facets_snp_pileup}" \
+    "${normal_bam}" \
     "${tumor_bam}"
-
-    telomerecat bam2length \
-    -p ${task.cpus} \
-    -v 1 \
-    --output "${normal_telomere_estimates}" \
-    "${normal_bam}"
     """
 }
 
-// TelomereHunter ~ estimate telomere content and composition
-process telomereEstimation_telomerehunter {
-	publishDir "${params.output_dir}/somatic/telomereHunter", mode: 'copy'
-	tag "${tumor_normal_sample_id}"
+// FACETS ~ fraction and copy number estimate from tumor/normal sequencing
+process cnvCalling_facets {
+    publishDir "${params.output_dir}/somatic/facets", mode: 'copy'
+    tag "${tumor_normal_sample_id}"
 
-	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cytoband_bed) from tumor_normal_pair_forTelomereHunter.combine(cytoband_bed)
+    input:
+    tuple val(tumor_normal_sample_id), path(facets_snp_pileup) from snp_pileup_forFacets
 
-	output:
-	path "${tumor_normal_sample_id}/*.tsv"
-	path "${tumor_normal_sample_id}/*.png"
-	path "${tumor_normal_sample_id}/control_TelomerCnt_${tumor_normal_sample_id}/*.tsv"
-	path "${tumor_normal_sample_id}/control_TelomerCnt_${tumor_normal_sample_id}/TVRs"
-	path "${tumor_normal_sample_id}/tumor_TelomerCnt_${tumor_normal_sample_id}/*.tsv"
-	path "${tumor_normal_sample_id}/tumor_TelomerCnt_${tumor_normal_sample_id}/TVRs"
-	path "${tumor_normal_sample_id}/plots"
+    output:
+    tuple val(tumor_normal_sample_id), path(facets_cnv_profile) into facets_cnv_profile_forConsensusPrep
+    path facets_purity_ploidy
+    path facets_run_log
+    path facets_cnv_pdf
+    path facets_spider_qc_pdf
 
-	when:
-	params.telomerehunter == "on"
+    when:
+    params.facets == "on"
 
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	"""
-	telomerehunter \
-	--inputBamTumor "${tumor_bam}" \
-	--inputBamControl "${normal_bam}" \
-	--outPath . \
-	--pid "${tumor_normal_sample_id}" \
-	--bandingFile "${cytoband_bed}" \
-	--parallel \
-	--plotFileFormat png
-	"""
+    script:
+    facets_run_log = "${tumor_normal_sample_id}.facets.log.txt"
+    facets_purity_ploidy = "${tumor_normal_sample_id}.facets.purity.ploidy.txt"
+    facets_cnv_profile = "${tumor_normal_sample_id}.facets.cnv.txt"
+    facets_cnv_pdf = "${tumor_normal_sample_id}.facets.cnv.pdf"
+    facets_spider_qc_pdf = "${tumor_normal_sample_id}.facets.spider.pdf"
+    """
+    Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
+    "${facets_snp_pileup}" \
+    hg38 \
+    1000 \
+    35 \
+    150 \
+    300 \
+    ${params.facets_min_depth}
+
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_stats.txt" "${facets_purity_ploidy}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.txt" "${facets_cnv_profile}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.pdf" "${facets_cnv_pdf}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV_spider.pdf" "${facets_spider_qc_pdf}"
+    """
 }
 
-// ~~~~~~~~~~~~~~~~ Conpair ~~~~~~~~~~~~~~~~ \\
+// FACETS ~ fraction and copy number estimate from tumor/normal sequencing
+process consensusCnvPrep_facets {
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(facets_cnv_profile) from facets_cnv_profile_forConsensusPrep
+
+    output:
+    tuple val(tumor_normal_sample_id), path(facets_somatic_cnv_bed), path(facets_somatic_alleles_bed) into final_facets_cnv_profile_forConsensus
+
+    when:
+    params.facets == "on"
+
+    script:
+    facets_somatic_cnv_bed = "${tumor_normal_sample_id}.facets.somatic.cnv.bed"
+    facets_somatic_alleles_bed = "${tumor_normal_sample_id}.facets.somatic.alleles.bed"
+    """
+    facets_cnv_profile_postprocesser.sh \
+    "${facets_cnv_profile}" \
+    "${tumor_normal_sample_id}" \
+    "${facets_somatic_cnv_bed}" \
+    "${facets_somatic_alleles_bed}"
+    """
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all reference FASTA files into one channel for use in Conpair Pileup process
-reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_forConpairPileup )
-	.combine( reference_genome_fasta_dict_forConpairPileup )
-	.set{ reference_genome_bundle_forConpairPileup }
+// Combine all needed reference FASTA files and WGS BED into one channel for use in Manta process
+reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
+	.combine( reference_genome_fasta_dict_forManta )
+	.combine( gatk_bundle_wgs_bed_forManta )
+	.set{ reference_genome_bundle_and_bed_forManta }
 
-// Conpair run_gatk_pileup_for_sample ~ generate GATK pileups the tumor and normal BAMs separately
-process bamPileupForConpair_conpair {
+// Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
+process svAndIndelCalling_manta {
+	publishDir "${params.output_dir}/somatic/manta", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forConpairPileup), path(reference_genome_fasta_index_forConpairPileup), path(reference_genome_fasta_dict_forConpairPileup) from tumor_normal_pair_forConpairPileup.combine(reference_genome_bundle_forConpairPileup)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forManta), path(reference_genome_fasta_index_forManta), path(reference_genome_fasta_dict_forManta), path(gatk_bundle_wgs_bed_forManta) from tumor_normal_pair_forManta.combine(reference_genome_bundle_and_bed_forManta)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into bam_pileups_forConpair
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
+	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) into manta_sv_vcf_forPostprocessing
+	tuple val(tumor_normal_sample_id), path(tumor_bam) into manta_tumor_bam_forDuphold
+	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
+	tuple path(germline_sv_vcf), path(germline_sv_vcf_index)
+	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) into germline_indel_vcf_forCaveman
 
 	when:
-	params.conpair == "on"
+	params.manta == "on"
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	tumor_pileup = "${tumor_id}.pileup"
-	normal_pileup = "${normal_id}.pileup"
-	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
+	zipped_wgs_bed_forManta = "${gatk_bundle_wgs_bed_forManta}.gz"
+	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unfiltered.vcf.gz"
+	manta_somatic_config = "${tumor_normal_sample_id}.manta.somatic.config.ini"
+	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
+	germline_sv_vcf = "${tumor_normal_sample_id}.manta.germline.sv.vcf.gz"
+	germline_sv_vcf_index = "${germline_sv_vcf}.tbi"
+	candidate_indel_vcf = "${tumor_normal_sample_id}.manta.somatic.indels.unfiltered.vcf.gz"
+	candidate_indel_vcf_index = "${candidate_indel_vcf}.tbi"
+	manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unprocessed.vcf.gz"
+	manta_somatic_sv_vcf_index = "${manta_somatic_sv_vcf}.tbi"
 	"""
-	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
-	--xmx_jav "${task.memory.toGiga()}g" \
-	--bam "${tumor_bam}" \
-	--outfile "${tumor_pileup}" \
-	--reference "${reference_genome_fasta_forConpairPileup}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
+	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed_forManta}"
+	tabix "${zipped_wgs_bed_forManta}"
 
-	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
-	--xmx_jav "${task.memory.toGiga()}g" \
-	--bam "${normal_bam}" \
-	--outfile "${normal_pileup}" \
-	--reference "${reference_genome_fasta_forConpairPileup}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
+	touch "${manta_somatic_config}"
+	cat \${MANTA_DIR}/bin/configManta.py.ini \
+	| \
+	sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
+	| \
+	sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
+	| \
+	sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
+
+	python \${MANTA_DIR}/bin/configManta.py \
+	--tumorBam "${tumor_bam}" \
+	--normalBam "${normal_bam}" \
+	--referenceFasta "${reference_genome_fasta_forManta}" \
+	--callRegions "${zipped_wgs_bed_forManta}" \
+	--config "${manta_somatic_config}" \
+	--runDir manta
+
+	python manta/runWorkflow.py \
+	--mode local \
+	--jobs ${task.cpus} \
+	--memGb ${task.memory.toGiga()}
+
+	mv manta/results/variants/candidateSV.vcf.gz "${unfiltered_sv_vcf}"
+	mv manta/results/variants/candidateSV.vcf.gz.tbi "${unfiltered_sv_vcf_index}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz "${candidate_indel_vcf}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi "${candidate_indel_vcf_index}"
+
+	zcat manta/results/variants/diploidSV.vcf.gz \
+	| \
+	grep -E "^#|PASS" \
+	| \
+	bgzip > "${germline_sv_vcf}"
+	tabix "${germline_sv_vcf}"
+
+	zcat manta/results/variants/somaticSV.vcf.gz \
+	| \
+	grep -E "^#|PASS" > somaticSV.passonly.vcf
+
+	\${MANTA_DIR}/libexec/convertInversion.py \
+	\${MANTA_DIR}/libexec/samtools \
+	"${reference_genome_fasta_forManta}" \
+	somaticSV.passonly.vcf \
+	| \
+	bgzip > "${manta_somatic_sv_vcf}"
+	tabix "${manta_somatic_sv_vcf}"
 	"""
 }
 
-// Conpair verify_concordance / estimate_tumor_normal_contamination ~ concordance and contamination estimator for tumor–normal pileups
-process concordanceAndContaminationEstimation_conpair {
-	publishDir "${params.output_dir}/somatic/conpair", mode: 'copy', pattern: '*.{txt}'
+// BCFtools filter / view ~ filter out additional false positives based on alternative variant reads in normal sample, prepare VCF for SURVIVOR
+process filterAndPostprocessMantaVcf_bcftools {
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
+
+    output:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forDuphold
+    tuple val(tumor_normal_sample_id), path(final_manta_somatic_sv_read_support) into manta_sv_read_support_forAnnotation
+
+    when:
+    params.manta == "on"
+
+    script:
+    final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf"
+    final_manta_somatic_sv_read_support = "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt"
+    """
+    touch name.txt
+    echo "${normal_id}" >> name.txt
+
+    bcftools filter \
+    --output-type z \
+    --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
+    --output-file "${final_manta_somatic_sv_vcf}" \
+    "${manta_somatic_sv_vcf}" 
+
+    bcftools query \
+    --format '%ID\t[%PR{1}]\t[%SR{1}]\n' \
+    --output "${final_manta_somatic_sv_read_support}" \
+    "${final_manta_somatic_sv_vcf}"
+    """
+}
+
+// duphold ~ efficiently annotate SV calls with sequence depth information to reduce false positive deletion and duplication calls
+process falsePostiveSvFilteringManta_duphold {
+    publishDir "${params.output_dir}/somatic/manta", mode: 'copy', pattern: '*.{vcf.gz}'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(final_manta_somatic_sv_vcf) from manta_tumor_bam_forDuphold.join(manta_sv_vcf_forDuphold)
+    path ref_genome_fasta from ref_genome_fasta_file
+    path ref_genome_fasta_index from ref_genome_fasta_index_file
+    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+
+    output:
+    tuple val(tumor_normal_sample_id), path(mutect_filtered_final_sv_vcf) into mutect_filtered_final_sv_vcf_forConsensus
+
+    when:
+    params.manta == "on"
+
+    script:
+    mutect_filtered_final_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.final.vcf.gz"
+    """
+    duphold \
+    --vcf "${final_manta_somatic_sv_vcf}" \
+    --bam "${tumor_bam}" \
+    --fasta "${ref_genome_fasta}" \
+    --threads ${task.cpus} \
+    --output "${tumor_normal_sample_id}.manta.somatic.sv.fpmarked.vcf"
+
+    # Filter using recommended thresholds for DEL/DUP
+    bcftools filter \
+    --output-type u \
+    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
+    "${tumor_normal_sample_id}.manta.somatic.sv.fpmarked.vcf" \
+    | \
+    bcftools filter \
+    --output-type z \
+    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
+    --output "${mutect_filtered_final_sv_vcf}"
+    """
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~ Strelka2 ~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all needed reference FASTA files and WGS BED into one channel for use in Strelka process
+reference_genome_fasta_forStrelka.combine( reference_genome_fasta_index_forStrelka )
+	.combine( reference_genome_fasta_dict_forStrelka )
+	.combine( gatk_bundle_wgs_bed_forStrelka )
+	.set{ reference_genome_bundle_and_bed_forStrelka }
+
+// Strelka2 ~ call germline and somatic small variants from mapped sequencing reads
+process snvAndIndelCalling_strelka {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from bam_pileups_forConpair
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index), path(reference_genome_fasta_forStrelka), path(reference_genome_fasta_index_forStrelka), path(reference_genome_fasta_dict_forStrelka), path(gatk_bundle_wgs_bed_forStrelka) from bams_and_candidate_indel_vcf_forStrelka.combine(reference_genome_bundle_and_bed_forStrelka)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(conpair_concordance_file), path(conpair_contamination_file) into conpair_output_forConsensusMetadata
-	tuple val(tumor_normal_sample_id), path(conpair_contamination_file) into normal_contamination_forCaveman
+	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index) into unfiltered_snv_and_indel_vcfs_forStrelkaBcftools
 
 	when:
-	params.conpair == "on"
-	
-	script:
-	conpair_concordance_file = "${tumor_normal_sample_id}.conpair.concordance.txt"
-	conpair_contamination_file = "${tumor_normal_sample_id}.conpair.contamination.txt"
-	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
-	"""
-	\${CONPAIR_DIR}/scripts/verify_concordance.py \
-	--min_cov ${params.conpair_min_cov} \
-	--min_mapping_quality 10 \
-	--min_base_quality 20 \
-	--tumor_pileup "${tumor_pileup}" \
-	--normal_pileup "${normal_pileup}" \
-	--outfile "${conpair_concordance_file}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
+	params.strelka == "on" && params.manta == "on"
 
-	\${CONPAIR_DIR}/scripts/estimate_tumor_normal_contamination.py \
-	--grid 0.01 \
-	--min_mapping_quality 10 \
-	--tumor_pileup "${tumor_pileup}" \
-	--normal_pileup "${normal_pileup}" \
-	--outfile "${conpair_contamination_file}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
+	script:
+	zipped_wgs_bed_forStrelka = "${gatk_bundle_wgs_bed_forStrelka}.gz"
+	unfiltered_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.unfiltered.vcf.gz"
+	unfiltered_strelka_snv_vcf_index = "${unfiltered_strelka_snv_vcf}.tbi"
+	unfiltered_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.unfiltered.vcf.gz"
+	unfiltered_strelka_indel_vcf_index = "${unfiltered_strelka_indel_vcf}.tbi"
 	"""
+	bgzip < "${gatk_bundle_wgs_bed_forStrelka}" > "${zipped_wgs_bed_forStrelka}"
+	tabix "${zipped_wgs_bed_forStrelka}"
+
+	python \${STRELKA_DIR}/bin/configureStrelkaSomaticWorkflow.py \
+	--normalBam "${normal_bam}" \
+	--tumorBam "${tumor_bam}" \
+	--referenceFasta "${reference_genome_fasta_forStrelka}" \
+	--indelCandidates "${candidate_indel_vcf}" \
+	--callRegions "${zipped_wgs_bed_forStrelka}" \
+	--runDir strelka
+
+	python strelka/runWorkflow.py \
+	--mode local \
+	--jobs ${task.cpus} \
+	--memGb ${task.memory.toGiga()}
+
+	mv strelka/results/variants/somatic.snvs.vcf.gz "${unfiltered_strelka_snv_vcf}"
+	mv strelka/results/variants/somatic.snvs.vcf.gz.tbi "${unfiltered_strelka_snv_vcf_index}"
+	mv strelka/results/variants/somatic.indels.vcf.gz "${unfiltered_strelka_indel_vcf}"
+	mv strelka/results/variants/somatic.indels.vcf.gz.tbi "${unfiltered_strelka_indel_vcf_index}"
+	"""
+}
+
+// Combine all needed reference FASTA files into one channel for use in Strelka / BCFtools Norm process
+reference_genome_fasta_forStrelkaBcftools.combine( reference_genome_fasta_index_forStrelkaBcftools )
+	.combine( reference_genome_fasta_dict_forStrelkaBcftools )
+	.set{ reference_genome_bundle_forStrelkaBcftools }
+
+// BCFtools norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
+process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
+	publishDir "${params.output_dir}/somatic/strelka", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index), path(reference_genome_fasta_forStrelkaBcftools), path(reference_genome_fasta_index_forStrelkaBcftools), path(reference_genome_fasta_dict_forStrelkaBcftools) from unfiltered_snv_and_indel_vcfs_forStrelkaBcftools.combine(reference_genome_bundle_forStrelkaBcftools)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(final_strelka_snv_vcf) into final_strelka_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_strelka_indel_vcf) into final_strelka_indel_vcf_forConsensus
+	path strelka_snv_multiallelics_stats
+	path strelka_indel_multiallelics_stats
+	path strelka_indel_realign_normalize_stats
+
+	when:
+	params.strelka == "on" && params.manta == "on"
+
+	script:
+	final_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.vcf.gz"
+	final_strelka_snv_vcf_index ="${final_strelka_snv_vcf}.tbi"
+	final_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.vcf.gz"
+	final_strelka_indel_vcf_index = "${final_strelka_indel_vcf}.tbi"
+	strelka_snv_multiallelics_stats = "${tumor_normal_sample_id}.strelka.snv.multiallelicsstats.txt"
+	strelka_indel_multiallelics_stats = "${tumor_normal_sample_id}.strelka.indel.multiallelicsstats.txt"
+	strelka_indel_realign_normalize_stats = "${tumor_normal_sample_id}.strelka.indel.realignnormalizestats.txt"
+	"""
+	zgrep -E "^#|PASS" "${unfiltered_strelka_snv_vcf}" \
+	| \
+	bcftools norm \
+	--threads ${task.cpus} \
+	--multiallelics -snps \
+	--output-type z \
+	--output "${final_strelka_snv_vcf}" \
+	- 2>"${strelka_snv_multiallelics_stats}"
+
+	tabix "${final_strelka_snv_vcf}"
+	
+	zgrep -E "^#|PASS" "${unfiltered_strelka_indel_vcf}" \
+	| \
+	bcftools norm \
+	--threads ${task.cpus} \
+	--multiallelics -indels \
+	--output-type u \
+	- 2>"${strelka_indel_multiallelics_stats}" \
+	| \
+	bcftools norm \
+	--threads ${task.cpus} \
+	--fasta-ref "${reference_genome_fasta_forStrelkaBcftools}" \
+	--output-type z \
+	--output "${final_strelka_indel_vcf}" \
+	- 2>"${strelka_indel_realign_normalize_stats}"
+
+	tabix "${final_strelka_indel_vcf}"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all needed reference FASTA files, WGS BED, and reference VCF files into one channel for use in SvABA process
+bwa_ref_genome_files.collect()
+	.combine( reference_genome_fasta_dict_forSvaba )
+	.combine( gatk_bundle_wgs_bed_blacklist_0based_forSvaba )
+	.set{ bwa_ref_genome_and_wgs_bed }
+
+bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
+	.combine( dbsnp_known_indel_ref_vcf_index )
+	.combine( simple_and_centromeric_repeats_bed_forSvaba )
+	.set{ bwa_ref_genome_wgs_bed_and_ref_files }
+
+// SvABA ~ detecting structural variants using genome-wide local assembly
+process svAndIndelCalling_svaba {
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{somatic.sv.unprocessed.vcf.gz,somatic.sv.unprocessed.vcf.gz.tbi}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_blacklist_0based_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index), path(simple_and_centromeric_repeats_bed_forSvaba) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_files)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
+	tuple val(tumor_normal_sample_id), path(tumor_bam) into svaba_tumor_bam_forDuphold
+	path unfiltered_somatic_indel_vcf
+	path unfiltered_somatic_sv_vcf
+	path germline_indel_vcf
+	path germline_sv_vcf
+	path contig_alignment_plot
+
+	when:
+	params.svaba == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	contig_alignment_plot = "${tumor_normal_sample_id}.svaba.alignments.txt.gz"
+	germline_indel_vcf = "${tumor_normal_sample_id}.svaba.germline.indel.vcf.gz"
+	germline_sv_vcf = "${tumor_normal_sample_id}.svaba.germline.sv.vcf.gz"
+	unfiltered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.indel.vcf.gz"
+	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
+	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
+	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
+	svaba_somatic_sv_unclassified_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unclassified.vcf"
+	svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unprocessed.vcf.gz"
+	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
+	sample_renaming_file = "sample_renaming_file.txt"
+	"""
+	svaba run \
+	-t "${tumor_bam}" \
+	-n "${normal_bam}" \
+	--reference-genome Homo_sapiens_assembly38.fasta \
+	--blacklist "${gatk_bundle_wgs_bed_blacklist_0based_forSvaba}" \
+	--id-string "${tumor_normal_sample_id}" \
+	--dbsnp-vcf "${dbsnp_known_indel_ref_vcf}" \
+	--simple-seq-database "${simple_and_centromeric_repeats_bed_forSvaba}" \
+	--threads "${task.cpus}" \
+	--verbose 1 \
+	--g-zip
+
+	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
+	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
+	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.sv.vcf.gz" "${unfiltered_somatic_sv_vcf}"
+	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
+
+	gunzip -c "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" > "${svaba_somatic_sv_unclassified_vcf}"
+
+	svaba_sv_classifier.py \
+	"${svaba_somatic_sv_unclassified_vcf}" \
+	| \
+	bgzip > "${svaba_somatic_sv_vcf}"
+
+	tabix "${filtered_somatic_indel_vcf}"
+	tabix "${svaba_somatic_sv_vcf}"
+
+	touch "${sample_renaming_file}"
+	echo "${tumor_bam} ${tumor_id}" >> "${sample_renaming_file}"
+	"""
+}
+
+// BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality score and support
+// read mapping quality, prepare VCF for consensus
+process filterAndPostprocessSvabaVcf_bcftools {
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
+
+    output:
+    tuple val(tumor_normal_sample_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forDuphold
+    tuple val(tumor_normal_sample_id), path(final_svaba_somatic_sv_read_support) into svaba_sv_read_support_forAnnotation
+
+    when:
+    params.svaba == "on"
+
+    script:
+    final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
+    final_svaba_somatic_sv_read_support = "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt"
+    """
+    bcftools filter \
+    --output-type u \
+    --exclude 'QUAL<6' \
+    "${svaba_somatic_sv_vcf}" \
+    | \
+    bcftools filter \
+    --output-type u \
+    --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
+    | \
+    bcftools reheader \
+    --output-type u \
+    --samples "${sample_renaming_file}" \
+    | \
+    bcftools view \
+    --output-type v \
+    --samples "${tumor_id}" \
+    --output-file "${final_svaba_somatic_sv_vcf}"
+
+    svaba_interchromosomal_mate_finder.sh \
+    "${final_svaba_somatic_sv_vcf}" \
+    "${svaba_somatic_sv_unclassified_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
+
+    cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
+
+    bcftools query \
+    --format '%ID\t[%DR]\t[%SR]\n' \
+    --output "${final_svaba_somatic_sv_read_support}" \
+    "${final_svaba_somatic_sv_vcf}"
+    """
+}
+
+// Combine all needed reference FASTA files into one channel for use in SvABA / BCFtools Norm process
+reference_genome_fasta_forSvabaBcftools.combine( reference_genome_fasta_index_forSvabaBcftools )
+	.combine( reference_genome_fasta_dict_forSvabaBcftools )
+	.set{ reference_genome_bundle_forSvabaBcftools }
+
+// BCFtools Norm ~ left-align and normalize indels
+process leftNormalizeSvabaVcf_bcftools {
+	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index), path(reference_genome_fasta_forSvabaBcftools), path(reference_genome_fasta_index_forSvabaBcftools), path(reference_genome_fasta_dict_forSvabaBcftools) from filtered_indel_vcf_forSvabaBcftools.combine(reference_genome_bundle_forSvabaBcftools)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(final_svaba_indel_vcf) into final_svaba_indel_vcf_forConsensus
+	path svaba_realign_normalize_stats
+
+	when:
+	params.svaba == "on"
+
+	script:
+	final_svaba_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz"
+	final_svaba_indel_vcf_index = "${final_svaba_indel_vcf}.tbi"
+	svaba_realign_normalize_stats = "${tumor_normal_sample_id}.svaba.realignnormalizestats.txt"
+	"""
+	bcftools norm \
+	--threads ${task.cpus} \
+	--fasta-ref "${reference_genome_fasta_forSvabaBcftools}" \
+	--output-type z \
+	--output "${final_svaba_indel_vcf}" \
+	"${filtered_somatic_indel_vcf}" 2>"${svaba_realign_normalize_stats}"
+
+	tabix "${final_svaba_indel_vcf}"
+	"""
+}
+
+// duphold ~ efficiently annotate SV calls with sequence depth information to reduce false positive deletion and duplication calls
+process falsePostiveSvFilteringSvaba_duphold {
+    publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{vcf.gz}'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(final_svaba_somatic_sv_vcf) from svaba_tumor_bam_forDuphold.join(svaba_sv_vcf_forDuphold)
+    path ref_genome_fasta from ref_genome_fasta_file
+    path ref_genome_fasta_index from ref_genome_fasta_index_file
+    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+
+    output:
+    tuple val(tumor_normal_sample_id), path(svaba_filtered_final_sv_vcf) into svaba_filtered_final_sv_vcf_forConsensus
+
+    when:
+    params.svaba == "on"
+
+    script:
+    svaba_filtered_final_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.final.vcf.gz"
+    """
+    duphold \
+    --vcf "${final_svaba_somatic_sv_vcf}" \
+    --bam "${tumor_bam}" \
+    --fasta "${ref_genome_fasta}" \
+    --threads ${task.cpus} \
+    --output "${tumor_normal_sample_id}.svaba.somatic.sv.fpmarked.vcf"
+
+    # Filter using recommended thresholds for DEL/DUP
+    bcftools filter \
+    --output-type u \
+    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
+    "${tumor_normal_sample_id}.svaba.somatic.sv.fpmarked.vcf" \
+    | \
+    bcftools filter \
+    --output-type z \
+    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
+    --output "${svaba_filtered_final_sv_vcf}"
+    """
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~ DELLY2 ~~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference FASTA files and calling blacklist into one channel for use in DELLY2 process
+reference_genome_fasta_forDelly.combine( reference_genome_fasta_index_forDelly )
+	.combine( reference_genome_fasta_dict_forDelly )
+	.combine( gatk_bundle_wgs_bed_blacklist_0based_forDelly )
+	.set{ reference_genome_and_blacklist_bundle_forDelly }
+
+// DELLY2 ~ discover structural variants using paired-ends, split-reads and read-depth
+process svAndIndelCalling_delly {
+	publishDir "${params.output_dir}/somatic/delly", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forDelly), path(reference_genome_fasta_index_forDelly), path(reference_genome_fasta_dict_forDelly), path(gatk_bundle_wgs_bed_blacklist_0based_forDelly) from tumor_normal_pair_forDelly.combine(reference_genome_and_blacklist_bundle_forDelly)
+
+	output:
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) into delly_sv_vcf_forPostprocessing
+	tuple val(tumor_normal_sample_id), path(tumor_bam) into delly_tumor_bam_forDuphold
+
+	when:
+	params.delly == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 30 --qual-tra 40 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
+	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
+	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
+	"""
+	delly call \
+	${delly_call_parameters} \
+	--genome "${reference_genome_fasta_forDelly}" \
+	--exclude "${gatk_bundle_wgs_bed_blacklist_0based_forDelly}" \
+	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
+	"${tumor_bam}" \
+	"${normal_bam}"
+
+	touch samples.tsv
+	echo "${tumor_id}\ttumor" >> samples.tsv
+	echo "${normal_id}\tcontrol" >> samples.tsv
+
+	delly filter \
+	--filter somatic \
+	--pass \
+	--altaf 0.05 \
+	--minsize 51 \
+	--coverage 10 \
+	--samples samples.tsv \
+	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
+	| \
+	bcftools view \
+    --output-type z \
+    --threads ${task.cpus} \
+    --output-file "${delly_somatic_sv_vcf}"
+
+	tabix "${delly_somatic_sv_vcf}"
+	"""
+}
+
+// BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality
+// score and support read mapping quality, prepare VCF for SURVIVOR 
+process filterAndPostprocessDellyVcf_bcftools {
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
+
+    output:
+    tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_vcf) into delly_sv_vcf_forDuphold
+    tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_read_support) into delly_sv_read_support_forAnnotation
+
+    when:
+    params.delly == "on"
+
+    script:
+    final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
+    final_delly_somatic_sv_read_support = "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt"
+    """
+    bcftools filter \
+    --output-type -u \
+    --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
+    "${delly_somatic_sv_vcf}" \
+    | \
+    bcftools filter \
+    --output-type u \
+    --include 'INFO/PE>3 || INFO/SR>3' \
+    | \
+    bcftools view \
+    --output-type v \
+    --samples "${tumor_id}" \
+    --output-file "${final_delly_somatic_sv_vcf}"
+
+    touch "${tumor_normal_sample_id}.delly.splitmates.txt"
+    delly_interchromosomal_record_splitter.sh \
+    "${final_delly_somatic_sv_vcf}" > "${tumor_normal_sample_id}.delly.splitmates.txt"
+
+    cat "${tumor_normal_sample_id}.delly.splitmates.txt" >> "${final_delly_somatic_sv_vcf}"
+
+    bcftools query \
+    --format '%ID\t%PE\t%SR\n' \
+    --output "${final_delly_somatic_sv_read_support}" \
+    "${final_delly_somatic_sv_vcf}"
+    """
+}
+
+// duphold ~ efficiently annotate SV calls with sequence depth information to reduce false positive deletion and duplication calls
+process falsePostiveSvFilteringDelly_duphold {
+    publishDir "${params.output_dir}/somatic/delly", mode: 'copy', pattern: '*.{vcf.gz}'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(final_delly_somatic_sv_vcf) from delly_tumor_bam_forDuphold.join(delly_sv_vcf_forDuphold)
+    path ref_genome_fasta from ref_genome_fasta_file
+    path ref_genome_fasta_index from ref_genome_fasta_index_file
+    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+
+    output:
+    tuple val(tumor_normal_sample_id), path(delly_filtered_final_sv_vcf) into delly_filtered_final_sv_vcf_forConsensus
+
+    when:
+    params.delly == "on"
+
+    script:
+    delly_filtered_final_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.final.vcf.gz"
+    """
+    duphold \
+    --vcf "${final_delly_somatic_sv_vcf}" \
+    --bam "${tumor_bam}" \
+    --fasta "${ref_genome_fasta}" \
+    --threads ${task.cpus} \
+    --output "${tumor_normal_sample_id}.delly.somatic.sv.fpmarked.vcf"
+
+    # Filter using recommended thresholds for DEL/DUP
+    bcftools filter \
+    --output-type u \
+    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
+    "${tumor_normal_sample_id}.delly.somatic.sv.fpmarked.vcf" \
+    | \
+    bcftools filter \
+    --output-type z \
+    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
+    --output "${delly_filtered_final_sv_vcf}"
+    """
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~~~ IgCaller ~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference FASTA files into one channel for use in IgCaller process
+reference_genome_fasta_forIgCaller.combine( reference_genome_fasta_index_forIgCaller )
+	.combine( reference_genome_fasta_dict_forIgCaller )
+	.set{ reference_genome_bundle_forIgCaller }
+
+// IgCaller ~ characterize the immunoglobulin gene rearrangements and oncogenic translocations
+process igRearrangementsAndTranslocations_igcaller {
+    publishDir "${params.output_dir}/somatic/igcaller", mode: 'copy', pattern: '*.{tsv}'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forIgCaller), path(reference_genome_fasta_index_forIgCaller), path(reference_genome_fasta_dict_forIgCaller) from tumor_normal_pair_forIgCaller.combine(reference_genome_bundle_forIgCaller)
+     
+    output:
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(igcaller_oncogenic_rearrangements_tsv) into igcaller_onco_tsv_forConsensus
+    path igcaller_csr_tsv
+    path igcaller_igk_tsv
+    path igcaller_igl_tsv
+    path igcaller_igh_tsv
+    path igcaller_filtered_calls_tsv
+
+    when:
+    params.igcaller == "on"
+
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	igcaller_csr_tsv = "${tumor_normal_sample_id}.igcaller.csr.tsv"
+	igcaller_igk_tsv = "${tumor_normal_sample_id}.igcaller.igk.tsv"
+	igcaller_igl_tsv = "${tumor_normal_sample_id}.igcaller.igl.tsv"
+	igcaller_igh_tsv = "${tumor_normal_sample_id}.igcaller.igh.tsv"
+	igcaller_filtered_calls_tsv = "${tumor_normal_sample_id}.igcaller.filtered.tsv"
+	igcaller_oncogenic_rearrangements_tsv = "${tumor_normal_sample_id}.igcaller.oncogenic.rearrangements.tsv"
+    """
+    python3 \${IGCALLER_DIR}/IgCaller.py \
+    --inputsFolder \${IGCALLER_DIR}/IgCaller_reference_files/ \
+    --genomeVersion hg38 \
+    --chromosomeAnnotation ucsc \
+    --bamN "${normal_bam}" \
+    --bamT "${tumor_bam}" \
+    --refGenome "${reference_genome_fasta_forIgCaller}" \
+    --outputPath . \
+    -@ ${task.cpus}
+
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_CSR.tsv" "${igcaller_csr_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGK.tsv" "${igcaller_igk_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGL.tsv" "${igcaller_igl_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGH.tsv" "${igcaller_igh_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_filtered.tsv" "${igcaller_filtered_calls_tsv}"
+    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_oncogenic_IG_rearrangements.tsv" "${igcaller_oncogenic_rearrangements_tsv}"
+    """
 }
 
 // END
@@ -994,8 +1806,8 @@ process splitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf), path(reference_genome_fasta_forVarscanBcftoolsNorm), path(reference_genome_fasta_index_forVarscanBcftoolsNorm), path(reference_genome_fasta_dict_forVarscanBcftoolsNorm) from filtered_vcfs_forVarscanBcftools.combine(reference_genome_bundle_forVarscanBcftoolsNorm)
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index) into final_varscan_snv_vcf_forConsensus
-	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index) into final_varscan_indel_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf) into final_varscan_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf) into final_varscan_indel_vcf_forConsensus
 	path varscan_snv_multiallelics_stats
 	path varscan_indel_multiallelics_stats
 	path varscan_indel_realign_normalize_stats
@@ -1360,7 +2172,7 @@ process mutect2VariantFiltration_gatk {
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
-	--unique-alt-read-count 5 \
+	--unique-alt-read-count 4 \
 	--reference "${reference_genome_fasta_forMutectFilter}" \
 	--stats "${merged_mutect_stats_file}" \
 	--variant "${merged_raw_vcf}" \
@@ -1427,8 +2239,8 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) from final_combined_mutect_vcf
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index) into final_mutect_snv_vcf_forConsensus
-	tuple val(tumor_normal_sample_id), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index) into final_mutect_indel_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_mutect_snv_vcf) into final_mutect_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_mutect_indel_vcf) into final_mutect_indel_vcf_forConsensus
 
 	when:
 	params.mutect == "on"
@@ -1456,612 +2268,6 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 	"${final_mutect_vcf}"
 
 	tabix "${final_mutect_indel_vcf}"
-	"""
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~ fragCounter ~~~~~~~~~~~~~~ \\
-// START
-
-// fragCounter ~ GC and mappability corrected fragment coverage across a genome for CNV and SV support
-process binReadCoverageInNormal_fragcounter {
-    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
-    tag "${tumor_normal_sample_id} S=Normal"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(normal_bam), path(normal_bam_index), path(fragcounter_gc_mappability_dir) from normal_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterNormal)
-     
-    output:
-    path normal_fragcounter_cov_rds
-    path normal_fragcounter_cov_bw
-
-    when:
-    params.fragcounter == "on"
-
-    script:
-    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-    normal_results_dir = "results_normal"
-    normal_fragcounter_cov_rds = "${normal_id}.fragcounter.cov.rds"
-    normal_fragcounter_cov_bw = "${normal_id}.fragcounter.cov.corrected.bw"
-    """
-    fragCounter_executor.sh \
-	"${normal_bam}" \
-	"${fragcounter_gc_mappability_dir}" \
-	"TRUE" \
-	"FALSE" \
-	"${normal_results_dir}"
-
-    mv "${normal_results_dir}/cov.rds" "${normal_fragcounter_cov_rds}"
-    mv "${normal_results_dir}/cov.corrected.bw" "${normal_fragcounter_cov_bw}"
-    """
-}
-
-process binReadCoverageInTumor_fragcounter {
-    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
-    tag "${tumor_normal_sample_id} S=Tumor"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(fragcounter_gc_mappability_dir) from tumor_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterTumor)
-     
-    output:
-    path tumor_fragcounter_cov_rds
-    path tumor_fragcounter_cov_bw
-
-    when:
-    params.fragcounter == "on"
-
-    script:
-    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-    tumor_results_dir = "results_tumor"
-    tumor_fragcounter_cov_rds = "${tumor_id}.fragcounter.cov.rds"
-    tumor_fragcounter_cov_bw = "${tumor_id}.fragcounter.cov.corrected.bw"
-    """
-    fragCounter_executor.sh \
-	"${tumor_bam}" \
-	"${fragcounter_gc_mappability_dir}" \
-	"TRUE" \
-	"FALSE" \
-	"${tumor_results_dir}"
-
-    mv "${tumor_results_dir}/cov.rds" "${tumor_fragcounter_cov_rds}"
-    mv "${tumor_results_dir}/cov.corrected.bw" "${tumor_fragcounter_cov_bw}"
-    """
-}
-
-// SNP-Pileup ~ generate SNP read count pileups for CNV calling
-process snpPileup_fragcounter {
-    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{txt.gz}'
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(hapmap_ref_snps_vcf), path(hapmap_ref_snps_vcf_index) from bams_forFragCounterPileup.combine(hapmap_ref_snps_vcf_forFragCounter).combine(hapmap_ref_snps_vcf_index_forFragCounter)
-
-    output:
-    tuple val(tumor_normal_sample_id), path(fragcounter_snp_pileup)
-
-    when:
-    params.fragcounter == "on"
-
-    script:
-    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-    fragcounter_snp_pileup = "${tumor_normal_sample_id}.snp_pileup.txt.gz"
-    """
-    snp-pileup \
-    --min-map-quality 0 \
-    --min-base-quality 20 \
-    --min-read-counts 3 \
-    "${hapmap_ref_snps_vcf}" \
-    "${tumor_normal_sample_id}.snp_pileup.csv" \
-    "${tumor_bam}" \
-    "${normal_bam}"
-
-    echo -e "seqname\tstart\tend\talt.count.t\tref.count.t\talt.count.n\tref.count.n" > "${tumor_normal_sample_id}.snp_pileup.txt"
-    grep -v 'Chromosome' "${tumor_normal_sample_id}.snp_pileup.csv" \
-    | \
-    awk -F ',' 'BEGIN {OFS="\t"} {print \$1,\$2,\$2,\$6,\$5,\$10,\$9}' >> "${tumor_normal_sample_id}.snp_pileup.txt"
-
-    gzip "${tumor_normal_sample_id}.snp_pileup.txt"
-    """
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~~ Battenberg ~~~~~~~~~~~~~~ \\
-// START
-
-// Battenberg ~ download the reference files needed to run Battenberg
-process downloadBattenbergReferences_battenberg {
-  	publishDir "references/hg38", mode: 'copy'
-
-  	output:
-  	path battenberg_references into battenberg_ref_dir_fromProcess
-
-  	when:
-  	params.battenberg == "on" && params.battenberg_ref_cached == "no"
-
-  	script:
-  	battenberg_references = "battenberg_reference/"
-  	"""
-  	mkdir -p ${battenberg_references}
-  	cd ${battenberg_references}/
-  	mkdir -p temp/
-  	mkdir -p GC_correction_hg38/
-  	mkdir -p RT_correction_hg38/
-  	mkdir -p shapeit2/
-  	mkdir -p imputation/
-  	mkdir -p 1000G_loci_hg38/
-  	mkdir -p probloci/
-  	mkdir -p beagle5/
-
-  	battenberg_reference_downloader.sh
-  	"""
-}
-
-// Depending on whether the reference files used for Battenberg was pre-downloaded, set the input
-// channel for the Battenberg process
-if( params.battenberg_ref_cached == "yes" ) {
-	battenberg_ref_dir = battenberg_ref_dir_preDownloaded
-}
-else {
-	battenberg_ref_dir = battenberg_ref_dir_fromProcess
-}
-
-// Battenberg ~ whole genome sequencing subclonal copy number caller
-process cnvCalling_battenberg {
-  	publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
-  	tag "${tumor_normal_sample_id}"
-
-  	input:
-  	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(battenberg_references) from bams_and_sex_of_sample_forBattenberg.combine(battenberg_ref_dir)
-
-  	output:
-  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) into final_battenberg_cnv_profile_forConsensusPrep
-  	tuple path(battenberg_rho_and_psi), path(battenberg_purity_and_ploidy), path(battenberg_cnv_profile_png)
-  	path "${output_dir}/*.tumour.png"
-  	path "${output_dir}/*.germline.png"
-  	path "${output_dir}/*_distance.png"
-  	path "${output_dir}/*_coverage.png"
-  	path "${output_dir}/*_alleleratio.png"
-  	path "${output_dir}/*_BattenbergProfile_subclones.png"
-  	path "${output_dir}/*chr*_heterozygousData.png"
-  	path "${output_dir}/*_nonroundedprofile.png"
-  	path "${output_dir}/*_segment_chr*.png"
-  	path "${output_dir}/*_GCwindowCorrelations_*Correction.txt"
-  	path "${output_dir}/*_refit_suggestion.txt"
-  	path "${output_dir}/*_segment_masking_details.txt"
-  	path "${output_dir}/*_subclones_alternatives.txt"
-  	path "${output_dir}/*_subclones_chr*.png"
-  	path "${output_dir}/*_totalcn_chrom_plot.png"
-  	path "${output_dir}/*_copynumberprofile.png"
-  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) into tumor_cnv_profile_forCaveman
-
-  	when:
-  	params.battenberg == "on"
-
-  	script:
-  	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-  	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-  	output_dir = "${tumor_normal_sample_id}_results"
-  	battenberg_cnv_profile = "${tumor_normal_sample_id}.battenberg.cnv.txt"
-  	battenberg_rho_and_psi = "${tumor_normal_sample_id}.battenberg.rho.psi.txt"
-  	battenberg_purity_and_ploidy = "${tumor_normal_sample_id}.battenberg.purity.ploidy.txt"
-  	battenberg_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.cnv.png"
-  	"""
-  	cp /opt/downloads/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
-
-  	sex=\$(cut -d ' ' -f 1 "${sample_sex}")
-
-  	battenberg_executor.sh \
-  	"${tumor_id}" \
-  	"${normal_id}" \
-  	"${tumor_bam}" \
-  	"${normal_bam}" \
-  	"\${sex}" \
-  	"${output_dir}" \
-  	"${task.cpus}" \
-  	"${params.battenberg_min_depth}" \
-  	${params.battenberg_preset_rho_psi} \
-    ${params.battenberg_preset_rho} \
-    ${params.battenberg_preset_psi}
-
-  	cp "${output_dir}/${tumor_id}_subclones.txt" "${battenberg_cnv_profile}"
-  	cp "${output_dir}/${tumor_id}_rho_and_psi.txt" "${battenberg_rho_and_psi}"
-  	cp "${output_dir}/${tumor_id}_purity_ploidy.txt" "${battenberg_purity_and_ploidy}"
-  	cp "${output_dir}/${tumor_id}_BattenbergProfile_average.png" "${battenberg_cnv_profile_png}"
-  	"""
-}
-
-// Battenberg Consensus CNV Prep ~ extract and prepare CNV output for consensus
-process consensusCnvPrep_battenberg {
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
-
-    output:
-    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed) into final_battenberg_cnv_profile_forConsensus
-    tuple val(tumor_normal_sample_id), path(battenberg_subclones_file) into battenberg_subclones_forConsensusSubclones
-
-    when:
-    params.battenberg == "on"
-
-    script:
-    battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
-    battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
-    battenberg_subclones_file = "${tumor_normal_sample_id}.battenberg.subclones.txt"
-    """
-    battenberg_clonal_and_subclonal_extractor.py \
-    <(grep -v 'startpos' "${battenberg_cnv_profile}" | cut -f 1-3,8-13) \
-    "${battenberg_somatic_cnv_bed}" \
-    "${battenberg_somatic_alleles_bed}" \
-    "${battenberg_subclones_file}"
-    """
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~~~~ FACETS ~~~~~~~~~~~~~~~~ \\
-// START
-
-// FACETS ~ generate SNP read count pileups for CNV calling
-process snpPileup_facets {
-    publishDir "${params.output_dir}/somatic/facets", mode: 'copy'
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(common_dbsnp_sites_vcf), path(common_dbsnp_sites_vcf_index) from bams_forFacetsPileup.combine(common_dbsnp_ref_vcf_forFacets).combine(common_dbsnp_ref_vcf_index_forFacets)
-
-    output:
-    tuple val(tumor_normal_sample_id), path(facets_snp_pileup) into snp_pileup_forFacets
-
-    when:
-    params.facets == "on"
-
-    script:
-    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-    facets_snp_pileup = "${tumor_normal_sample_id}.facets.snp_pileup.csv.gz"
-    """
-    snp-pileup \
-    --gzip \
-    --min-map-quality 15 \
-    --min-base-quality 20 \
-    --pseudo-snps 100 \
-    --min-read-counts ${params.facets_min_depth} \
-    "${common_dbsnp_sites_vcf}" \
-    "${facets_snp_pileup}" \
-    "${normal_bam}" \
-    "${tumor_bam}"
-    """
-}
-
-// FACETS ~ fraction and copy number estimate from tumor/normal sequencing
-process cnvCalling_facets {
-    publishDir "${params.output_dir}/somatic/facets", mode: 'copy'
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(facets_snp_pileup) from snp_pileup_forFacets
-
-    output:
-    tuple val(tumor_normal_sample_id), path(facets_cnv_profile) into facets_cnv_profile_forConsensusPrep
-    tuple val(tumor_normal_sample_id), path(facets_purity_ploidy)
-    path facets_run_log
-    path facets_cnv_pdf
-    path facets_spider_qc_pdf
-
-    when:
-    params.facets == "on"
-
-    script:
-    facets_run_log = "${tumor_normal_sample_id}.facets.log.txt"
-    facets_purity_ploidy = "${tumor_normal_sample_id}.facets.purity.ploidy.txt"
-    facets_cnv_profile = "${tumor_normal_sample_id}.facets.cnv.txt"
-    facets_cnv_pdf = "${tumor_normal_sample_id}.facets.cnv.pdf"
-    facets_spider_qc_pdf = "${tumor_normal_sample_id}.facets.spider.pdf"
-    """
-    Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
-    "${facets_snp_pileup}" \
-    hg38 \
-    1000 \
-    35 \
-    150 \
-    300 \
-    ${params.facets_min_depth}
-
-    mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
-    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_stats.txt" "${facets_purity_ploidy}"
-    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.txt" "${facets_cnv_profile}"
-    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.pdf" "${facets_cnv_pdf}"
-    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV_spider.pdf" "${facets_spider_qc_pdf}"
-    """
-}
-
-// FACETS ~ fraction and copy number estimate from tumor/normal sequencing
-process consensusCnvPrep_facets {
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(facets_cnv_profile) from facets_cnv_profile_forConsensusPrep
-
-    output:
-    tuple val(tumor_normal_sample_id), path(facets_somatic_cnv_bed), path(facets_somatic_alleles_bed) into final_facets_cnv_profile_forConsensus
-
-    when:
-    params.facets == "on"
-
-    script:
-    facets_somatic_cnv_bed = "${tumor_normal_sample_id}.facets.somatic.cnv.bed"
-    facets_somatic_alleles_bed = "${tumor_normal_sample_id}.facets.somatic.alleles.bed"
-    """
-    facets_cnv_profile_postprocesser.sh \
-    "${facets_cnv_profile}" \
-    "${tumor_normal_sample_id}" \
-    "${facets_somatic_cnv_bed}" \
-    "${facets_somatic_alleles_bed}"
-    """
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all needed reference FASTA files and WGS BED into one channel for use in Manta process
-reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
-	.combine( reference_genome_fasta_dict_forManta )
-	.combine( gatk_bundle_wgs_bed_forManta )
-	.set{ reference_genome_bundle_and_bed_forManta }
-
-// Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
-process svAndIndelCalling_manta {
-	publishDir "${params.output_dir}/somatic/manta", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forManta), path(reference_genome_fasta_index_forManta), path(reference_genome_fasta_dict_forManta), path(gatk_bundle_wgs_bed_forManta) from tumor_normal_pair_forManta.combine(reference_genome_bundle_and_bed_forManta)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
-	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) into manta_sv_vcf_forPostprocessing
-	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
-	tuple path(germline_sv_vcf), path(germline_sv_vcf_index)
-	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) into germline_indel_vcf_forCaveman
-
-	when:
-	params.manta == "on"
-
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	zipped_wgs_bed_forManta = "${gatk_bundle_wgs_bed_forManta}.gz"
-	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unfiltered.vcf.gz"
-	manta_somatic_config = "${tumor_normal_sample_id}.manta.somatic.config.ini"
-	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
-	germline_sv_vcf = "${tumor_normal_sample_id}.manta.germline.sv.vcf.gz"
-	germline_sv_vcf_index = "${germline_sv_vcf}.tbi"
-	candidate_indel_vcf = "${tumor_normal_sample_id}.manta.somatic.indels.unfiltered.vcf.gz"
-	candidate_indel_vcf_index = "${candidate_indel_vcf}.tbi"
-	manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unprocessed.vcf.gz"
-	manta_somatic_sv_vcf_index = "${manta_somatic_sv_vcf}.tbi"
-	"""
-	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed_forManta}"
-	tabix "${zipped_wgs_bed_forManta}"
-
-	touch "${manta_somatic_config}"
-	cat \${MANTA_DIR}/bin/configManta.py.ini \
-	| \
-	sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
-	| \
-	sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
-	| \
-	sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
-
-	python \${MANTA_DIR}/bin/configManta.py \
-	--tumorBam "${tumor_bam}" \
-	--normalBam "${normal_bam}" \
-	--referenceFasta "${reference_genome_fasta_forManta}" \
-	--callRegions "${zipped_wgs_bed_forManta}" \
-	--config "${manta_somatic_config}" \
-	--runDir manta
-
-	python manta/runWorkflow.py \
-	--mode local \
-	--jobs ${task.cpus} \
-	--memGb ${task.memory.toGiga()}
-
-	mv manta/results/variants/candidateSV.vcf.gz "${unfiltered_sv_vcf}"
-	mv manta/results/variants/candidateSV.vcf.gz.tbi "${unfiltered_sv_vcf_index}"
-	mv manta/results/variants/candidateSmallIndels.vcf.gz "${candidate_indel_vcf}"
-	mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi "${candidate_indel_vcf_index}"
-
-	zcat manta/results/variants/diploidSV.vcf.gz \
-	| \
-	grep -E "^#|PASS" \
-	| \
-	bgzip > "${germline_sv_vcf}"
-	tabix "${germline_sv_vcf}"
-
-	zcat manta/results/variants/somaticSV.vcf.gz \
-	| \
-	grep -E "^#|PASS" > somaticSV.passonly.vcf
-
-	\${MANTA_DIR}/libexec/convertInversion.py \
-	\${MANTA_DIR}/libexec/samtools \
-	"${reference_genome_fasta_forManta}" \
-	somaticSV.passonly.vcf \
-	| \
-	bgzip > "${manta_somatic_sv_vcf}"
-	tabix "${manta_somatic_sv_vcf}"
-	"""
-}
-
-// BCFtools filter / view ~ filter out additional false positives based on alternative variant reads in normal sample, prepare VCF for SURVIVOR
-process filterAndPostprocessMantaVcf_bcftools {
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
-
-    output:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forSurvivor
-    tuple val(tumor_normal_sample_id), path(final_manta_somatic_sv_read_support) into manta_sv_read_support_forAnnotation
-
-    when:
-    params.manta == "on"
-
-    script:
-    final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf"
-    final_manta_somatic_sv_read_support = "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt"
-    """
-    touch name.txt
-    echo "${normal_id}" >> name.txt
-
-    bcftools filter \
-    --output-type v \
-    --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
-    "${manta_somatic_sv_vcf}" \
-    | \
-    bcftools view \
-    --output-type v \
-    --samples "${tumor_id}" \
-    --output-file "${final_manta_somatic_sv_vcf}"
-
-    bcftools query \
-    --format '%ID\t[%PR{1}]\t[%SR{1}]\n' \
-    --output "${final_manta_somatic_sv_read_support}" \
-    "${final_manta_somatic_sv_vcf}"
-    """
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~~~ Strelka2 ~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all needed reference FASTA files and WGS BED into one channel for use in Strelka process
-reference_genome_fasta_forStrelka.combine( reference_genome_fasta_index_forStrelka )
-	.combine( reference_genome_fasta_dict_forStrelka )
-	.combine( gatk_bundle_wgs_bed_forStrelka )
-	.set{ reference_genome_bundle_and_bed_forStrelka }
-
-// Strelka2 ~ call germline and somatic small variants from mapped sequencing reads
-process snvAndIndelCalling_strelka {
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index), path(reference_genome_fasta_forStrelka), path(reference_genome_fasta_index_forStrelka), path(reference_genome_fasta_dict_forStrelka), path(gatk_bundle_wgs_bed_forStrelka) from bams_and_candidate_indel_vcf_forStrelka.combine(reference_genome_bundle_and_bed_forStrelka)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index) into unfiltered_snv_and_indel_vcfs_forStrelkaBcftools
-
-	when:
-	params.strelka == "on" && params.manta == "on"
-
-	script:
-	zipped_wgs_bed_forStrelka = "${gatk_bundle_wgs_bed_forStrelka}.gz"
-	unfiltered_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.unfiltered.vcf.gz"
-	unfiltered_strelka_snv_vcf_index = "${unfiltered_strelka_snv_vcf}.tbi"
-	unfiltered_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.unfiltered.vcf.gz"
-	unfiltered_strelka_indel_vcf_index = "${unfiltered_strelka_indel_vcf}.tbi"
-	"""
-	bgzip < "${gatk_bundle_wgs_bed_forStrelka}" > "${zipped_wgs_bed_forStrelka}"
-	tabix "${zipped_wgs_bed_forStrelka}"
-
-	python \${STRELKA_DIR}/bin/configureStrelkaSomaticWorkflow.py \
-	--normalBam "${normal_bam}" \
-	--tumorBam "${tumor_bam}" \
-	--referenceFasta "${reference_genome_fasta_forStrelka}" \
-	--indelCandidates "${candidate_indel_vcf}" \
-	--callRegions "${zipped_wgs_bed_forStrelka}" \
-	--runDir strelka
-
-	python strelka/runWorkflow.py \
-	--mode local \
-	--jobs ${task.cpus} \
-	--memGb ${task.memory.toGiga()}
-
-	mv strelka/results/variants/somatic.snvs.vcf.gz "${unfiltered_strelka_snv_vcf}"
-	mv strelka/results/variants/somatic.snvs.vcf.gz.tbi "${unfiltered_strelka_snv_vcf_index}"
-	mv strelka/results/variants/somatic.indels.vcf.gz "${unfiltered_strelka_indel_vcf}"
-	mv strelka/results/variants/somatic.indels.vcf.gz.tbi "${unfiltered_strelka_indel_vcf_index}"
-	"""
-}
-
-// Combine all needed reference FASTA files into one channel for use in Strelka / BCFtools Norm process
-reference_genome_fasta_forStrelkaBcftools.combine( reference_genome_fasta_index_forStrelkaBcftools )
-	.combine( reference_genome_fasta_dict_forStrelkaBcftools )
-	.set{ reference_genome_bundle_forStrelkaBcftools }
-
-// BCFtools norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
-process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
-	publishDir "${params.output_dir}/somatic/strelka", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index), path(reference_genome_fasta_forStrelkaBcftools), path(reference_genome_fasta_index_forStrelkaBcftools), path(reference_genome_fasta_dict_forStrelkaBcftools) from unfiltered_snv_and_indel_vcfs_forStrelkaBcftools.combine(reference_genome_bundle_forStrelkaBcftools)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(final_strelka_snv_vcf), path(final_strelka_snv_vcf_index) into final_strelka_snv_vcf_forConsensus
-	tuple val(tumor_normal_sample_id), path(final_strelka_indel_vcf), path(final_strelka_indel_vcf_index) into final_strelka_indel_vcf_forConsensus
-	path strelka_snv_multiallelics_stats
-	path strelka_indel_multiallelics_stats
-	path strelka_indel_realign_normalize_stats
-
-	when:
-	params.strelka == "on" && params.manta == "on"
-
-	script:
-	final_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.vcf.gz"
-	final_strelka_snv_vcf_index ="${final_strelka_snv_vcf}.tbi"
-	final_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.vcf.gz"
-	final_strelka_indel_vcf_index = "${final_strelka_indel_vcf}.tbi"
-	strelka_snv_multiallelics_stats = "${tumor_normal_sample_id}.strelka.snv.multiallelicsstats.txt"
-	strelka_indel_multiallelics_stats = "${tumor_normal_sample_id}.strelka.indel.multiallelicsstats.txt"
-	strelka_indel_realign_normalize_stats = "${tumor_normal_sample_id}.strelka.indel.realignnormalizestats.txt"
-	"""
-	zgrep -E "^#|PASS" "${unfiltered_strelka_snv_vcf}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--multiallelics -snps \
-	--output-type z \
-	--output "${final_strelka_snv_vcf}" \
-	- 2>"${strelka_snv_multiallelics_stats}"
-
-	tabix "${final_strelka_snv_vcf}"
-	
-	zgrep -E "^#|PASS" "${unfiltered_strelka_indel_vcf}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--multiallelics -indels \
-	--output-type u \
-	- 2>"${strelka_indel_multiallelics_stats}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--fasta-ref "${reference_genome_fasta_forStrelkaBcftools}" \
-	--output-type z \
-	--output "${final_strelka_indel_vcf}" \
-	- 2>"${strelka_indel_realign_normalize_stats}"
-
-	tabix "${final_strelka_indel_vcf}"
 	"""
 }
 
@@ -2700,7 +2906,7 @@ process mergeResults_caveman {
 	path dbsnp_index from dbsnp_bed_index
 
 	output:
-	tuple val(tumor_normal_sample_id), path(final_caveman_snv_vcf), path(final_caveman_snv_vcf_index) into final_caveman_snv_vcf_forConsensus
+	tuple val(tumor_normal_sample_id), path(final_caveman_snv_vcf) into final_caveman_snv_vcf_forConsensus
 
 	when:
 	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
@@ -2743,348 +2949,6 @@ process mergeResults_caveman {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all needed reference FASTA files, WGS BED, and reference VCF files into one channel for use in SvABA process
-bwa_ref_genome_files.collect()
-	.combine( reference_genome_fasta_dict_forSvaba )
-	.combine( gatk_bundle_wgs_bed_blacklist_0based_forSvaba )
-	.set{ bwa_ref_genome_and_wgs_bed }
-
-bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
-	.combine( dbsnp_known_indel_ref_vcf_index )
-	.combine( simple_and_centromeric_repeats_bed_forSvaba )
-	.set{ bwa_ref_genome_wgs_bed_and_ref_files }
-
-// SvABA ~ detecting structural variants using genome-wide local assembly
-process svAndIndelCalling_svaba {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{somatic.sv.unprocessed.vcf.gz,somatic.sv.unprocessed.vcf.gz.tbi}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_blacklist_0based_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index), path(simple_and_centromeric_repeats_bed_forSvaba) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_files)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
-	path unfiltered_somatic_indel_vcf
-	path unfiltered_somatic_sv_vcf
-	path germline_indel_vcf
-	path germline_sv_vcf
-	path contig_alignment_plot
-
-	when:
-	params.svaba == "on"
-
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	contig_alignment_plot = "${tumor_normal_sample_id}.svaba.alignments.txt.gz"
-	germline_indel_vcf = "${tumor_normal_sample_id}.svaba.germline.indel.vcf.gz"
-	germline_sv_vcf = "${tumor_normal_sample_id}.svaba.germline.sv.vcf.gz"
-	unfiltered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.indel.vcf.gz"
-	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
-	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
-	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
-	svaba_somatic_sv_unclassified_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unclassified.vcf"
-	svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unprocessed.vcf.gz"
-	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
-	sample_renaming_file = "sample_renaming_file.txt"
-	"""
-	svaba run \
-	-t "${tumor_bam}" \
-	-n "${normal_bam}" \
-	--reference-genome Homo_sapiens_assembly38.fasta \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_0based_forSvaba}" \
-	--id-string "${tumor_normal_sample_id}" \
-	--dbsnp-vcf "${dbsnp_known_indel_ref_vcf}" \
-	--simple-seq-database "${simple_and_centromeric_repeats_bed_forSvaba}" \
-	--threads "${task.cpus}" \
-	--verbose 1 \
-	--g-zip
-
-	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
-	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
-	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.sv.vcf.gz" "${unfiltered_somatic_sv_vcf}"
-	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
-
-	gunzip -c "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" > "${svaba_somatic_sv_unclassified_vcf}"
-
-	svaba_sv_classifier.py \
-	"${svaba_somatic_sv_unclassified_vcf}" \
-	| \
-	bgzip > "${svaba_somatic_sv_vcf}"
-
-	tabix "${filtered_somatic_indel_vcf}"
-	tabix "${svaba_somatic_sv_vcf}"
-
-	touch "${sample_renaming_file}"
-	echo "${tumor_bam} ${tumor_id}" >> "${sample_renaming_file}"
-	"""
-}
-
-// BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality score and support
-// read mapping quality, prepare VCF for SURVIVOR 
-process filterAndPostprocessSvabaVcf_bcftools {
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
-
-    output:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forSurvivor
-    tuple val(tumor_normal_sample_id), path(final_svaba_somatic_sv_read_support) into svaba_sv_read_support_forAnnotation
-
-    when:
-    params.svaba == "on"
-
-    script:
-    final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
-    final_svaba_somatic_sv_read_support = "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt"
-    """
-    bcftools filter \
-    --output-type v \
-    --exclude 'QUAL<6' \
-    "${svaba_somatic_sv_vcf}" \
-    | \
-    bcftools filter \
-    --output-type v \
-    --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
-    | \
-    bcftools reheader \
-    --samples "${sample_renaming_file}" \
-    | \
-    bcftools view \
-    --output-type v \
-    --samples "${tumor_id}" \
-    --output-file "${final_svaba_somatic_sv_vcf}"
-
-    svaba_interchromosomal_mate_finder.sh \
-    "${final_svaba_somatic_sv_vcf}" \
-    "${svaba_somatic_sv_unclassified_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
-
-    cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
-
-    bcftools query \
-    --format '%ID\t[%DR]\t[%SR]\n' \
-    --output "${final_svaba_somatic_sv_read_support}" \
-    "${final_svaba_somatic_sv_vcf}"
-    """
-}
-
-// Combine all needed reference FASTA files into one channel for use in SvABA / BCFtools Norm process
-reference_genome_fasta_forSvabaBcftools.combine( reference_genome_fasta_index_forSvabaBcftools )
-	.combine( reference_genome_fasta_dict_forSvabaBcftools )
-	.set{ reference_genome_bundle_forSvabaBcftools }
-
-// BCFtools Norm ~ left-align and normalize indels
-process leftNormalizeSvabaVcf_bcftools {
-	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index), path(reference_genome_fasta_forSvabaBcftools), path(reference_genome_fasta_index_forSvabaBcftools), path(reference_genome_fasta_dict_forSvabaBcftools) from filtered_indel_vcf_forSvabaBcftools.combine(reference_genome_bundle_forSvabaBcftools)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index) into final_svaba_indel_vcf_forConsensus
-	path svaba_realign_normalize_stats
-
-	when:
-	params.svaba == "on"
-
-	script:
-	final_svaba_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz"
-	final_svaba_indel_vcf_index = "${final_svaba_indel_vcf}.tbi"
-	svaba_realign_normalize_stats = "${tumor_normal_sample_id}.svaba.realignnormalizestats.txt"
-	"""
-	bcftools norm \
-	--threads ${task.cpus} \
-	--fasta-ref "${reference_genome_fasta_forSvabaBcftools}" \
-	--output-type z \
-	--output "${final_svaba_indel_vcf}" \
-	"${filtered_somatic_indel_vcf}" 2>"${svaba_realign_normalize_stats}"
-
-	tabix "${final_svaba_indel_vcf}"
-	"""
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~~~ DELLY2 ~~~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all reference FASTA files and calling blacklist into one channel for use in DELLY2 process
-reference_genome_fasta_forDelly.combine( reference_genome_fasta_index_forDelly )
-	.combine( reference_genome_fasta_dict_forDelly )
-	.combine( gatk_bundle_wgs_bed_blacklist_0based_forDelly )
-	.set{ reference_genome_and_blacklist_bundle_forDelly }
-
-// DELLY2 ~ discover structural variants using paired-ends, split-reads and read-depth
-process svAndIndelCalling_delly {
-	publishDir "${params.output_dir}/somatic/delly", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forDelly), path(reference_genome_fasta_index_forDelly), path(reference_genome_fasta_dict_forDelly), path(gatk_bundle_wgs_bed_blacklist_0based_forDelly) from tumor_normal_pair_forDelly.combine(reference_genome_and_blacklist_bundle_forDelly)
-
-	output:
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) into delly_sv_vcf_forPostprocessing
-
-	when:
-	params.delly == "on"
-
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 30 --qual-tra 40 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
-	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
-	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
-	"""
-	delly call \
-	${delly_call_parameters} \
-	--genome "${reference_genome_fasta_forDelly}" \
-	--exclude "${gatk_bundle_wgs_bed_blacklist_0based_forDelly}" \
-	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
-	"${tumor_bam}" "${normal_bam}"
-
-	touch samples.tsv
-	echo "${tumor_id}\ttumor" >> samples.tsv
-	echo "${normal_id}\tcontrol" >> samples.tsv
-
-	delly filter \
-	--filter somatic \
-	--pass \
-	--altaf 0.05 \
-	--minsize 51 \
-	--coverage 10 \
-	--samples samples.tsv \
-	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
-	| \
-	bcftools view \
-    --output-type z \
-    --threads ${task.cpus} \
-    --output-file "${delly_somatic_sv_vcf}"
-
-	tabix "${delly_somatic_sv_vcf}"
-	"""
-}
-
-// BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality
-// score and support read mapping quality, prepare VCF for SURVIVOR 
-process filterAndPostprocessDellyVcf_bcftools {
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) from delly_sv_vcf_forPostprocessing
-
-    output:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_delly_somatic_sv_vcf) into delly_sv_vcf_forSurvivor
-    tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_read_support) into delly_sv_read_support_forAnnotation
-
-    when:
-    params.delly == "on"
-
-    script:
-    final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
-    final_delly_somatic_sv_read_support = "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt"
-    """
-    bcftools filter \
-    --output-type v \
-    --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
-    "${delly_somatic_sv_vcf}" \
-    | \
-    bcftools filter \
-    --output-type v \
-    --include 'INFO/PE>3 || INFO/SR>3' \
-    | \
-    bcftools view \
-    --output-type v \
-    --samples "${tumor_id}" \
-    --output-file "${final_delly_somatic_sv_vcf}"
-
-    touch "${tumor_normal_sample_id}.delly.splitmates.txt"
-    delly_interchromosomal_record_splitter.sh \
-    "${final_delly_somatic_sv_vcf}" > "${tumor_normal_sample_id}.delly.splitmates.txt"
-
-    cat "${tumor_normal_sample_id}.delly.splitmates.txt" >> "${final_delly_somatic_sv_vcf}"
-
-    bcftools query \
-    --format '%ID\t%PE\t%SR\n' \
-    --output "${final_delly_somatic_sv_read_support}" \
-    "${final_delly_somatic_sv_vcf}"
-    """
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-// ~~~~~~~~~~~~~~~~ IgCaller ~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all reference FASTA files into one channel for use in IgCaller process
-reference_genome_fasta_forIgCaller.combine( reference_genome_fasta_index_forIgCaller )
-	.combine( reference_genome_fasta_dict_forIgCaller )
-	.set{ reference_genome_bundle_forIgCaller }
-
-// IgCaller ~ characterize the immunoglobulin gene rearrangements and oncogenic translocations
-process igRearrangementsAndTranslocations_igcaller {
-    publishDir "${params.output_dir}/somatic/igcaller", mode: 'copy', pattern: '*.{tsv}'
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forIgCaller), path(reference_genome_fasta_index_forIgCaller), path(reference_genome_fasta_dict_forIgCaller) from tumor_normal_pair_forIgCaller.combine(reference_genome_bundle_forIgCaller)
-     
-    output:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(igcaller_oncogenic_rearrangements_tsv) into igcaller_onco_tsv_forConsensus
-    path igcaller_csr_tsv
-    path igcaller_igk_tsv
-    path igcaller_igl_tsv
-    path igcaller_igh_tsv
-    path igcaller_filtered_calls_tsv
-
-    when:
-    params.igcaller == "on"
-
-    script:
-    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	igcaller_csr_tsv = "${tumor_normal_sample_id}.igcaller.csr.tsv"
-	igcaller_igk_tsv = "${tumor_normal_sample_id}.igcaller.igk.tsv"
-	igcaller_igl_tsv = "${tumor_normal_sample_id}.igcaller.igl.tsv"
-	igcaller_igh_tsv = "${tumor_normal_sample_id}.igcaller.igh.tsv"
-	igcaller_filtered_calls_tsv = "${tumor_normal_sample_id}.igcaller.filtered.tsv"
-	igcaller_oncogenic_rearrangements_tsv = "${tumor_normal_sample_id}.igcaller.oncogenic.rearrangements.tsv"
-    """
-    python3 \${IGCALLER_DIR}/IgCaller.py \
-    --inputsFolder \${IGCALLER_DIR}/IgCaller_reference_files/ \
-    --genomeVersion hg38 \
-    --chromosomeAnnotation ucsc \
-    --bamN "${normal_bam}" \
-    --bamT "${tumor_bam}" \
-    --refGenome "${reference_genome_fasta_forIgCaller}" \
-    --outputPath . \
-    -@ ${task.cpus}
-
-    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_CSR.tsv" "${igcaller_csr_tsv}"
-    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGK.tsv" "${igcaller_igk_tsv}"
-    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGL.tsv" "${igcaller_igl_tsv}"
-    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGH.tsv" "${igcaller_igh_tsv}"
-    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_filtered.tsv" "${igcaller_filtered_calls_tsv}"
-    mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_oncogenic_IG_rearrangements.tsv" "${igcaller_oncogenic_rearrangements_tsv}"
-    """
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
 // ~~~~~~~~~ UNION CONSENSUS SNV/INDEL ~~~~~~~~~~~ \\
 // START
 
@@ -3094,7 +2958,7 @@ process unionAndConsensusSnvCalls_devgru {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_varscan_snv_vcf_index), path(final_mutect_snv_vcf), path(final_mutect_snv_vcf_index), path(final_strelka_snv_vcf), path(final_strelka_snv_vcf_index) from final_varscan_snv_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_strelka_snv_vcf_forConsensus)
+    tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_mutect_snv_vcf), path(final_strelka_snv_vcf) from final_varscan_snv_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_strelka_snv_vcf_forConsensus)
     path gene_gtf from ensembl_gtf_file
 
     output:
@@ -3105,13 +2969,15 @@ process unionAndConsensusSnvCalls_devgru {
     params.varscan == "on" && params.mutect == "on" && params.strelka == "on"
 
     script:
-    hq_union_consensus_snv_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt"
-    hq_union_consensus_snv_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.rds"
+    hq_union_consensus_snv_table = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt"
+    hq_union_consensus_snv_gr_rds = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.rds"
     """
-    snvindel_union_consensus_polisher.R \
-    . \
+    mkdir -p results/
+
+    Rscript --vanilla ${workflow.projectDir}/bin/snvindel_union_consensus_polisher.R \
+    ./ \
     snv \
-    . \
+    results/ \
     "${gene_gtf}" \
     ${task.cpus}
     """
@@ -3123,7 +2989,7 @@ process unionAndConsensusIndelCalls_devgru {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_varscan_indel_vcf_index), path(final_mutect_indel_vcf), path(final_mutect_indel_vcf_index), path(final_strelka_indel_vcf), path(final_strelka_indel_vcf_index), path(final_svaba_indel_vcf), path(final_svaba_indel_vcf_index) from final_varscan_indel_vcf_forConsensus.join(final_mutect_indel_vcf_forConsensus).join(final_strelka_indel_vcf_forConsensus).join(final_svaba_indel_vcf_forConsensus)
+    tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_mutect_indel_vcf), path(final_strelka_indel_vcf), path(final_svaba_indel_vcf) from final_varscan_indel_vcf_forConsensus.join(final_mutect_indel_vcf_forConsensus).join(final_strelka_indel_vcf_forConsensus).join(final_svaba_indel_vcf_forConsensus)
     path gene_gtf from ensembl_gtf_file
 
     output:
@@ -3134,13 +3000,15 @@ process unionAndConsensusIndelCalls_devgru {
     params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
     script:
-    hq_union_consensus_indel_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt"
-    hq_union_consensus_indel_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.rds"
+    hq_union_consensus_indel_table = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt"
+    hq_union_consensus_indel_gr_rds = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.rds"
     """
-    snvindel_union_consensus_polisher.R \
-    . \
+    mkdir -p results/
+
+    Rscript --vanilla ${workflow.projectDir}/bin/snvindel_union_consensus_polisher.R \
+    ./ \
     indel \
-    . \
+    results/ \
     "${gene_gtf}" \
     ${task.cpus}
     """
@@ -3150,7 +3018,7 @@ process unionAndConsensusIndelCalls_devgru {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~ CONSENSUS CNV BED ~~~~~~~~~~~~ \\
+// ~~~~~~~~~~ UNION CONSENSUS CNV BED ~~~~~~~~~~~~ \\
 // START
 
 // BEDtools unionbedg 2-way ~ transform CNV output into BED files then generate merged CNV segment file
@@ -3162,7 +3030,7 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed), path(facets_somatic_cnv_bed), path(facets_somatic_alleles_bed) from final_battenberg_cnv_profile_forConsensus.join(final_facets_cnv_profile_forConsensus)
 
     output:
-    //tuple val(tumor_normal_sample_id), path(two_way_consensus_merged_cnv_alleles_bed) into two_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+    tuple val(tumor_normal_sample_id), path(two_way_consensus_merged_cnv_alleles_bed) into two_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
 
     when:
     params.battenberg == "on" && params.facets == "on"
@@ -3172,7 +3040,7 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     two_way_consensus_cnv_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.bed"
     two_way_merged_alleles_bed = "${tumor_normal_sample_id}.merged.somatic.alleles.bed"
     two_way_consensus_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.alleles.bed"
-    two_way_consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.consensus.somatic.cnv.alleles.merged.bed"
+    two_way_consensus_merged_cnv_alleles_bed = "${tumor_normal_sample_id}.hq.union.consensus.somatic.cnv.bed"
     """
     ### Create consensus total copy number file ###
     bedtools unionbedg \
@@ -3197,59 +3065,11 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     "${two_way_consensus_alleles_bed}"
 
     ### Merge both consensus CNV and called alleles per segment ###
-    #paste "${two_way_consensus_cnv_bed}" <(cut -f 4-8 "${two_way_consensus_alleles_bed}") \
-    #| \
-    #awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$9,\$10,\$5,\$11,\$6,\$12,\$7,\$13,\$8,\$14}' > "${two_way_consensus_merged_cnv_alleles_bed}"
+    paste "${two_way_consensus_cnv_bed}" <(cut -f 4-8 "${two_way_consensus_alleles_bed}") \
+    | \
+    awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$6,\$5,\$7}' > "${two_way_consensus_merged_cnv_alleles_bed}"
     """
 }
-
-
-
-
-
-
-
-
-
-
-// Set the input for the high-quality consensus CNV BED transform process based on 3 or 4 way mechanism
-//if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "on" & params.facets == "on" ) {
-// 	consensus_cnv_and_allele_bed_forConsensusCnvTransform = four_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
-//
-//} else if( params.battenberg == "on" & params.controlfreec == "on" & params.sclust == "off" & params.facets == "on" ) {
-//  	consensus_cnv_and_allele_bed_forConsensusCnvTransform = three_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
-//
-//} else {
-//  	consensus_cnv_and_allele_bed_forConsensusCnvTransform = Channel.empty()
-//}
-//
-// Tidyverse ~ transform consensus CNV BED file to concise high quality format
-//process highQualityTransformConsensusCnvs_tidyverse {
-//    tag "${tumor_normal_sample_id}"
-//
-//    input:
-//    tuple val(tumor_normal_sample_id), val(consensus_mechanism), path(consensus_merged_cnv_alleles_bed), path(sample_sex) from consensus_cnv_and_allele_bed_forConsensusCnvTransform.join(sex_of_sample_forConsensusCnvTransform)
-//
-//    output:
-//    tuple val(tumor_normal_sample_id), path(hq_consensus_cnv_bed) into hq_consensus_cnv_bed_forAnnotation
-//
-//    when:
-//    params.battenberg == "on" && params.controlfreec == "on" && params.facets == "on"
-//
-//    script:
-//    hq_consensus_cnv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.cnv.bed"
-//    """
-//    sex=\$(cut -d ' ' -f 1 "${sample_sex}")
-//
-//    Rscript --vanilla  \
-//	${workflow.projectDir}/bin/high_quality_cnv_bed_transformer.R \
-//    "${consensus_merged_cnv_alleles_bed}" \
-//    \${sex} \
-//    "${hq_consensus_cnv_bed}" \
-//    "${consensus_mechanism}"
-//    """
-//}
-
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
@@ -3263,288 +3083,245 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
 // ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
 // START
 
-
-
-
-
-
-
-
-
-
-
-
-
-// SURVIVOR ~ merge SV VCF files to generate a consensus
-process mergeAndGenerateConsensusSvCalls_survivor {
+// gGnome ~ merge SV VCF files to generate a consensus
+process mergeAndGenerateConsensusSvCalls_ggnome {
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{bedpe}'
     tag  "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf) from manta_sv_vcf_forSurvivor.join(svaba_sv_vcf_forSurvivor, by: [0,1]).join(delly_sv_vcf_forSurvivor, by: [0,1]) 
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf), path(igcaller_oncogenic_rearrangements_tsv) from manta_sv_vcf_forConsensus.join(svaba_sv_vcf_forConsensus, by: [0,1]).join(delly_sv_vcf_forConsensus, by: [0,1]).join(igcaller_onco_tsv_forConsensus, by: [0,1]) 
 
     output:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(consensus_somatic_sv_badheader_vcf) into consensus_sv_vcf_forFilterPrep
+    path hq_union_consensus_sv_bedpe
 
     when:
-    params.manta == "on" && params.svaba == "on" && params.delly == "on"
+    params.manta == "on" && params.svaba == "on" && params.delly == "on" && params.igcaller == "on"
 
     script:
-    consensus_somatic_sv_badheader_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf"
+    hq_union_consensus_sv_bedpe = "${tumor_normal_sample_id}.hq.union.consensus.somatic.sv.bedpe"
     """
-    touch input_vcf_list.txt
-    ls *.vcf >> input_vcf_list.txt
-
-    SURVIVOR merge \
-    input_vcf_list.txt \
-    1000 \
-    1 \
-    0 \
-    1 \
-    0 \
-    51 \
-    "${consensus_somatic_sv_badheader_vcf}"
+    Rscript --vanilla ${workflow.projectDir}/bin/sv_union_consensus_polisher.R \
+    "${tumor_normal_sample_id}" \
+    "${final_manta_somatic_sv_vcf}" \
+    "${final_svaba_somatic_sv_vcf}" \
+    "${final_delly_somatic_sv_vcf}" \
+    "${igcaller_oncogenic_rearrangements_tsv}"
     """
 }
 
-// VAtools vcf-genotype-annotator ~ add sample name to SURVIVOR consensus SV VCF for use in Duphold filtering to remove false positives
-process prepConsensusSvVcfForFpFiltering_vatools {
+
+
+
+
+
+
+
+// # Transform collapsed annotation BED to high quality BEDPE
+// high_quality_bedpe_transformer.py \
+// <(grep -v 'SV_chrom' "${collapsed_annotated_consensus_sv_bed}") \
+// "${final_manta_somatic_sv_read_support}" \
+// "${final_svaba_somatic_sv_read_support}" \
+// "${final_delly_somatic_sv_read_support}" \
+// "${hq_consensus_sv_bedpe}"
+
+
+
+
+
+
+
+
+// ~~~~~~~~~~~~~~~~ Conpair ~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference FASTA files into one channel for use in Conpair Pileup process
+reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_forConpairPileup )
+	.combine( reference_genome_fasta_dict_forConpairPileup )
+	.set{ reference_genome_bundle_forConpairPileup }
+
+// Conpair run_gatk_pileup_for_sample ~ generate GATK pileups the tumor and normal BAMs separately
+process bamPileupForConpair_conpair {
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forConpairPileup), path(reference_genome_fasta_index_forConpairPileup), path(reference_genome_fasta_dict_forConpairPileup) from tumor_normal_pair_forConpairPileup.combine(reference_genome_bundle_forConpairPileup)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into bam_pileups_forConpair
+
+	when:
+	params.conpair == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	tumor_pileup = "${tumor_id}.pileup"
+	normal_pileup = "${normal_id}.pileup"
+	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
+	"""
+	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
+	--xmx_jav "${task.memory.toGiga()}g" \
+	--bam "${tumor_bam}" \
+	--outfile "${tumor_pileup}" \
+	--reference "${reference_genome_fasta_forConpairPileup}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
+
+	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
+	--xmx_jav "${task.memory.toGiga()}g" \
+	--bam "${normal_bam}" \
+	--outfile "${normal_pileup}" \
+	--reference "${reference_genome_fasta_forConpairPileup}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
+	"""
+}
+
+// Conpair verify_concordance / estimate_tumor_normal_contamination ~ concordance and contamination estimator for tumor–normal pileups
+process concordanceAndContaminationEstimation_conpair {
+	publishDir "${params.output_dir}/somatic/conpair", mode: 'copy', pattern: '*.{txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from bam_pileups_forConpair
+
+	output:
+	tuple val(tumor_normal_sample_id), path(conpair_concordance_file), path(conpair_contamination_file) into conpair_output_forConsensusMetadata
+	tuple val(tumor_normal_sample_id), path(conpair_contamination_file) into normal_contamination_forCaveman
+
+	when:
+	params.conpair == "on"
+	
+	script:
+	conpair_concordance_file = "${tumor_normal_sample_id}.conpair.concordance.txt"
+	conpair_contamination_file = "${tumor_normal_sample_id}.conpair.contamination.txt"
+	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
+	"""
+	\${CONPAIR_DIR}/scripts/verify_concordance.py \
+	--min_cov ${params.conpair_min_cov} \
+	--min_mapping_quality 10 \
+	--min_base_quality 20 \
+	--tumor_pileup "${tumor_pileup}" \
+	--normal_pileup "${normal_pileup}" \
+	--outfile "${conpair_concordance_file}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
+
+	\${CONPAIR_DIR}/scripts/estimate_tumor_normal_contamination.py \
+	--grid 0.01 \
+	--min_mapping_quality 10 \
+	--tumor_pileup "${tumor_pileup}" \
+	--normal_pileup "${normal_pileup}" \
+	--outfile "${conpair_contamination_file}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
+// ~~~~~~~~~~~~~~ fragCounter ~~~~~~~~~~~~~~ \\
+// START
+
+// fragCounter ~ GC and mappability corrected fragment coverage across a genome for CNV and SV support
+process binReadCoverageInNormal_fragcounter {
+    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
+    tag "${tumor_normal_sample_id} S=Normal"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(normal_bam), path(normal_bam_index), path(fragcounter_gc_mappability_dir) from normal_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterNormal)
+     
+    output:
+    path normal_fragcounter_cov_rds
+    path normal_fragcounter_cov_bw
+
+    when:
+    params.fragcounter == "on"
+
+    script:
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    normal_results_dir = "results_normal"
+    normal_fragcounter_cov_rds = "${normal_id}.fragcounter.cov.rds"
+    normal_fragcounter_cov_bw = "${normal_id}.fragcounter.cov.corrected.bw"
+    """
+    fragCounter_executor.sh \
+	"${normal_bam}" \
+	"${fragcounter_gc_mappability_dir}" \
+	"TRUE" \
+	"FALSE" \
+	"${normal_results_dir}"
+
+    mv "${normal_results_dir}/cov.rds" "${normal_fragcounter_cov_rds}"
+    mv "${normal_results_dir}/cov.corrected.bw" "${normal_fragcounter_cov_bw}"
+    """
+}
+
+process binReadCoverageInTumor_fragcounter {
+    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
+    tag "${tumor_normal_sample_id} S=Tumor"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(fragcounter_gc_mappability_dir) from tumor_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterTumor)
+     
+    output:
+    path tumor_fragcounter_cov_rds
+    path tumor_fragcounter_cov_bw
+
+    when:
+    params.fragcounter == "on"
+
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_results_dir = "results_tumor"
+    tumor_fragcounter_cov_rds = "${tumor_id}.fragcounter.cov.rds"
+    tumor_fragcounter_cov_bw = "${tumor_id}.fragcounter.cov.corrected.bw"
+    """
+    fragCounter_executor.sh \
+	"${tumor_bam}" \
+	"${fragcounter_gc_mappability_dir}" \
+	"TRUE" \
+	"FALSE" \
+	"${tumor_results_dir}"
+
+    mv "${tumor_results_dir}/cov.rds" "${tumor_fragcounter_cov_rds}"
+    mv "${tumor_results_dir}/cov.corrected.bw" "${tumor_fragcounter_cov_bw}"
+    """
+}
+
+// SNP-Pileup ~ generate SNP read count pileups for CNV calling
+process snpPileup_fragcounter {
+    publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{txt.gz}'
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(consensus_somatic_sv_badheader_vcf) from consensus_sv_vcf_forFilterPrep
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(hapmap_ref_snps_vcf), path(hapmap_ref_snps_vcf_index) from bams_forFragCounterPileup.combine(hapmap_ref_snps_vcf_forFragCounter).combine(hapmap_ref_snps_vcf_index_forFragCounter)
 
     output:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf) into consensus_sv_vcf_forConsensusSvFpFilter
+    tuple val(tumor_normal_sample_id), path(fragcounter_snp_pileup)
 
     when:
-    params.manta == "on" && params.svaba == "on" && params.delly == "on"
+    params.fragcounter == "on"
 
     script:
-    consensus_somatic_sv_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.vcf"
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+    fragcounter_snp_pileup = "${tumor_normal_sample_id}.snp_pileup.txt.gz"
     """
-    sed 's|${tumor_id}\t${tumor_id}_1\t${tumor_id}_2|${tumor_id}_delly\t${tumor_id}_manta\t${tumor_id}_svaba|' "${tumor_normal_sample_id}.consensus.somatic.sv.badheader.vcf" \
+    snp-pileup \
+    --min-map-quality 0 \
+    --min-base-quality 20 \
+    --min-read-counts 3 \
+    "${hapmap_ref_snps_vcf}" \
+    "${tumor_normal_sample_id}.snp_pileup.csv" \
+    "${tumor_bam}" \
+    "${normal_bam}"
+
+    echo -e "seqname\tstart\tend\talt.count.t\tref.count.t\talt.count.n\tref.count.n" > "${tumor_normal_sample_id}.snp_pileup.txt"
+    grep -v 'Chromosome' "${tumor_normal_sample_id}.snp_pileup.csv" \
     | \
-    sed 's|SVTYPE=TRA|SVTYPE=BND|' > "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf"
+    awk -F ',' 'BEGIN {OFS="\t"} {print \$1,\$2,\$2,\$6,\$5,\$10,\$9}' >> "${tumor_normal_sample_id}.snp_pileup.txt"
 
-    vcf-genotype-annotator \
-    --output-vcf "${consensus_somatic_sv_vcf}" \
-    "${tumor_normal_sample_id}.consensus.somatic.sv.halffixed.vcf" \
-    "${tumor_id}" \
-    .
-    """
-}
-
-// Combine all reference FASTA files into one channel for use in duphold process
-reference_genome_fasta_forConsensusSvFpFilter.combine( reference_genome_fasta_index_forConsensusSvFpFilter )
-    .set{ reference_genome_bundle_forConsensusSvFpFilter }
-
-// duphold ~ efficiently annotate SV calls with sequence depth information to reduce false positive deletion and duplication calls
-process falsePostiveSvFiltering_duphold {
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_vcf), path(tumor_bam), path(tumor_bam_index), path(reference_genome_fasta_forConsensusSvFpFilter), path(reference_genome_fasta_index_forConsensusSvFpFilter) from consensus_sv_vcf_forConsensusSvFpFilter.join(bam_forConsensusSvFpFilter).combine(reference_genome_bundle_forConsensusSvFpFilter)
-
-    output:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) into consensus_sv_vcf_forFpFiltering
-
-    when:
-    params.manta == "on" && params.svaba == "on" && params.delly == "on"
-
-    script:
-    consensus_somatic_sv_fpmarked_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.fpmarked.vcf"
-    """
-    duphold \
-    --vcf "${consensus_somatic_sv_vcf}" \
-    --bam "${tumor_bam}" \
-    --fasta "${reference_genome_fasta_forConsensusSvFpFilter}" \
-    --threads ${task.cpus} \
-    --output "${consensus_somatic_sv_fpmarked_vcf}"
-    """
-}
-
-// BCFtools filter ~ extract all deletion and duplication records that pass the duphold false positive filter
-process extractFpFilterPassingSvCalls_bcftools {
-    tag "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpmarked_vcf) from consensus_sv_vcf_forFpFiltering
-
-    output:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf) into consensus_sv_vcf_forAnnotation
-
-    when:
-    params.manta == "on" && params.svaba == "on" && params.delly == "on"
-
-    script:
-    consensus_somatic_sv_fpfiltered_vcf = "${tumor_normal_sample_id}.consensus.somatic.sv.fpfiltered.vcf"
-    """
-    bcftools filter \
-    --output-type v \
-    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
-    "${consensus_somatic_sv_fpmarked_vcf}" \
-    | \
-    bcftools filter \
-    --output-type v \
-    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
-    --output "${consensus_somatic_sv_fpfiltered_vcf}"
-    """
-}
-
-// Depending on whether the reference files used for AnnotSV annotation was pre-downloaded, set the input
-// channel for the AnnotSV SV annotation process
-if( params.annotsv_ref_cached == "yes" ) {
-    annotsv_ref_dir_forSvAnnotation = annotsv_ref_dir_pre_downloaded_forSvAnnotation
-}
-else {
-    annotsv_ref_dir_forSvAnnotation = annotsv_ref_dir_from_process_forSvAnnotation
-}
-
-// AnnotSV ~ annotate consensus SV calls with multiple resources
-process annotateConsensusSvCalls_annotsv {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{sv.annotated.genesplit.bed,bedpe}'
-    tag  "${tumor_normal_sample_id}"
-
-    input:
-    tuple val(tumor_normal_sample_id), path(consensus_somatic_sv_fpfiltered_vcf), path(final_manta_somatic_sv_read_support), path(final_svaba_somatic_sv_read_support), path(final_delly_somatic_sv_read_support), path(annotsv_ref_dir_bundle) from consensus_sv_vcf_forAnnotation.join(manta_sv_read_support_forAnnotation).join(svaba_sv_read_support_forAnnotation).join(delly_sv_read_support_forAnnotation).combine(annotsv_ref_dir_forSvAnnotation)
-
-    output:
-    path gene_split_annotated_consensus_sv_bed
-    path hq_consensus_sv_bedpe
-
-    when:
-    params.manta == "on" && params.svaba == "on" && params.delly == "on"
-
-    script:
-    gene_split_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.genesplit.bed"
-    collapsed_annotated_consensus_sv_bed = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.collapsed.bed"
-    hq_consensus_sv_bedpe = "${tumor_normal_sample_id}.hq.consensus.somatic.sv.annotated.bedpe"
-    """
-    grep -v 'SVTYPE=BND' "${consensus_somatic_sv_fpfiltered_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf"
-
-	\$ANNOTSV/bin/AnnotSV \
-	-annotationsDir "${annotsv_ref_dir_bundle}" \
-	-annotationMode split \
-	-genomeBuild GRCh38 \
-	-outputDir . \
-	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit" \
-	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf" \
-	-SVminSize 1 \
-	-includeCI 0 \
-	-tx ENSEMBL
-
-    paste \
-	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
-	<(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
-	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
-	<(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv") \
-	<(cut -f 21,23-36,64-65 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
-	<(cut -f 44-45,48-49,52-63 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
-	| \
-	sed 's|\t\$|\t.|' \
-	| \
-	sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
-	| \
-	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.genesplit.bed"
-
-	\$ANNOTSV/bin/AnnotSV \
-	-annotationsDir "${annotsv_ref_dir_bundle}" \
-	-annotationMode full \
-	-genomeBuild GRCh38 \
-	-outputDir . \
-	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed" \
-	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.vcf" \
-	-SVminSize 1 \
-	-includeCI 0 \
-	-tx ENSEMBL
-
-	paste \
-	<(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-	<(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
-	<(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
-	<(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv") \
-	<(cut -f 1,106,108 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
-	<(cut -f 8,13,15-17,21-22,66-79 "${tumor_normal_sample_id}.consensus.somatic.sv.nonbreakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
-	| \
-	sed 's|\t\$|\t.|' \
-	| \
-	sed 's|chrSV_chrom|SV_chrom|' \
-	| \
-	sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.collapsed.bed"
-
-
-	grep -E '^#|SVTYPE=BND' "${consensus_somatic_sv_fpfiltered_vcf}" > "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf"
-
-	\$ANNOTSV/bin/AnnotSV \
-	-annotationsDir "${annotsv_ref_dir_bundle}" \
-	-annotationMode split \
-	-genomeBuild GRCh38 \
-	-outputDir . \
-	-outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit" \
-	-SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf" \
-	-SVminSize 1 \
-	-includeCI 0 \
-	-tx ENSEMBL
-
-	paste \
-    <(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-    <(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | awk 'BEGIN {OFS="\t"} {print \$1-1,\$2}') \
-    <(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
-    <(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
-    <(cut -f 1 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv") \
-    <(cut -f 21,23-36,64-65 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g' | sed 's|\t\$|\t.|') \
-    <(cut -f 44-45,48-49,52-63 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.genesplit.tsv" | sed 's|^\t|.\t|' | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
-    | \
-    sed 's|\t\$|\t.|' \
-    | \
-    sed 's|chrSV_chrom\t-1|SV_chrom\tSV_start|' \
-    | \
-    sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.genesplit.bed"
-
-    \$ANNOTSV/bin/AnnotSV \
-    -annotationsDir "${annotsv_ref_dir_bundle}" \
-    -annotationMode full \
-    -genomeBuild GRCh38 \
-    -outputDir . \
-    -outputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed" \
-    -SVinputFile "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.vcf" \
-    -SVminSize 1 \
-	-includeCI 0 \
-    -tx ENSEMBL
-
-    paste \
-    <(cut -f 2 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | awk 'BEGIN {OFS="\t"} {print "chr"\$1}') \
-    <(cut -f 3-4 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
-    <(cut -f 20 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
-    <(cut -f 5-6 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv") \
-    <(cut -f 1,106,108 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g') \
-    <(cut -f 8,13,15-17,21-22,66-79 "${tumor_normal_sample_id}.consensus.somatic.sv.breakend.annotated.collapsed.tsv" | sed 's|\t\t|\t.\t|g' | sed 's|\t\t|\t.\t|g') \
-    | \
-    sed 's|\t\$|\t.|' \
-    | \
-    sed 's|chrSV_chrom|SV_chrom|' \
-    | \
-    sort -k1,1V -k2,2n > "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.collapsed.bed"
-
-    cat "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.genesplit.bed" \
-    <(grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.genesplit.bed") \
-    | \
-    sort -k1,1V -k2,2n > "${gene_split_annotated_consensus_sv_bed}"
-
-    cat "${tumor_normal_sample_id}.hq.consensus.somatic.sv.nonbreakend.annotated.collapsed.bed" \
-    <(grep -v 'SV_chrom' "${tumor_normal_sample_id}.hq.consensus.somatic.sv.breakend.annotated.collapsed.bed") \
-    | \
-    sort -k1,1V -k2,2n > "${collapsed_annotated_consensus_sv_bed}"
-
-
-    # Transform collapsed annotation BED to high quality BEDPE
-    high_quality_bedpe_transformer.py \
-    <(grep -v 'SV_chrom' "${collapsed_annotated_consensus_sv_bed}") \
-    "${final_manta_somatic_sv_read_support}" \
-    "${final_svaba_somatic_sv_read_support}" \
-    "${final_delly_somatic_sv_read_support}" \
-    "${hq_consensus_sv_bedpe}"
+    gzip "${tumor_normal_sample_id}.snp_pileup.txt"
     """
 }
 
@@ -3552,6 +3329,82 @@ process annotateConsensusSvCalls_annotsv {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+// ~~~~~~~~~~~~~~~ Telomeres ~~~~~~~~~~~~~~~ \\
+// START
 
-*/
+// Telomerecat bam2length ~  estimating the average telomere length
+process telomereLengthEstimation_telomerecat {
+    publishDir "${params.output_dir}/somatic/telomerecat", mode: 'copy', pattern: '*.{csv}'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forTelomerecat
+
+    output:
+    path normal_telomere_estimates
+    path tumor_telomere_estimates
+
+    when:
+    params.telomerecat == "on"
+
+    script:
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+    normal_telomere_estimates = "${normal_id}.telomerecat.csv"
+    tumor_telomere_estimates = "${tumor_id}.telomerecat.csv"
+    """
+    telomerecat bam2length \
+    -p ${task.cpus} \
+    -v 1 \
+    --output "${tumor_telomere_estimates}" \
+    "${tumor_bam}"
+
+    telomerecat bam2length \
+    -p ${task.cpus} \
+    -v 1 \
+    --output "${normal_telomere_estimates}" \
+    "${normal_bam}"
+    """
+}
+
+// TelomereHunter ~ estimate telomere content and composition
+process telomereEstimation_telomerehunter {
+	publishDir "${params.output_dir}/somatic/telomereHunter", mode: 'copy'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cytoband_bed) from tumor_normal_pair_forTelomereHunter.combine(cytoband_bed)
+
+	output:
+	path "${tumor_normal_sample_id}/*.tsv"
+	path "${tumor_normal_sample_id}/*.png"
+	path "${tumor_normal_sample_id}/control_TelomerCnt_${tumor_normal_sample_id}/*.tsv"
+	path "${tumor_normal_sample_id}/control_TelomerCnt_${tumor_normal_sample_id}/TVRs"
+	path "${tumor_normal_sample_id}/tumor_TelomerCnt_${tumor_normal_sample_id}/*.tsv"
+	path "${tumor_normal_sample_id}/tumor_TelomerCnt_${tumor_normal_sample_id}/TVRs"
+	path "${tumor_normal_sample_id}/plots"
+
+	when:
+	params.telomerehunter == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	"""
+	telomerehunter \
+	--inputBamTumor "${tumor_bam}" \
+	--inputBamControl "${normal_bam}" \
+	--outPath . \
+	--pid "${tumor_normal_sample_id}" \
+	--bandingFile "${cytoband_bed}" \
+	--parallel \
+	--plotFileFormat png
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
 
