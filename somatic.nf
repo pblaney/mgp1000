@@ -2275,6 +2275,94 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
+// ~~~~~~~~~~~~~~~~ Conpair ~~~~~~~~~~~~~~~~ \\
+// START
+
+// Combine all reference FASTA files into one channel for use in Conpair Pileup process
+reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_forConpairPileup )
+	.combine( reference_genome_fasta_dict_forConpairPileup )
+	.set{ reference_genome_bundle_forConpairPileup }
+
+// Conpair run_gatk_pileup_for_sample ~ generate GATK pileups the tumor and normal BAMs separately
+process bamPileupForConpair_conpair {
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forConpairPileup), path(reference_genome_fasta_index_forConpairPileup), path(reference_genome_fasta_dict_forConpairPileup) from tumor_normal_pair_forConpairPileup.combine(reference_genome_bundle_forConpairPileup)
+
+	output:
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into bam_pileups_forConpair
+
+	when:
+	params.conpair == "on"
+
+	script:
+	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
+	tumor_pileup = "${tumor_id}.pileup"
+	normal_pileup = "${normal_id}.pileup"
+	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
+	"""
+	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
+	--xmx_jav "${task.memory.toGiga()}g" \
+	--bam "${tumor_bam}" \
+	--outfile "${tumor_pileup}" \
+	--reference "${reference_genome_fasta_forConpairPileup}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
+
+	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
+	--xmx_jav "${task.memory.toGiga()}g" \
+	--bam "${normal_bam}" \
+	--outfile "${normal_pileup}" \
+	--reference "${reference_genome_fasta_forConpairPileup}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
+	"""
+}
+
+// Conpair verify_concordance / estimate_tumor_normal_contamination ~ concordance and contamination estimator for tumor–normal pileups
+process concordanceAndContaminationEstimation_conpair {
+	publishDir "${params.output_dir}/somatic/conpair", mode: 'copy', pattern: '*.{txt}'
+	tag "${tumor_normal_sample_id}"
+
+	input:
+	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from bam_pileups_forConpair
+
+	output:
+	tuple val(tumor_normal_sample_id), path(conpair_concordance_file), path(conpair_contamination_file) into conpair_output_forConsensusMetadata
+	tuple val(tumor_normal_sample_id), path(conpair_contamination_file) into normal_contamination_forCaveman
+
+	when:
+	params.conpair == "on"
+	
+	script:
+	conpair_concordance_file = "${tumor_normal_sample_id}.conpair.concordance.txt"
+	conpair_contamination_file = "${tumor_normal_sample_id}.conpair.contamination.txt"
+	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
+	"""
+	\${CONPAIR_DIR}/scripts/verify_concordance.py \
+	--min_cov ${params.conpair_min_cov} \
+	--min_mapping_quality 10 \
+	--min_base_quality 20 \
+	--tumor_pileup "${tumor_pileup}" \
+	--normal_pileup "${normal_pileup}" \
+	--outfile "${conpair_concordance_file}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
+
+	\${CONPAIR_DIR}/scripts/estimate_tumor_normal_contamination.py \
+	--grid 0.01 \
+	--min_mapping_quality 10 \
+	--tumor_pileup "${tumor_pileup}" \
+	--normal_pileup "${normal_pileup}" \
+	--outfile "${conpair_contamination_file}" \
+	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
+	"""
+}
+
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
+
 // ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~ \\
 // START
 
@@ -3126,97 +3214,6 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
 
 
 
-
-
-
-
-
-// ~~~~~~~~~~~~~~~~ Conpair ~~~~~~~~~~~~~~~~ \\
-// START
-
-// Combine all reference FASTA files into one channel for use in Conpair Pileup process
-reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_forConpairPileup )
-	.combine( reference_genome_fasta_dict_forConpairPileup )
-	.set{ reference_genome_bundle_forConpairPileup }
-
-// Conpair run_gatk_pileup_for_sample ~ generate GATK pileups the tumor and normal BAMs separately
-process bamPileupForConpair_conpair {
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forConpairPileup), path(reference_genome_fasta_index_forConpairPileup), path(reference_genome_fasta_dict_forConpairPileup) from tumor_normal_pair_forConpairPileup.combine(reference_genome_bundle_forConpairPileup)
-
-	output:
-	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into bam_pileups_forConpair
-
-	when:
-	params.conpair == "on"
-
-	script:
-	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	tumor_pileup = "${tumor_id}.pileup"
-	normal_pileup = "${normal_id}.pileup"
-	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
-	"""
-	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
-	--xmx_jav "${task.memory.toGiga()}g" \
-	--bam "${tumor_bam}" \
-	--outfile "${tumor_pileup}" \
-	--reference "${reference_genome_fasta_forConpairPileup}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
-
-	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
-	--xmx_jav "${task.memory.toGiga()}g" \
-	--bam "${normal_bam}" \
-	--outfile "${normal_pileup}" \
-	--reference "${reference_genome_fasta_forConpairPileup}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
-	"""
-}
-
-// Conpair verify_concordance / estimate_tumor_normal_contamination ~ concordance and contamination estimator for tumor–normal pileups
-process concordanceAndContaminationEstimation_conpair {
-	publishDir "${params.output_dir}/somatic/conpair", mode: 'copy', pattern: '*.{txt}'
-	tag "${tumor_normal_sample_id}"
-
-	input:
-	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) from bam_pileups_forConpair
-
-	output:
-	tuple val(tumor_normal_sample_id), path(conpair_concordance_file), path(conpair_contamination_file) into conpair_output_forConsensusMetadata
-	tuple val(tumor_normal_sample_id), path(conpair_contamination_file) into normal_contamination_forCaveman
-
-	when:
-	params.conpair == "on"
-	
-	script:
-	conpair_concordance_file = "${tumor_normal_sample_id}.conpair.concordance.txt"
-	conpair_contamination_file = "${tumor_normal_sample_id}.conpair.contamination.txt"
-	hg38_ref_genome_markers = "/data/markers/GRCh38.autosomes.phase3_shapeit2_mvncall_integrated.20130502.SNV.genotype.sselect_v4_MAF_0.4_LD_0.8.liftover"
-	"""
-	\${CONPAIR_DIR}/scripts/verify_concordance.py \
-	--min_cov ${params.conpair_min_cov} \
-	--min_mapping_quality 10 \
-	--min_base_quality 20 \
-	--tumor_pileup "${tumor_pileup}" \
-	--normal_pileup "${normal_pileup}" \
-	--outfile "${conpair_concordance_file}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
-
-	\${CONPAIR_DIR}/scripts/estimate_tumor_normal_contamination.py \
-	--grid 0.01 \
-	--min_mapping_quality 10 \
-	--tumor_pileup "${tumor_pileup}" \
-	--normal_pileup "${normal_pileup}" \
-	--outfile "${conpair_contamination_file}" \
-	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.txt"
-	"""
-}
-
-// END
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
 // ~~~~~~~~~~~~~~ fragCounter ~~~~~~~~~~~~~~ \\
