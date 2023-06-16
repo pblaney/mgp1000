@@ -1779,7 +1779,7 @@ process mutect2GnomadReferenceVcfPrep_bcftools {
 // Depending on whether the gnomAD allele frequency reference VCF was pre-built, set the input
 // channel for the for Mutect2 process
 if( params.mutect_ref_vcf_concatenated == "yes" && params.mutect == "on") {
-	mutect_gnomad_ref_vcf = mutect_gnomad_ref_vcf_preBuilt.combine( mutect_gnomad_ref_vcf_index_preBuilt )
+	mutect_gnomad_ref_vcf = mutect_gnomad_ref_vcf_preBuilt.combine(mutect_gnomad_ref_vcf_index_preBuilt)
 }
 else {
 	mutect_gnomad_ref_vcf = mutect_gnomad_ref_vcf_fromProcess
@@ -1791,7 +1791,7 @@ process snvAndIndelCalling_gatk {
 	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) path(mutect_gnomad_ref_vcf), path(mutect_gnomad_ref_vcf_index) from tumor_normal_pair_forMutectCalling.combine(mutect_gnomad_ref_vcf)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) path(mutect_gnomad_vcf), path(mutect_gnomad_vcf_index) from tumor_normal_pair_forMutectCalling.combine(mutect_gnomad_ref_vcf)
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
