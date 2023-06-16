@@ -1791,7 +1791,7 @@ process snvAndIndelCalling_gatk {
 	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) path(mutect_gnomad_vcf), path(mutect_gnomad_vcf_index) from tumor_normal_pair_forMutectCalling.combine(mutect_gnomad_ref_vcf)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(mutect_gnomad_vcf), path(mutect_gnomad_vcf_index) from tumor_normal_pair_forMutectCalling.combine(mutect_gnomad_ref_vcf)
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
