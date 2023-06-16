@@ -3103,7 +3103,8 @@ process binReadCoverageInNormal_fragcounter {
     tag "${tumor_normal_sample_id} S=Normal"
 
     input:
-    tuple val(tumor_normal_sample_id), path(normal_bam), path(normal_bam_index), path(fragcounter_gc_mappability_dir) from normal_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterNormal)
+    tuple val(tumor_normal_sample_id), path(normal_bam), path(normal_bam_index) from normal_bams_forFragCounter
+    path gc_mappability from gc_mappability_dir
      
     output:
     path normal_fragcounter_cov_rds
@@ -3120,7 +3121,7 @@ process binReadCoverageInNormal_fragcounter {
     """
     fragCounter_executor.sh \
 	"${normal_bam}" \
-	"${fragcounter_gc_mappability_dir}" \
+	"${gc_mappability}" \
 	"TRUE" \
 	"FALSE" \
 	"${normal_results_dir}"
@@ -3169,7 +3170,7 @@ process snpPileup_fragcounter {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(hapmap_ref_snps_vcf), path(hapmap_ref_snps_vcf_index) from bams_forFragCounterPileup
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from bams_forFragCounterPileup
     path hapmap_vcf from hapmap_ref_snps_vcf
 	path hapmap_vcf_index from hapmap_ref_snps_vcf_index
 
