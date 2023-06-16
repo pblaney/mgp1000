@@ -1755,24 +1755,24 @@ process mutect2GnomadReferenceVcfPrep_bcftools {
 	path gnomad_vcf_chromosomesXYM_alts_index from gnomad_ref_vcf_chromosomesXYM_alts_index
 
 	output:
-	tuple path(mutect_gnomad_ref_vcf), path(mutect_gnomad_ref_vcf_index) into mutect_gnomad_ref_vcf_fromProcess
+	tuple path(mutect_gnomad_vcf), path(mutect_gnomad_vcf_index) into mutect_gnomad_ref_vcf_fromProcess
 
 	when:
 	params.mutect == "on" && params.mutect_ref_vcf_concatenated == "no"
 
 	script:
-	mutect_gnomad_ref_vcf = "af-only-gnomad.hg38.vcf.gz"
-	mutect_gnomad_ref_vcf_index = "${mutect_gnomad_ref_vcf}.tbi"
+	mutect_gnomad_vcf = "af-only-gnomad.hg38.vcf.gz"
+	mutect_gnomad_vcf_index = "${mutect_gnomad_vcf}.tbi"
 	"""
 	bcftools concat \
 	--threads ${task.cpus} \
 	--output-type z \
-	--output "${mutect_gnomad_ref_vcf}" \
+	--output "${mutect_gnomad_vcf}" \
 	"${gnomad_vcf_chromosomes1_9}" \
 	"${gnomad_vcf_chromosomes10_22}" \
 	"${gnomad_vcf_chromosomesXYM_alts}"
 
-	tabix "${mutect_gnomad_ref_vcf}"
+	tabix "${mutect_gnomad_vcf}"
 	"""
 }
 
@@ -1827,7 +1827,7 @@ process snvAndIndelCalling_gatk {
 	--seconds-between-progress-updates 600 \
 	--reference "${ref_genome_fasta}" \
 	--intervals "${per_chromosome_bed_file}" \
-	--germline-resource "${mutect_gnomad_ref_vcf}" \
+	--germline-resource "${mutect_gnomad_vcf}" \
 	--panel-of-normals "${pon_1000G}" \
 	--input "${tumor_bam}" \
 	--input "${normal_bam}" \
