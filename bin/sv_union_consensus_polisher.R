@@ -210,22 +210,22 @@ plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, see
 pdf(file = paste0(tum_norm_id, ".union.consensus.somatic.sv.intersection.plot.pdf"),
     width = 7,
     height = 7)
-upset(plot_data,
-      mainbar.y.label = "Breakpoint Pair Intersection",
-      sets.x.label = "SVs Per Caller",
-      point.size = 5.25,
-      line.size = 1.8,
-      text.scale = c(1.75, 1.5, 1.5, 1.25, 1.25, 1.5),
-      scale.intersections = "identity",
-      scale.sets = "identity",
-      main.bar.color = paletteer::paletteer_dynamic("cartography::wine.pal",
-                                                        n = length(table(paste0(plot_data$seen.by.manta,
-                                                                                plot_data$seen.by.delly,
-                                                                                plot_data$seen.by.svaba,
-                                                                                plot_data$seen.by.igcaller)))),
-      sets.bar.color = paletteer::paletteer_d("ggsci::default_aaas")[3:6]) # BigY, Yaxistix, LittleX, Xaxistix, callerId, colcountannots
+UpSetR::upset(plot_data,
+              mainbar.y.label = "Breakpoint Pair Intersection",
+              sets.x.label = "SVs Per Caller",
+              point.size = 5.25,
+              line.size = 1.8,
+              text.scale = c(1.75, 1.5, 1.5, 1.25, 1.25, 1.5),
+              scale.intersections = "identity",
+              scale.sets = "identity",
+              main.bar.color = paletteer::paletteer_dynamic("cartography::wine.pal",
+                                                                n = length(table(paste0(plot_data$seen.by.manta,
+                                                                                        plot_data$seen.by.delly,
+                                                                                        plot_data$seen.by.svaba,
+                                                                                        plot_data$seen.by.igcaller)))),
+              sets.bar.color = paletteer::paletteer_d("ggsci::default_aaas")[3:6]) # BigY, Yaxistix, LittleX, Xaxistix, callerId, colcountannots
+title(main = tum_norm_id, family = "sans", font.main = 2)
 dev.off()
-
 message("Writing output consensus gGnome junctions as BEDPE format.....")
 # TODO: Go from SV gGnome junctions to BEDPE
 # Convert GRangeList of junctions to GRanges

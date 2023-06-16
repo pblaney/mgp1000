@@ -67,12 +67,6 @@ def helpMessage() {
 	                                      not, this does not need to be done for every separate
 	                                      run after the first
 	                                      [Default: no | Available: yes, no]
-	  --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
-	                                      for annotation have been downloaded/cached locally,
-	                                      this will be done in a process of the pipeline if it
-	                                      has not, this does not need to be done for every
-	                                      separate run after the first
-	                                      [Default: yes | Available: yes, no]
 	  --cpus                         INT  Globally set the number of cpus to be allocated
 	  --memory                       STR  Globally set the amount of memory to be allocated,
 	                                      written as '##.GB' or '##.MB'
@@ -201,83 +195,12 @@ Channel
     .set{ ref_genome_fasta_dict_file }
 
 Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta' )
-	.into{ reference_genome_fasta_forConpairPileup;
-	       reference_genome_fasta_forVarscanSamtoolsMpileup;
-	       reference_genome_fasta_forVarscanBamReadcount;
-	       reference_genome_fasta_forVarscanBcftoolsNorm;
-	       reference_genome_fasta_forMutectCalling;
-	       reference_genome_fasta_forMutectFilter;
-	       reference_genome_fasta_forMutectBcftools;
-	       reference_genome_fasta_forManta;
-	       reference_genome_fasta_forStrelka;
-	       reference_genome_fasta_forStrelkaBcftools;
-	       reference_genome_fasta_forCaveman;
-	       reference_genome_fasta_forSvabaBcftools;
-	       reference_genome_fasta_forDelly;
-	       reference_genome_fasta_forIgCaller;
-	       reference_genome_fasta_forConsensusSnvMpileup;
-	       reference_genome_fasta_forConsensusIndelMpileup;
-	       reference_genome_fasta_forConsensusSvFpFilter;
-	       reference_genome_fasta_forAnnotation }
+    .value( file('references/hg38/wgs_calling_regions.hg38.bed') )
+    .set{ gatk_wgs_bed }
 
 Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
-	.into{ reference_genome_fasta_index_forAlleleCount;
-		   reference_genome_fasta_index_forConpairPileup;
-	       reference_genome_fasta_index_forVarscanSamtoolsMpileup;
-	       reference_genome_fasta_index_forVarscanBamReadcount;
-	       reference_genome_fasta_index_forVarscanBcftoolsNorm;
-	       reference_genome_fasta_index_forMutectCalling;
-	       reference_genome_fasta_index_forMutectFilter;
-	       reference_genome_fasta_index_forMutectBcftools;
-	       reference_genome_fasta_index_forManta;
-	       reference_genome_fasta_index_forStrelka;
-	       reference_genome_fasta_index_forStrelkaBcftools;
-	       reference_genome_fasta_index_forCaveman;
-	       reference_genome_fasta_index_forSvabaBcftools;
-	       reference_genome_fasta_index_forDelly;
-	       reference_genome_fasta_index_forIgCaller;
-	       reference_genome_fasta_index_forConsensusSnvMpileup;
-	       reference_genome_fasta_index_forConsensusIndelMpileup;
-	       reference_genome_fasta_index_forConsensusSvFpFilter;
-	       reference_genome_fasta_index_forAnnotation }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
-	.into{ reference_genome_fasta_dict_forConpairPileup;
-	       reference_genome_fasta_dict_forVarscanSamtoolsMpileup;
-	       reference_genome_fasta_dict_forVarscanBamReadcount;
-	       reference_genome_fasta_dict_forVarscanBcftoolsNorm;
-	       reference_genome_fasta_dict_forMutectCalling;
-	       reference_genome_fasta_dict_forMutectPileupGatherTumor;
-	       reference_genome_fasta_dict_forMutectPileupGatherNormal;
-	       reference_genome_fasta_dict_forMutectFilter;
-	       reference_genome_fasta_dict_forMutectBcftools;
-	       reference_genome_fasta_dict_forManta;
-	       reference_genome_fasta_dict_forStrelka;
-	       reference_genome_fasta_dict_forStrelkaBcftools;
-	       reference_genome_fasta_dict_forCaveman;
-	       reference_genome_fasta_dict_forSvaba;
-	       reference_genome_fasta_dict_forSvabaBcftools;
-	       reference_genome_fasta_dict_forDelly;
-	       reference_genome_fasta_dict_forIgCaller;
-	       reference_genome_fasta_dict_forConsensusSnvMpileup;
-	       reference_genome_fasta_dict_forConsensusIndelMpileup;
-	       reference_genome_fasta_dict_forAnnotation }
-
-Channel
-	.fromPath( 'references/hg38/wgs_calling_regions.hg38.bed' )
-	.into{ gatk_bundle_wgs_bed_forVarscanSamtoolsMpileup;
-	       gatk_bundle_wgs_bed_forMutectCalling;
-	       gatk_bundle_wgs_bed_forMutectPileup;
-	       gatk_bundle_wgs_bed_forManta;
-	       gatk_bundle_wgs_bed_forStrelka }
-
-Channel
-	.fromPath( 'references/hg38/wgs_calling_regions_blacklist.0based.hg38.bed' )
-	.into{ gatk_bundle_wgs_bed_blacklist_0based_forDelly;
-	       gatk_bundle_wgs_bed_blacklist_0based_forSvaba }
+    .value( file('references/hg38/wgs_calling_regions_blacklist.0based.hg38.bed') )
+    .set{ wgs_bed_blacklist_0based }
 
 Channel
 	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
@@ -290,44 +213,44 @@ Channel
 	       chromosome_list_forCavemanSplit }
 
 Channel
-	.fromPath( 'references/hg38/sex_identification_loci.chrY.hg38.txt' )
-	.set{ sex_identification_loci }
+    .value( file('references/hg38/sex_identification_loci.chrY.hg38.txt') )
+    .set{ sex_identification_loci }
 
 Channel
-	.fromPath( 'references/hg38/cytoband_autosome_sex_chroms.hg38.bed' )
-	.set{ cytoband_bed }
+    .value( file('references/hg38/cytoband_autosome_sex_chroms.hg38.bed') )
+    .set{ cytoband_bed }
 
 Channel
-	.fromPath( 'references/hg38/1000g_pon.hg38.vcf.gz' )
-	.set{ panel_of_normals_1000G }
+    .value( file('references/hg38/1000g_pon.hg38.vcf.gz') )
+    .set{ panel_of_normals_1000G }
 
 Channel
-	.fromPath( 'references/hg38/1000g_pon.hg38.vcf.gz.tbi' )
-	.set{ panel_of_normals_1000G_index }	
+    .value( file('references/hg38/1000g_pon.hg38.vcf.gz.tbi') )
+    .set{ panel_of_normals_1000G_index }	
 
 Channel
-	.fromPath( 'references/hg38/af-only-gnomad.chr1-9.hg38.vcf.gz' )
-	.set{ gnomad_ref_vcf_chromosomes1_9 }
+    .value( file('references/hg38/af-only-gnomad.chr1-9.hg38.vcf.gz') )
+    .set{ gnomad_ref_vcf_chromosomes1_9 }
 
 Channel
-	.fromPath( 'references/hg38/af-only-gnomad.chr1-9.hg38.vcf.gz.tbi' )
-	.set{ gnomad_ref_vcf_chromosomes1_9_index }
+    .value( file('references/hg38/af-only-gnomad.chr1-9.hg38.vcf.gz.tbi') )
+    .set{ gnomad_ref_vcf_chromosomes1_9_index }
 
 Channel
-	.fromPath( 'references/hg38/af-only-gnomad.chr10-22.hg38.vcf.gz' )
-	.set{ gnomad_ref_vcf_chromosomes10_22 }
+    .value( file('references/hg38/af-only-gnomad.chr10-22.hg38.vcf.gz') )
+    .set{ gnomad_ref_vcf_chromosomes10_22 }
 
 Channel
-	.fromPath( 'references/hg38/af-only-gnomad.chr10-22.hg38.vcf.gz.tbi' )
-	.set{ gnomad_ref_vcf_chromosomes10_22_index }
+    .value( file('references/hg38/af-only-gnomad.chr10-22.hg38.vcf.gz.tbi') )
+    .set{ gnomad_ref_vcf_chromosomes10_22_index }
 
 Channel
-	.fromPath( 'references/hg38/af-only-gnomad.chrXYM-alts.hg38.vcf.gz' )
-	.set{ gnomad_ref_vcf_chromosomesXYM_alts }
+    .value( file('references/hg38/af-only-gnomad.chrXYM-alts.hg38.vcf.gz') )
+    .set{ gnomad_ref_vcf_chromosomesXYM_alts }
 
 Channel
-	.fromPath( 'references/hg38/af-only-gnomad.chrXYM-alts.hg38.vcf.gz.tbi' )
-	.set{ gnomad_ref_vcf_chromosomesXYM_alts_index }
+    .value( file('references/hg38/af-only-gnomad.chrXYM-alts.hg38.vcf.gz.tbi') )
+    .set{ gnomad_ref_vcf_chromosomesXYM_alts_index }
 
 if( params.mutect == "on" && params.mutect_ref_vcf_concatenated == "yes" ) {
 	Channel
@@ -342,12 +265,12 @@ if( params.mutect == "on" && params.mutect_ref_vcf_concatenated == "yes" ) {
 }
 
 Channel
-	.fromPath( 'references/hg38/small_exac_common_3.hg38.vcf.gz' )
-	.set{ exac_common_sites_ref_vcf }
+    .value( file('references/hg38/small_exac_common_3.hg38.vcf.gz') )
+    .set{ exac_common_sites_ref_vcf }
 
 Channel
-	.fromPath( 'references/hg38/small_exac_common_3.hg38.vcf.gz.tbi' )
-	.set{ exac_common_sites_ref_vcf_index }
+    .value( file('references/hg38/small_exac_common_3.hg38.vcf.gz.tbi') )
+    .set{ exac_common_sites_ref_vcf_index }
 
 if( params.battenberg_ref_cached == "yes" ) {
 	Channel
@@ -357,29 +280,24 @@ if( params.battenberg_ref_cached == "yes" ) {
 }
 
 Channel
-	.fromPath( 'references/hg38/SnpGcCorrections.hg38.tsv' )
-	.set{ snp_gc_corrections }
+    .value( file('references/hg38') )
+    .set{ gc_mappability_dir }
 
 Channel
-    .fromPath( 'references/hg38' )
-    .into{ fragcounter_gc_mappability_dir_forFragCounterNormal;
-           fragcounter_gc_mappability_dir_forFragCounterTumor }
+    .value( file('references/hg38/Hapmap_3.3.hg38.vcf.gz') )
+    .set{ hapmap_ref_snps_vcf }
 
 Channel
-	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz' )
-	.set{ hapmap_ref_snps_vcf_forFragCounter }
+    .value( file('references/hg38/Hapmap_3.3.hg38.vcf.gz.tbi') )
+    .set{ hapmap_ref_snps_vcf_index }
 
 Channel
-	.fromPath( 'references/hg38/Hapmap_3.3.hg38.vcf.gz.tbi' )
-	.set{ hapmap_ref_snps_vcf_index_forFragCounter }
+    .value( file('references/hg38/common_all_20180418.vcf.gz') )
+    .set{ common_dbsnp_ref_vcf }
 
 Channel
-	.fromPath( 'references/hg38/common_all_20180418.vcf.gz' )
-	.set{ common_dbsnp_ref_vcf_forFacets }
-
-Channel
-	.fromPath( 'references/hg38/common_all_20180418.vcf.gz.tbi' )
-	.set{ common_dbsnp_ref_vcf_index_forFacets }
+    .value( file('references/hg38/common_all_20180418.vcf.gz.tbi') )
+    .set{ common_dbsnp_ref_vcf_index }
 
 Channel
 	.fromPath( ['references/hg38/Homo_sapiens_assembly38.fasta', 'references/hg38/Homo_sapiens_assembly38.fasta.fai',
@@ -389,37 +307,24 @@ Channel
 	.set{ bwa_ref_genome_files }
 
 Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
-	.set{ dbsnp_known_indel_ref_vcf }
+    .value( file('references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz') )
+    .set{ dbsnp_known_indel_ref_vcf }
 
 Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
-	.set{ dbsnp_known_indel_ref_vcf_index }
+    .value( file('references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi') )
+    .set{ dbsnp_known_indel_ref_vcf_index }
 
 Channel
-	.fromPath( 'references/hg38/simple_and_centromeric_repeats.hg38.bed' )
-	.into{ simple_and_centromeric_repeats_bed_forSvaba;
-		   simple_and_centromeric_repeats_bed_forSnvBedFilter;
-	       simple_and_centromeric_repeats_bed_forIndelBedFilter }
-
-if( params.annotsv_ref_cached == "yes" ) {
-     Channel
-          .fromPath( 'references/hg38/annotations_human_annotsv_hg38/', type: 'dir', checkIfExists: true )
-          .ifEmpty{ error "The run command issued has the '--annotsv_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--annotsv_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
-          .into{ annotsv_ref_dir_pre_downloaded_forSvAnnotation;
-                 annotsv_ref_dir_pre_downloaded_forCnvAnnotation }
-}
-
-if( params.vep_ref_cached == "yes" ) {
-	Channel
-		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: 'dir', checkIfExists: true )
-		.ifEmpty{ error "The run command issued has the '--vep_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--vep_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run somatic.nf --help'"}
-		.set{ vep_ref_dir_preDownloaded }
-}
+    .value( file('references/hg38/simple_and_centromeric_repeats.hg38.bed') )
+    .set{ simple_and_centromeric_repeats_bed }
 
 Channel
 	.value( file('references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed') )
-	.set{ gatk_bundle_wgs_bed_blacklist_1based_forCaveman }
+	.set{ wgs_bed_blacklist_0based }
+
+Channel
+	.value( file('references/hg38/exome_blacklist.hg38.bed') )
+	.set{ wes_bed_blacklist_0based }	
 
 Channel
 	.value( file('references/hg38/unmatchedNormal.bed.gz') )
@@ -518,17 +423,15 @@ Channel
 	       tumor_normal_pair_forDelly;
 	       tumor_normal_pair_forIgCaller }
 
-// Combine reference FASTA index and sex identification loci files into one channel for use in alleleCount process
-reference_genome_fasta_index_forAlleleCount.combine( sex_identification_loci )
-	.set{ ref_index_and_sex_ident_loci }
-
 // alleleCount ~ determine the sex of each sample to use in downstream analyses
 process identifySampleSex_allelecount {
 	publishDir "${params.output_dir}/somatic/sexOfSamples", mode: 'copy', pattern: '*.{txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_index_forAlleleCount), path(sex_identification_loci) from tumor_normal_pair_forAlleleCount.combine(ref_index_and_sex_ident_loci)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forAlleleCount
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path sex_loci from sex_identification_loci
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forVarscanBamReadcount
@@ -552,9 +455,9 @@ process identifySampleSex_allelecount {
 	sample_sex = "${tumor_normal_sample_id}.sexident.txt"
 	"""
 	alleleCounter \
-	--loci-file "${sex_identification_loci}" \
+	--loci-file "${sex_loci}" \
 	--hts-file "${normal_bam}" \
-	--ref-file "${reference_genome_fasta_index_forAlleleCount}" \
+	--ref-file "${ref_genome_fasta_index}" \
 	--output-file "${sex_loci_allele_counts}"
 
 	sample_sex_determinator.sh "${sex_loci_allele_counts}" > "${sample_sex}"
@@ -707,7 +610,9 @@ process snpPileup_facets {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(common_dbsnp_sites_vcf), path(common_dbsnp_sites_vcf_index) from bams_forFacetsPileup.combine(common_dbsnp_ref_vcf_forFacets).combine(common_dbsnp_ref_vcf_index_forFacets)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from bams_forFacetsPileup
+    path common_dbsnp_vcf from common_dbsnp_ref_vcf
+	path common_dbsnp_vcf_index from common_dbsnp_ref_vcf_index
 
     output:
     tuple val(tumor_normal_sample_id), path(facets_snp_pileup) into snp_pileup_forFacets
@@ -727,7 +632,7 @@ process snpPileup_facets {
     --min-base-quality 20 \
     --pseudo-snps 100 \
     --min-read-counts ${params.facets_min_depth} \
-    "${common_dbsnp_sites_vcf}" \
+    "${common_dbsnp_vcf}" \
     "${facets_snp_pileup}" \
     "${normal_bam}" \
     "${tumor_bam}"
@@ -808,19 +713,17 @@ process consensusCnvPrep_facets {
 // ~~~~~~~~~~~~~~~~~ Manta ~~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all needed reference FASTA files and WGS BED into one channel for use in Manta process
-reference_genome_fasta_forManta.combine( reference_genome_fasta_index_forManta )
-	.combine( reference_genome_fasta_dict_forManta )
-	.combine( gatk_bundle_wgs_bed_forManta )
-	.set{ reference_genome_bundle_and_bed_forManta }
-
 // Manta ~ call structural variants and indels from mapped paired-end sequencing reads of matched tumor/normal sample pairs
 process svAndIndelCalling_manta {
 	publishDir "${params.output_dir}/somatic/manta", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forManta), path(reference_genome_fasta_index_forManta), path(reference_genome_fasta_dict_forManta), path(gatk_bundle_wgs_bed_forManta) from tumor_normal_pair_forManta.combine(reference_genome_bundle_and_bed_forManta)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forManta
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path wgs_bed from gatk_wgs_bed
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
@@ -837,7 +740,7 @@ process svAndIndelCalling_manta {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	zipped_wgs_bed_forManta = "${gatk_bundle_wgs_bed_forManta}.gz"
+	zipped_wgs_bed_forManta = "${wgs_bed}.gz"
 	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unfiltered.vcf.gz"
 	manta_somatic_config = "${tumor_normal_sample_id}.manta.somatic.config.ini"
 	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
@@ -848,7 +751,7 @@ process svAndIndelCalling_manta {
 	manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unprocessed.vcf.gz"
 	manta_somatic_sv_vcf_index = "${manta_somatic_sv_vcf}.tbi"
 	"""
-	bgzip < "${gatk_bundle_wgs_bed_forManta}" > "${zipped_wgs_bed_forManta}"
+	bgzip < "${wgs_bed}" > "${zipped_wgs_bed_forManta}"
 	tabix "${zipped_wgs_bed_forManta}"
 
 	touch "${manta_somatic_config}"
@@ -863,7 +766,7 @@ process svAndIndelCalling_manta {
 	python \${MANTA_DIR}/bin/configManta.py \
 	--tumorBam "${tumor_bam}" \
 	--normalBam "${normal_bam}" \
-	--referenceFasta "${reference_genome_fasta_forManta}" \
+	--referenceFasta "${ref_genome_fasta}" \
 	--callRegions "${zipped_wgs_bed_forManta}" \
 	--config "${manta_somatic_config}" \
 	--runDir manta
@@ -891,7 +794,7 @@ process svAndIndelCalling_manta {
 
 	\${MANTA_DIR}/libexec/convertInversion.py \
 	\${MANTA_DIR}/libexec/samtools \
-	"${reference_genome_fasta_forManta}" \
+	"${ref_genome_fasta}" \
 	somaticSV.passonly.vcf \
 	| \
 	bgzip > "${manta_somatic_sv_vcf}"
@@ -923,7 +826,7 @@ process filterAndPostprocessMantaVcf_bcftools {
     bcftools filter \
     --output-type z \
     --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
-    --output-file "${final_manta_somatic_sv_vcf}" \
+    --output "${final_manta_somatic_sv_vcf}" \
     "${manta_somatic_sv_vcf}" 
 
     bcftools query \
@@ -945,13 +848,13 @@ process falsePostiveSvFilteringManta_duphold {
     path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
     output:
-    tuple val(tumor_normal_sample_id), path(mutect_filtered_final_sv_vcf) into mutect_filtered_final_sv_vcf_forConsensus
+    tuple val(tumor_normal_sample_id), path(manta_filtered_final_sv_vcf) into manta_filtered_final_sv_vcf_forConsensus
 
     when:
     params.manta == "on"
 
     script:
-    mutect_filtered_final_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.final.vcf.gz"
+    manta_filtered_final_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.final.vcf.gz"
     """
     duphold \
     --vcf "${final_manta_somatic_sv_vcf}" \
@@ -969,7 +872,7 @@ process falsePostiveSvFilteringManta_duphold {
     bcftools filter \
     --output-type z \
     --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
-    --output "${mutect_filtered_final_sv_vcf}"
+    --output "${manta_filtered_final_sv_vcf}"
     """
 }
 
@@ -980,18 +883,16 @@ process falsePostiveSvFilteringManta_duphold {
 // ~~~~~~~~~~~~~~~~ Strelka2 ~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all needed reference FASTA files and WGS BED into one channel for use in Strelka process
-reference_genome_fasta_forStrelka.combine( reference_genome_fasta_index_forStrelka )
-	.combine( reference_genome_fasta_dict_forStrelka )
-	.combine( gatk_bundle_wgs_bed_forStrelka )
-	.set{ reference_genome_bundle_and_bed_forStrelka }
-
 // Strelka2 ~ call germline and somatic small variants from mapped sequencing reads
 process snvAndIndelCalling_strelka {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index), path(reference_genome_fasta_forStrelka), path(reference_genome_fasta_index_forStrelka), path(reference_genome_fasta_dict_forStrelka), path(gatk_bundle_wgs_bed_forStrelka) from bams_and_candidate_indel_vcf_forStrelka.combine(reference_genome_bundle_and_bed_forStrelka)
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) from bams_and_candidate_indel_vcf_forStrelka
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path wgs_bed from gatk_wgs_bed
 
 	output:
 	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index) into unfiltered_snv_and_indel_vcfs_forStrelkaBcftools
@@ -1000,19 +901,19 @@ process snvAndIndelCalling_strelka {
 	params.strelka == "on" && params.manta == "on"
 
 	script:
-	zipped_wgs_bed_forStrelka = "${gatk_bundle_wgs_bed_forStrelka}.gz"
+	zipped_wgs_bed_forStrelka = "${wgs_bed}.gz"
 	unfiltered_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.unfiltered.vcf.gz"
 	unfiltered_strelka_snv_vcf_index = "${unfiltered_strelka_snv_vcf}.tbi"
 	unfiltered_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.unfiltered.vcf.gz"
 	unfiltered_strelka_indel_vcf_index = "${unfiltered_strelka_indel_vcf}.tbi"
 	"""
-	bgzip < "${gatk_bundle_wgs_bed_forStrelka}" > "${zipped_wgs_bed_forStrelka}"
+	bgzip < "${wgs_bed}" > "${zipped_wgs_bed_forStrelka}"
 	tabix "${zipped_wgs_bed_forStrelka}"
 
 	python \${STRELKA_DIR}/bin/configureStrelkaSomaticWorkflow.py \
 	--normalBam "${normal_bam}" \
 	--tumorBam "${tumor_bam}" \
-	--referenceFasta "${reference_genome_fasta_forStrelka}" \
+	--referenceFasta "${ref_genome_fasta}" \
 	--indelCandidates "${candidate_indel_vcf}" \
 	--callRegions "${zipped_wgs_bed_forStrelka}" \
 	--runDir strelka
@@ -1029,18 +930,16 @@ process snvAndIndelCalling_strelka {
 	"""
 }
 
-// Combine all needed reference FASTA files into one channel for use in Strelka / BCFtools Norm process
-reference_genome_fasta_forStrelkaBcftools.combine( reference_genome_fasta_index_forStrelkaBcftools )
-	.combine( reference_genome_fasta_dict_forStrelkaBcftools )
-	.set{ reference_genome_bundle_forStrelkaBcftools }
-
 // BCFtools norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 	publishDir "${params.output_dir}/somatic/strelka", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index), path(reference_genome_fasta_forStrelkaBcftools), path(reference_genome_fasta_index_forStrelkaBcftools), path(reference_genome_fasta_dict_forStrelkaBcftools) from unfiltered_snv_and_indel_vcfs_forStrelkaBcftools.combine(reference_genome_bundle_forStrelkaBcftools)
+	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index) from unfiltered_snv_and_indel_vcfs_forStrelkaBcftools
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(final_strelka_snv_vcf) into final_strelka_snv_vcf_forConsensus
@@ -1082,7 +981,7 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 	| \
 	bcftools norm \
 	--threads ${task.cpus} \
-	--fasta-ref "${reference_genome_fasta_forStrelkaBcftools}" \
+	--fasta-ref "${ref_genome_fasta}" \
 	--output-type z \
 	--output "${final_strelka_indel_vcf}" \
 	- 2>"${strelka_indel_realign_normalize_stats}"
@@ -1098,16 +997,9 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 // ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all needed reference FASTA files, WGS BED, and reference VCF files into one channel for use in SvABA process
-bwa_ref_genome_files.collect()
-	.combine( reference_genome_fasta_dict_forSvaba )
-	.combine( gatk_bundle_wgs_bed_blacklist_0based_forSvaba )
-	.set{ bwa_ref_genome_and_wgs_bed }
-
-bwa_ref_genome_and_wgs_bed.combine( dbsnp_known_indel_ref_vcf )
-	.combine( dbsnp_known_indel_ref_vcf_index )
-	.combine( simple_and_centromeric_repeats_bed_forSvaba )
-	.set{ bwa_ref_genome_wgs_bed_and_ref_files }
+// Combine all needed reference FASTA files into one channel for use in SvABA process
+//bwa_ref_genome_files.collect()
+//	.set{ bwa_ref_genome_and_wgs_bed }
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
@@ -1115,7 +1007,12 @@ process svAndIndelCalling_svaba {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa"), path(reference_genome_fasta_dict_forSvaba), path(gatk_bundle_wgs_bed_blacklist_0based_forSvaba), path(dbsnp_known_indel_ref_vcf), path(dbsnp_known_indel_ref_vcf_index), path(simple_and_centromeric_repeats_bed_forSvaba) from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_wgs_bed_and_ref_files)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa") from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_files.collect())
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path wgs_blacklist_0based_bed from wgs_bed_blacklist_0based
+	path dbsnp_known_indel_vcf from dbsnp_known_indel_ref_vcf
+	path dbsnp_known_indel_vcf_index from dbsnp_known_indel_ref_vcf_index
+	path simple_and_centromeric_repeats from simple_and_centromeric_repeats_bed
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
@@ -1150,10 +1047,10 @@ process svAndIndelCalling_svaba {
 	-t "${tumor_bam}" \
 	-n "${normal_bam}" \
 	--reference-genome Homo_sapiens_assembly38.fasta \
-	--blacklist "${gatk_bundle_wgs_bed_blacklist_0based_forSvaba}" \
+	--blacklist "${wgs_blacklist_0based_bed}" \
 	--id-string "${tumor_normal_sample_id}" \
-	--dbsnp-vcf "${dbsnp_known_indel_ref_vcf}" \
-	--simple-seq-database "${simple_and_centromeric_repeats_bed_forSvaba}" \
+	--dbsnp-vcf "${dbsnp_known_indel_vcf}" \
+	--simple-seq-database "${simple_and_centromeric_repeats_bed}" \
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip
@@ -1207,7 +1104,6 @@ process filterAndPostprocessSvabaVcf_bcftools {
     --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
     | \
     bcftools reheader \
-    --output-type u \
     --samples "${sample_renaming_file}" \
     | \
     bcftools view \
@@ -1228,18 +1124,16 @@ process filterAndPostprocessSvabaVcf_bcftools {
     """
 }
 
-// Combine all needed reference FASTA files into one channel for use in SvABA / BCFtools Norm process
-reference_genome_fasta_forSvabaBcftools.combine( reference_genome_fasta_index_forSvabaBcftools )
-	.combine( reference_genome_fasta_dict_forSvabaBcftools )
-	.set{ reference_genome_bundle_forSvabaBcftools }
-
 // BCFtools Norm ~ left-align and normalize indels
 process leftNormalizeSvabaVcf_bcftools {
 	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index), path(reference_genome_fasta_forSvabaBcftools), path(reference_genome_fasta_index_forSvabaBcftools), path(reference_genome_fasta_dict_forSvabaBcftools) from filtered_indel_vcf_forSvabaBcftools.combine(reference_genome_bundle_forSvabaBcftools)
+	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) from filtered_indel_vcf_forSvabaBcftools
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(final_svaba_indel_vcf) into final_svaba_indel_vcf_forConsensus
@@ -1255,7 +1149,7 @@ process leftNormalizeSvabaVcf_bcftools {
 	"""
 	bcftools norm \
 	--threads ${task.cpus} \
-	--fasta-ref "${reference_genome_fasta_forSvabaBcftools}" \
+	--fasta-ref "${ref_genome_fasta}" \
 	--output-type z \
 	--output "${final_svaba_indel_vcf}" \
 	"${filtered_somatic_indel_vcf}" 2>"${svaba_realign_normalize_stats}"
@@ -1311,19 +1205,17 @@ process falsePostiveSvFilteringSvaba_duphold {
 // ~~~~~~~~~~~~~~~~ DELLY2 ~~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all reference FASTA files and calling blacklist into one channel for use in DELLY2 process
-reference_genome_fasta_forDelly.combine( reference_genome_fasta_index_forDelly )
-	.combine( reference_genome_fasta_dict_forDelly )
-	.combine( gatk_bundle_wgs_bed_blacklist_0based_forDelly )
-	.set{ reference_genome_and_blacklist_bundle_forDelly }
-
 // DELLY2 ~ discover structural variants using paired-ends, split-reads and read-depth
 process svAndIndelCalling_delly {
 	publishDir "${params.output_dir}/somatic/delly", mode: 'copy', pattern: '*.{vcf.gz,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forDelly), path(reference_genome_fasta_index_forDelly), path(reference_genome_fasta_dict_forDelly), path(gatk_bundle_wgs_bed_blacklist_0based_forDelly) from tumor_normal_pair_forDelly.combine(reference_genome_and_blacklist_bundle_forDelly)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forDelly
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path wgs_blacklist_0based_bed from wgs_bed_blacklist_0based
 
 	output:
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) into delly_sv_vcf_forPostprocessing
@@ -1342,8 +1234,8 @@ process svAndIndelCalling_delly {
 	"""
 	delly call \
 	${delly_call_parameters} \
-	--genome "${reference_genome_fasta_forDelly}" \
-	--exclude "${gatk_bundle_wgs_bed_blacklist_0based_forDelly}" \
+	--genome "${ref_genome_fasta}" \
+	--exclude "${wgs_blacklist_0based_bed}" \
 	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
 	"${tumor_bam}" \
 	"${normal_bam}"
@@ -1463,21 +1355,19 @@ process falsePostiveSvFilteringDelly_duphold {
 // ~~~~~~~~~~~~~~~~ IgCaller ~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all reference FASTA files into one channel for use in IgCaller process
-reference_genome_fasta_forIgCaller.combine( reference_genome_fasta_index_forIgCaller )
-	.combine( reference_genome_fasta_dict_forIgCaller )
-	.set{ reference_genome_bundle_forIgCaller }
-
 // IgCaller ~ characterize the immunoglobulin gene rearrangements and oncogenic translocations
 process igRearrangementsAndTranslocations_igcaller {
     publishDir "${params.output_dir}/somatic/igcaller", mode: 'copy', pattern: '*.{tsv}'
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forIgCaller), path(reference_genome_fasta_index_forIgCaller), path(reference_genome_fasta_dict_forIgCaller) from tumor_normal_pair_forIgCaller.combine(reference_genome_bundle_forIgCaller)
+    tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forIgCaller
+    path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
      
     output:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(igcaller_oncogenic_rearrangements_tsv) into igcaller_onco_tsv_forConsensus
+    tuple val(tumor_normal_sample_id), path(igcaller_oncogenic_rearrangements_tsv) into igcaller_onco_tsv_forConsensus
     path igcaller_csr_tsv
     path igcaller_igk_tsv
     path igcaller_igl_tsv
@@ -1504,7 +1394,7 @@ process igRearrangementsAndTranslocations_igcaller {
     --chromosomeAnnotation ucsc \
     --bamN "${normal_bam}" \
     --bamT "${tumor_bam}" \
-    --refGenome "${reference_genome_fasta_forIgCaller}" \
+    --refGenome "${ref_genome_fasta}" \
     --outputPath . \
     -@ ${task.cpus}
 
@@ -1524,20 +1414,16 @@ process igRearrangementsAndTranslocations_igcaller {
 // ~~~~~~~~~~~~~~~~ VarScan2 ~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all reference FASTA files and WGS BED file into one channel for use in VarScan / SAMtools mpileup
-reference_genome_fasta_forVarscanSamtoolsMpileup.combine( reference_genome_fasta_index_forVarscanSamtoolsMpileup )
-	.combine( reference_genome_fasta_dict_forVarscanSamtoolsMpileup )
-	.set{ reference_genome_bundle_forVarscanSamtoolsMpileup }
-
-reference_genome_bundle_forVarscanSamtoolsMpileup.combine( gatk_bundle_wgs_bed_forVarscanSamtoolsMpileup )
-	.set{ reference_genome_bundle_and_bed_forVarscanSamtoolsMpileup }
-
 // VarScan somatic / SAMtools mpileup ~ heuristic/statistic approach to call SNV and indel variants
 process snvAndIndelCalling_varscan {
 	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forVarscanSamtoolsMpileup), path(reference_genome_fasta_index_forVarscanSamtoolsMpileup), path(reference_genome_fasta_dict_forVarscanSamtoolsMpileup), path(gatk_bundle_wgs_bed_forVarscanSamtoolsMpileup) from tumor_normal_pair_forVarscanSamtoolsMpileup.combine(reference_genome_bundle_and_bed_forVarscanSamtoolsMpileup)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forVarscanSamtoolsMpileup
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path wgs_bed from gatk_wgs_bed
 	each chromosome from chromosome_list_forVarscanSamtoolsMpileup
 
 	output:
@@ -1558,9 +1444,9 @@ process snvAndIndelCalling_varscan {
 	samtools mpileup \
 	--no-BAQ \
 	--min-MQ 1 \
-	--positions "${gatk_bundle_wgs_bed_forVarscanSamtoolsMpileup}" \
+	--positions "${wgs_bed}" \
 	--region "${chromosome}" \
-	--fasta-ref "${reference_genome_fasta_forVarscanSamtoolsMpileup}" \
+	--fasta-ref "${ref_genome_fasta}" \
 	"${normal_bam}" "${tumor_bam}" \
 	| \
 	java -Xmx2G -XX:ParallelGCThreads=2 -jar \${VARSCAN} somatic \
@@ -1706,17 +1592,15 @@ process filterRawSnvAndIndels_varscan {
 	"""
 }
 
-// Combine all needed reference FASTA files into one channel for use in bam-readcount process
-reference_genome_fasta_forVarscanBamReadcount.combine( reference_genome_fasta_index_forVarscanBamReadcount )
-	.combine( reference_genome_fasta_dict_forVarscanBamReadcount )
-	.set{ reference_genome_bundle_forVarscanBamReadcount }
-
 // bam-readcount / BCFtools concat ~ generate metrics at single nucleotide positions for filtering out false positive calls
 process bamReadcountForVarscanFpFilter_bamreadcount {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index), path(reference_genome_fasta_forVarscanBamReadcount), path(reference_genome_fasta_index_forVarscanBamReadcount), path(reference_genome_fasta_dict_forVarscanBamReadcount) from bams_forVarscanBamReadcount.join(high_confidence_vcfs_forVarscanBamReadcount).combine(reference_genome_bundle_forVarscanBamReadcount)
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index) from bams_forVarscanBamReadcount.join(high_confidence_vcfs_forVarscanBamReadcount)
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(snv_readcount_file), path(indel_readcount_file) into readcount_forVarscanFpFilter
@@ -1740,7 +1624,7 @@ process bamReadcountForVarscanFpFilter_bamreadcount {
 	bam_readcount_helper.py \
 	"${tumor_normal_sample_id}.somatic.hc.vcf.gz" \
 	TUMOR \
-	"${reference_genome_fasta_forVarscanBamReadcount}" \
+	"${ref_genome_fasta}" \
 	"${tumor_bam}" \
 	.
 
@@ -1792,18 +1676,16 @@ process falsePositivefilterSnvAndIndels_varscan {
 	"""
 }
 
-// Combine all needed reference FASTA files into one channel for use in VarScan / BCFtools Norm process
-reference_genome_fasta_forVarscanBcftoolsNorm.combine( reference_genome_fasta_index_forVarscanBcftoolsNorm )
-	.combine( reference_genome_fasta_dict_forVarscanBcftoolsNorm )
-	.set{ reference_genome_bundle_forVarscanBcftoolsNorm }
-
 // BCFtools norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	publishDir "${params.output_dir}/somatic/varscan", mode: 'copy', pattern: '*.{vcf.gz,tbi,txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf), path(reference_genome_fasta_forVarscanBcftoolsNorm), path(reference_genome_fasta_index_forVarscanBcftoolsNorm), path(reference_genome_fasta_dict_forVarscanBcftoolsNorm) from filtered_vcfs_forVarscanBcftools.combine(reference_genome_bundle_forVarscanBcftoolsNorm)
+	tuple val(tumor_normal_sample_id), path(fp_filtered_snv_vcf), path(fp_filtered_indel_vcf) from filtered_vcfs_forVarscanBcftools
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf) into final_varscan_snv_vcf_forConsensus
@@ -1844,7 +1726,7 @@ process splitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	| \
 	bcftools norm \
 	--threads ${task.cpus} \
-	--fasta-ref "${reference_genome_fasta_forVarscanBcftoolsNorm}" \
+	--fasta-ref "${ref_genome_fasta}" \
 	--output-type z \
 	--output "${final_varscan_indel_vcf}" \
 	- 2>"${varscan_indel_realign_normalize_stats}"
@@ -1865,11 +1747,12 @@ process mutect2GnomadReferenceVcfPrep_bcftools {
 	publishDir "references/hg38", mode: 'copy'
 
 	input:
-	path gnomad_ref_vcf_chromosomes1_9
-	path gnomad_ref_vcf_chromosomes1_9_index
-	path gnomad_ref_vcf_chromosomes10_22
-	path gnomad_ref_vcf_chromosomesXYM_alts
-	path gnomad_ref_vcf_chromosomesXYM_alts_index
+	path gnomad_vcf_chromosomes1_9 from gnomad_ref_vcf_chromosomes1_9
+	path gnomad_vcf_chromosomes1_9_index from gnomad_ref_vcf_chromosomes1_9_index
+	path gnomad_vcf_chromosomes10_22 from gnomad_ref_vcf_chromosomes10_22
+	path gnomad_vcf_chromosomes10_22_index from gnomad_ref_vcf_chromosomes10_22_index
+	path gnomad_vcf_chromosomesXYM_alts from gnomad_ref_vcf_chromosomesXYM_alts
+	path gnomad_vcf_chromosomesXYM_alts_index from gnomad_ref_vcf_chromosomesXYM_alts_index
 
 	output:
 	tuple path(mutect_gnomad_ref_vcf), path(mutect_gnomad_ref_vcf_index) into mutect_gnomad_ref_vcf_fromProcess
@@ -1885,9 +1768,9 @@ process mutect2GnomadReferenceVcfPrep_bcftools {
 	--threads ${task.cpus} \
 	--output-type z \
 	--output "${mutect_gnomad_ref_vcf}" \
-	"${gnomad_ref_vcf_chromosomes1_9}" \
-	"${gnomad_ref_vcf_chromosomes10_22}" \
-	"${gnomad_ref_vcf_chromosomesXYM_alts}"
+	"${gnomad_vcf_chromosomes1_9}" \
+	"${gnomad_vcf_chromosomes10_22}" \
+	"${gnomad_vcf_chromosomesXYM_alts}"
 
 	tabix "${mutect_gnomad_ref_vcf}"
 	"""
@@ -1902,23 +1785,19 @@ else {
 	mutect_gnomad_ref_vcf = mutect_gnomad_ref_vcf_fromProcess
 }
 
-// Combine all reference FASTA files, WGS BED file, and resource VCFs into one channel for use in Mutect2 calling process
-reference_genome_fasta_forMutectCalling.combine( reference_genome_fasta_index_forMutectCalling )
-	.combine( reference_genome_fasta_dict_forMutectCalling )
-	.combine( gatk_bundle_wgs_bed_forMutectCalling )
-	.set{ reference_genome_bundle_and_bed_forMutectCalling }
-
-reference_genome_bundle_and_bed_forMutectCalling.combine( mutect_gnomad_ref_vcf )
-	.combine( panel_of_normals_1000G )
-	.combine( panel_of_normals_1000G_index )
-	.set{ reference_genome_bed_and_vcfs_forMutectCalling } 
 
 // GATK Mutect2 ~ call somatic SNVs and indels via local assembly of haplotypes
 process snvAndIndelCalling_gatk {
 	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forMutectCalling), path(reference_genome_fasta_index_forMutectCalling), path(reference_genome_fasta_dict_forMutectCalling), path(gatk_bundle_wgs_bed_forMutectCalling), path(mutect_gnomad_ref_vcf), path(mutect_gnomad_ref_vcf_index), path(panel_of_normals_1000G), path(panel_of_normals_1000G_index) from tumor_normal_pair_forMutectCalling.combine(reference_genome_bed_and_vcfs_forMutectCalling)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) path(mutect_gnomad_ref_vcf), path(mutect_gnomad_ref_vcf_index) from tumor_normal_pair_forMutectCalling.combine(mutect_gnomad_ref_vcf)
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path wgs_bed from gatk_wgs_bed
+	path pon_1000G from panel_of_normals_1000G
+	path pon_1000G_index from panel_of_normals_1000G_index
 	each chromosome from chromosome_list_forMutectCalling
 
 	output:
@@ -1932,12 +1811,12 @@ process snvAndIndelCalling_gatk {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	per_chromosome_bed_file = "${gatk_bundle_wgs_bed_forMutectCalling}".replaceFirst(/\.bed/, ".${chromosome}.bed")
+	per_chromosome_bed_file = "${wgs_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
 	raw_per_chromosome_vcf = "${tumor_normal_sample_id}.${chromosome}.vcf.gz"
 	raw_per_chromosome_vcf_index = "${raw_per_chromosome_vcf}.tbi"
 	raw_per_chromosome_mutect_stats_file = "${tumor_normal_sample_id}.${chromosome}.vcf.gz.stats"
 	"""
-	grep -w '${chromosome}' "${gatk_bundle_wgs_bed_forMutectCalling}" > "${per_chromosome_bed_file}"
+	grep -w '${chromosome}' "${wgs_bed}" > "${per_chromosome_bed_file}"
 
 	gatk Mutect2 \
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
@@ -1946,10 +1825,10 @@ process snvAndIndelCalling_gatk {
 	--native-pair-hmm-threads ${task.cpus} \
 	--af-of-alleles-not-in-resource 0.00003125 \
 	--seconds-between-progress-updates 600 \
-	--reference "${reference_genome_fasta_forMutectCalling}" \
+	--reference "${ref_genome_fasta}" \
 	--intervals "${per_chromosome_bed_file}" \
 	--germline-resource "${mutect_gnomad_ref_vcf}" \
-	--panel-of-normals "${panel_of_normals_1000G}" \
+	--panel-of-normals "${pon_1000G}" \
 	--input "${tumor_bam}" \
 	--input "${normal_bam}" \
 	--normal-sample "${normal_id}" \
@@ -2009,17 +1888,15 @@ process mergeMutect2StatsForFiltering_gatk {
 	"""
 }
 
-// Combine WGS BED file and resource VCFs into one channel for use in Mutect2 pileup process
-gatk_bundle_wgs_bed_forMutectPileup.combine( exac_common_sites_ref_vcf )
-	.combine( exac_common_sites_ref_vcf_index )
-	.set{ bed_and_resources_vcfs_forMutectPileup }
-
 // GATK GetPileupSummaries ~ tabulates pileup metrics for inferring contamination
 process pileupSummariesForMutect2Contamination_gatk {
 	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(gatk_bundle_wgs_bed_forMutectPileup), path(exac_common_sites_ref_vcf), path(exac_common_sites_ref_vcf_index) from tumor_normal_pair_forMutectPileup.combine(bed_and_resources_vcfs_forMutectPileup)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forMutectPileup
+	path wgs_bed from gatk_wgs_bed
+	path exac_common_sites_vcf from exac_common_sites_ref_vcf
+	path exac_common_sites_vcf_index from exac_common_sites_ref_vcf_index
 	each chromosome from chromosome_list_forMutectPileup
 
 	output:
@@ -2033,18 +1910,18 @@ process pileupSummariesForMutect2Contamination_gatk {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	per_chromosome_bed_file = "${gatk_bundle_wgs_bed_forMutectPileup}".replaceFirst(/\.bed/, ".${chromosome}.bed")
+	per_chromosome_bed_file = "${wgs_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
 	per_chromosome_tumor_pileup = "${tumor_id}.${chromosome}.pileup"
 	per_chromosome_normal_pileup = "${normal_id}.${chromosome}.pileup"
 	"""
-	grep -w '${chromosome}' "${gatk_bundle_wgs_bed_forMutectPileup}" > "${per_chromosome_bed_file}"
+	grep -w '${chromosome}' "${wgs_bed}" > "${per_chromosome_bed_file}"
 
 	gatk GetPileupSummaries \
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--intervals "${per_chromosome_bed_file}" \
-	--variant "${exac_common_sites_ref_vcf}" \
+	--variant "${exac_common_sites_vcf}" \
 	--input "${tumor_bam}" \
 	--output "${per_chromosome_tumor_pileup}"
 
@@ -2053,7 +1930,7 @@ process pileupSummariesForMutect2Contamination_gatk {
 	--verbosity ERROR \
 	--tmp-dir . \
 	--intervals "${per_chromosome_bed_file}" \
-	--variant "${exac_common_sites_ref_vcf}" \
+	--variant "${exac_common_sites_vcf}" \
 	--input "${normal_bam}" \
 	--output "${per_chromosome_normal_pileup}"
 	"""
@@ -2064,7 +1941,8 @@ process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(per_chromosome_tumor_pileup), path(reference_genome_fasta_dict) from per_chromosome_tumor_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherTumor)
+	tuple val(tumor_normal_sample_id), path(per_chromosome_tumor_pileup) from per_chromosome_tumor_pileups_forMutectPileupGather.groupTuple()
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_pileup) into tumor_pileups_forMutectContamination
@@ -2080,7 +1958,7 @@ process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
-	--sequence-dictionary "${reference_genome_fasta_dict}" \
+	--sequence-dictionary "${ref_genome_fasta_dict}" \
 	${per_chromosome_tumor_pileup.collect { "--I $it " }.join()} \
 	--O "${tumor_pileup}"
 	"""
@@ -2091,7 +1969,8 @@ process gatherNormalPileupSummariesForMutect2Contamination_gatk {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(per_chromosome_normal_pileup), path(reference_genome_fasta_dict) from per_chromosome_normal_pileups_forMutectPileupGather.groupTuple().combine(reference_genome_fasta_dict_forMutectPileupGatherNormal)
+	tuple val(tumor_normal_sample_id), path(per_chromosome_normal_pileup) from per_chromosome_normal_pileups_forMutectPileupGather.groupTuple()
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(normal_pileup) into normal_pileups_forMutectContamination
@@ -2107,7 +1986,7 @@ process gatherNormalPileupSummariesForMutect2Contamination_gatk {
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
 	--verbosity ERROR \
 	--tmp-dir . \
-	--sequence-dictionary "${reference_genome_fasta_dict}" \
+	--sequence-dictionary "${ref_genome_fasta_dict}" \
 	${per_chromosome_normal_pileup.collect { "--I $it " }.join()} \
 	--O "${normal_pileup}"
 	"""
@@ -2140,21 +2019,15 @@ process mutect2ContaminationCalculation_gatk {
 	"""
 }
 
-// Combine all reference FASTA files and input VCF, stats file, and contamination table into one channel for use in Mutect2 filtering process
-reference_genome_fasta_forMutectFilter.combine( reference_genome_fasta_index_forMutectFilter )
-	.combine( reference_genome_fasta_dict_forMutectFilter )
-	.set{ reference_genome_bundle_forMutectFilter }
-
-merged_raw_vcfs_forMutectFilter.join( merged_mutect_stats_file_forMutectFilter )
-	.join( contamination_file_forMutectFilter )
-	.set{ input_vcf_stats_and_contamination_forMutectFilter }
-
 // GATK FilterMutectCalls ~ filter somatic SNVs and indels called by Mutect2
 process mutect2VariantFiltration_gatk {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(merged_raw_vcf), path(merged_raw_vcf_index), path(merged_mutect_stats_file), path(mutect_contamination_file), path(reference_genome_fasta_forMutectFilter), path(reference_genome_fasta_index_forMutectFilter), path(reference_genome_fasta_dict_forMutectFilter) from input_vcf_stats_and_contamination_forMutectFilter.combine(reference_genome_bundle_forMutectFilter)
+	tuple val(tumor_normal_sample_id), path(merged_raw_vcf), path(merged_raw_vcf_index), path(merged_mutect_stats_file), path(mutect_contamination_file) from merged_raw_vcfs_forMutectFilter.join( merged_mutect_stats_file_forMutectFilter ).join( contamination_file_forMutectFilter )
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_vcf), path(filtered_vcf_index) into filtered_vcf_forMutectBcftools
@@ -2173,7 +2046,7 @@ process mutect2VariantFiltration_gatk {
 	--verbosity ERROR \
 	--tmp-dir . \
 	--unique-alt-read-count 4 \
-	--reference "${reference_genome_fasta_forMutectFilter}" \
+	--reference "${ref_genome_fasta}" \
 	--stats "${merged_mutect_stats_file}" \
 	--variant "${merged_raw_vcf}" \
 	--contamination-table "${mutect_contamination_file}" \
@@ -2182,18 +2055,16 @@ process mutect2VariantFiltration_gatk {
 	"""
 }
 
-// Combine all needed reference FASTA files into one channel for use in Mutect2 / BCFtools Norm process
-reference_genome_fasta_forMutectBcftools.combine( reference_genome_fasta_index_forMutectBcftools )
-	.combine( reference_genome_fasta_dict_forMutectBcftools )
-	.set{ reference_genome_bundle_forMutectBcftools }
-
 // BCFtools Norm ~ split multiallelic sites into multiple rows then left-align and normalize indels
 process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 	publishDir "${params.output_dir}/somatic/mutect", mode: 'copy', pattern: '*.{txt}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(filtered_vcf), path(filtered_vcf_index), path(reference_genome_fasta_forMutectBcftools), path(reference_genome_fasta_index_forMutectBcftools), path(reference_genome_fasta_dict_forMutectBcftools) from filtered_vcf_forMutectBcftools.combine(reference_genome_bundle_forMutectBcftools)
+	tuple val(tumor_normal_sample_id), path(filtered_vcf), path(filtered_vcf_index) from filtered_vcf_forMutectBcftools
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(final_mutect_vcf), path(final_mutect_vcf_index) into final_combined_mutect_vcf
@@ -2221,7 +2092,7 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 	| \
 	bcftools norm \
 	--threads ${task.cpus} \
-	--fasta-ref "${reference_genome_fasta_forMutectBcftools}" \
+	--fasta-ref "${ref_genome_fasta}" \
 	--output-type z \
 	- 2>"${mutect_realign_normalize_stats}" \
 	--output "${final_mutect_vcf}"
@@ -2278,17 +2149,15 @@ process splitMutectSnvsAndIndelsForConsensus_bcftools {
 // ~~~~~~~~~~~~~~~~ Conpair ~~~~~~~~~~~~~~~~ \\
 // START
 
-// Combine all reference FASTA files into one channel for use in Conpair Pileup process
-reference_genome_fasta_forConpairPileup.combine( reference_genome_fasta_index_forConpairPileup )
-	.combine( reference_genome_fasta_dict_forConpairPileup )
-	.set{ reference_genome_bundle_forConpairPileup }
-
 // Conpair run_gatk_pileup_for_sample ~ generate GATK pileups the tumor and normal BAMs separately
 process bamPileupForConpair_conpair {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(reference_genome_fasta_forConpairPileup), path(reference_genome_fasta_index_forConpairPileup), path(reference_genome_fasta_dict_forConpairPileup) from tumor_normal_pair_forConpairPileup.combine(reference_genome_bundle_forConpairPileup)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forConpairPileup
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_pileup), path(normal_pileup) into bam_pileups_forConpair
@@ -2308,14 +2177,14 @@ process bamPileupForConpair_conpair {
 	--xmx_jav "${task.memory.toGiga()}g" \
 	--bam "${tumor_bam}" \
 	--outfile "${tumor_pileup}" \
-	--reference "${reference_genome_fasta_forConpairPileup}" \
+	--reference "${ref_genome_fasta}" \
 	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
 
 	\${CONPAIR_DIR}/scripts/run_gatk_pileup_for_sample.py \
 	--xmx_jav "${task.memory.toGiga()}g" \
 	--bam "${normal_bam}" \
 	--outfile "${normal_pileup}" \
-	--reference "${reference_genome_fasta_forConpairPileup}" \
+	--reference "${ref_genome_fasta}" \
 	--markers \${CONPAIR_DIR}"${hg38_ref_genome_markers}.bed"
 	"""
 }
@@ -2378,7 +2247,7 @@ process prepGermlineBedForCaveman_bedops {
 	tuple val(tumor_normal_sample_id), path(germline_indel_bed), path(germline_indel_bed_index) into germline_indel_bed_forCaveman
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	germline_insertions_bed = "${tumor_normal_sample_id}.caveman.germline.ins.bed"
@@ -2406,18 +2275,16 @@ process prepGermlineBedForCaveman_bedops {
 	"""
 }
 
-// Combine all needed reference FASTA files into one channel for CaVEMan processes
-reference_genome_fasta_forCaveman.combine( reference_genome_fasta_index_forCaveman )
-	.combine( reference_genome_fasta_dict_forCaveman )
-	.set{ reference_genome_bundle_forCaveman }
-
 // CaVEMan setup ~ generate configuration files for all execution steps
 process setup_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman) from bams_forCaveman.join(tumor_cnv_profile_forCaveman).join(germline_indel_bed_forCaveman).join(normal_contamination_forCaveman).combine(reference_genome_bundle_forCaveman)
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file) from bams_forCaveman.join(tumor_cnv_profile_forCaveman).join(germline_indel_bed_forCaveman).join(normal_contamination_forCaveman)
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2428,10 +2295,10 @@ process setup_caveman {
 	path dbsnp_index from dbsnp_bed_index
 
 	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file) into setup_forCavemanSplit, setup_forCavemanConcat, setup_forCavemanMstep, setup_forCavemanMerge, setup_forCavemanEstep, setup_forCavemanFlag, setup_forCavemanResults
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file) into setup_forCavemanSplit, setup_forCavemanConcat, setup_forCavemanMstep, setup_forCavemanMerge, setup_forCavemanEstep, setup_forCavemanFlag, setup_forCavemanResults
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	tumor_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.tumor.cvn.bed"
@@ -2511,7 +2378,7 @@ process setup_caveman {
 
 	caveman.pl \
 	-outdir . \
-	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-reference "${ref_genome_fasta_index}" \
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
@@ -2538,8 +2405,11 @@ process split_caveman {
 	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file) from setup_forCavemanSplit
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file) from setup_forCavemanSplit
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2554,7 +2424,7 @@ process split_caveman {
 	tuple val(tumor_normal_sample_id), path(split_list_per_chromosome), path(read_position_per_chromosome) into split_per_chromosome_forCavemanConcat, split_per_chromosome_forCavemanMstep, split_per_chromosome_forCavemanMerge, split_per_chromosome_forCavemanEstep, split_per_chromosome_forCavemanFlag, split_per_chromosome_forCavemanResults
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	split_list_per_chromosome = "tmpCaveman/splitList.${chromosome}"
@@ -2575,11 +2445,11 @@ process split_caveman {
 
 	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
 
-	i=\$(grep -wn "${chromosome}" "${reference_genome_fasta_index_forCaveman}" | cut -f 1 | cut -d ':' -f 1)
+	i=\$(grep -wn "${chromosome}" "${ref_genome_fasta_index}" | cut -f 1 | cut -d ':' -f 1)
 
 	caveman.pl \
 	-outdir . \
-	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-reference "${ref_genome_fasta_index}" \
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
@@ -2606,8 +2476,11 @@ process splitConcat_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome) from setup_forCavemanConcat.join(split_per_chromosome_forCavemanConcat.groupTuple())
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome) from setup_forCavemanConcat.join(split_per_chromosome_forCavemanConcat.groupTuple())
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2621,7 +2494,7 @@ process splitConcat_caveman {
 	tuple val(tumor_normal_sample_id), path(split_list), path(index_step_list) into split_concat_forCavemanMstep, split_concat_forCavemanMerge, split_concat_forCavemanEstep, split_concat_forCavemanFlag, split_concat_forCavemanResults
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	split_list = "tmpCaveman/splitList"
@@ -2646,7 +2519,7 @@ process splitConcat_caveman {
 
 	caveman.pl \
 	-outdir . \
-	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-reference "${ref_genome_fasta_index}" \
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
@@ -2680,8 +2553,11 @@ process mstep_caveman {
 	tag "${tumor_normal_sample_id} IDX=${index}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), val(index_dirty) from input_forCavemanMstep
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), val(index_dirty) from input_forCavemanMstep
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2695,7 +2571,7 @@ process mstep_caveman {
 	tuple val(tumor_normal_sample_id), path(mstep_results_directory_per_index) into mstep_covs_forCavemanMerge, mstep_covs_forCavemanEstep
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	index = "${index_dirty}".replaceFirst("\\s","")
@@ -2721,7 +2597,7 @@ process mstep_caveman {
 
 	caveman.pl \
 	-outdir . \
-	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-reference "${ref_genome_fasta_index}" \
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
@@ -2751,8 +2627,11 @@ process merge_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(mstep_results_directory_per_index) from setup_forCavemanMerge.join(split_per_chromosome_forCavemanMerge.groupTuple()).join(split_concat_forCavemanMerge).join(mstep_covs_forCavemanMerge.groupTuple())
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(mstep_results_directory_per_index) from setup_forCavemanMerge.join(split_per_chromosome_forCavemanMerge.groupTuple()).join(split_concat_forCavemanMerge).join(mstep_covs_forCavemanMerge.groupTuple())
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2766,7 +2645,7 @@ process merge_caveman {
 	tuple val(tumor_normal_sample_id), path(covariate_file), path(probabilities_file) into merged_covs_probs_forCavemanEstep
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	covariate_file = "tmpCaveman/cov_arr"
@@ -2794,7 +2673,7 @@ process merge_caveman {
 
 	caveman.pl \
 	-outdir . \
-	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-reference "${ref_genome_fasta_index}" \
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
@@ -2828,8 +2707,11 @@ process snvCalling_caveman {
 	tag "${tumor_normal_sample_id} IDX=${index}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(mstep_results_directory_per_index), path(covariate_file), path(probabilities_file), path(split_list), val(index_dirty) from input_forCavemanEstep
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(mstep_results_directory_per_index), path(covariate_file), path(probabilities_file), path(split_list), val(index_dirty) from input_forCavemanEstep
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2843,7 +2725,7 @@ process snvCalling_caveman {
 	tuple val(tumor_normal_sample_id), path(estep_results_directory_per_index) into raw_vcfs_forCavemanFlag
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	index = "${index_dirty}".replaceFirst("\\s","")
@@ -2873,7 +2755,7 @@ process snvCalling_caveman {
 
 	caveman.pl \
 	-outdir . \
-	-reference "${reference_genome_fasta_index_forCaveman}" \
+	-reference "${ref_genome_fasta_index}" \
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
@@ -2909,8 +2791,11 @@ process flag_caveman {
 	tag "${tumor_normal_sample_id} IDX=${index}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(estep_results_directory_per_index), path(split_list), val(index_dirty) from input_forCavemanFlag
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(estep_results_directory_per_index), path(split_list), val(index_dirty) from input_forCavemanFlag
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2924,7 +2809,7 @@ process flag_caveman {
 	tuple val(tumor_normal_sample_id), path(flag_results_directory_per_index) into postprocessing_output_forCavemanResults
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	index = "${index_dirty}".replaceFirst("\\s","")
@@ -2962,7 +2847,7 @@ process flag_caveman {
 			--bedFileLoc . \
 			--indelBed "${germline_indel_bed}" \
 			--unmatchedVCFLoc . \
-			--reference "${reference_genome_fasta_index_forCaveman}" \
+			--reference "${ref_genome_fasta_index}" \
 			--flagConfig "${postprocessing_config_file}" \
 			--studyType WGS
 
@@ -2982,8 +2867,11 @@ process mergeResults_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(reference_genome_fasta_forCaveman), path(reference_genome_fasta_index_forCaveman), path(reference_genome_fasta_dict_forCaveman), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(flag_results_directory_per_index) from setup_forCavemanResults.join(split_per_chromosome_forCavemanResults.groupTuple()).join(split_concat_forCavemanResults).join(postprocessing_output_forCavemanResults.groupTuple())
-	path blacklist from gatk_bundle_wgs_bed_blacklist_1based_forCaveman
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(flag_results_directory_per_index) from setup_forCavemanResults.join(split_per_chromosome_forCavemanResults.groupTuple()).join(split_concat_forCavemanResults).join(postprocessing_output_forCavemanResults.groupTuple())
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path blacklist from wes_bed_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2997,7 +2885,7 @@ process mergeResults_caveman {
 	tuple val(tumor_normal_sample_id), path(final_caveman_snv_vcf) into final_caveman_snv_vcf_forConsensus
 
 	when:
-	params.caveman == "on" && params.battenberg == "on" && params.manta == "on"
+	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
 	final_caveman_snv_vcf = "${tumor_normal_sample_id}.caveman.somatic.snv.vcf.gz"
@@ -3057,8 +2945,8 @@ process unionAndConsensusSnvCalls_devgru {
     params.varscan == "on" && params.mutect == "on" && params.strelka == "on"
 
     script:
-    hq_union_consensus_snv_table = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt"
-    hq_union_consensus_snv_gr_rds = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.rds"
+    hq_union_consensus_snv_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt"
+    hq_union_consensus_snv_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.rds"
     """
     mkdir -p results/
 
@@ -3068,6 +2956,8 @@ process unionAndConsensusSnvCalls_devgru {
     results/ \
     "${gene_gtf}" \
     ${task.cpus}
+
+    mv results/* .
     """
 }
 
@@ -3088,8 +2978,8 @@ process unionAndConsensusIndelCalls_devgru {
     params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
     script:
-    hq_union_consensus_indel_table = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt"
-    hq_union_consensus_indel_gr_rds = "results/${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.rds"
+    hq_union_consensus_indel_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt"
+    hq_union_consensus_indel_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.rds"
     """
     mkdir -p results/
 
@@ -3099,6 +2989,8 @@ process unionAndConsensusIndelCalls_devgru {
     results/ \
     "${gene_gtf}" \
     ${task.cpus}
+
+    mv results/* .
     """
 }
 
@@ -3137,9 +3029,9 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     -header \
     -names battenberg_total_cn facets_total_cn > "${two_way_merged_cnv_bed}"
 
-    two_way_consensus_cnv_generator.py \
-    <(grep -v 'chrom' "${two_way_merged_cnv_bed}") \
-    "${two_way_consensus_cnv_bed}"
+    #two_way_consensus_cnv_generator.py \
+    #<(grep -v 'chrom' "${two_way_merged_cnv_bed}") \
+    #"${two_way_consensus_cnv_bed}"
 
     ### Create consensus major and minor allele file ###
     bedtools unionbedg \
@@ -3148,12 +3040,12 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     -header \
     -names battenberg_major_minor_alleles facets_major_minor_alleles > "${two_way_merged_alleles_bed}"
 
-    two_way_consensus_allele_generator.py \
-    <(grep -v 'chrom' "${two_way_merged_alleles_bed}") \
-    "${two_way_consensus_alleles_bed}"
+    #two_way_consensus_allele_generator.py \
+    #<(grep -v 'chrom' "${two_way_merged_alleles_bed}") \
+    #"${two_way_consensus_alleles_bed}"
 
     ### Merge both consensus CNV and called alleles per segment ###
-    paste "${two_way_consensus_cnv_bed}" <(cut -f 4-8 "${two_way_consensus_alleles_bed}") \
+    paste "${two_way_merged_cnv_bed}" <(cut -f 4-8 "${two_way_merged_alleles_bed}") \
     | \
     awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$6,\$5,\$7}' > "${two_way_consensus_merged_cnv_alleles_bed}"
     """
@@ -3163,10 +3055,7 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-
-
 /*
-
 
 // ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
 // START
@@ -3177,7 +3066,7 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
     tag  "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf), path(final_svaba_somatic_sv_vcf), path(final_delly_somatic_sv_vcf), path(igcaller_oncogenic_rearrangements_tsv) from manta_sv_vcf_forConsensus.join(svaba_sv_vcf_forConsensus, by: [0,1]).join(delly_sv_vcf_forConsensus, by: [0,1]).join(igcaller_onco_tsv_forConsensus, by: [0,1]) 
+    tuple val(tumor_normal_sample_id), path(manta_filtered_final_sv_vcf), path(svaba_filtered_final_sv_vcf), path(delly_filtered_final_sv_vcf), path(igcaller_oncogenic_rearrangements_tsv) from manta_filtered_final_sv_vcf_forConsensus.join(svaba_filtered_final_sv_vcf_forConsensus).join(delly_filtered_final_sv_vcf_forConsensus).join(igcaller_onco_tsv_forConsensus)
 
     output:
     path hq_union_consensus_sv_bedpe
@@ -3190,29 +3079,18 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
     """
     Rscript --vanilla ${workflow.projectDir}/bin/sv_union_consensus_polisher.R \
     "${tumor_normal_sample_id}" \
-    "${final_manta_somatic_sv_vcf}" \
-    "${final_svaba_somatic_sv_vcf}" \
+    "${manta_filtered_final_sv_vcf}" \
+    "${delly_filtered_final_sv_vcf}" \
     "${final_delly_somatic_sv_vcf}" \
     "${igcaller_oncogenic_rearrangements_tsv}"
     """
 }
 
+// END
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
+
 
 */
-
-
-
-
-
-// # Transform collapsed annotation BED to high quality BEDPE
-// high_quality_bedpe_transformer.py \
-// <(grep -v 'SV_chrom' "${collapsed_annotated_consensus_sv_bed}") \
-// "${final_manta_somatic_sv_read_support}" \
-// "${final_svaba_somatic_sv_read_support}" \
-// "${final_delly_somatic_sv_read_support}" \
-// "${hq_consensus_sv_bedpe}"
-
-
 
 
 
@@ -3257,7 +3135,8 @@ process binReadCoverageInTumor_fragcounter {
     tag "${tumor_normal_sample_id} S=Tumor"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(fragcounter_gc_mappability_dir) from tumor_bams_forFragCounter.combine(fragcounter_gc_mappability_dir_forFragCounterTumor)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) from tumor_bams_forFragCounter
+    path gc_mappability from gc_mappability_dir
      
     output:
     path tumor_fragcounter_cov_rds
@@ -3274,7 +3153,7 @@ process binReadCoverageInTumor_fragcounter {
     """
     fragCounter_executor.sh \
 	"${tumor_bam}" \
-	"${fragcounter_gc_mappability_dir}" \
+	"${gc_mappability}" \
 	"TRUE" \
 	"FALSE" \
 	"${tumor_results_dir}"
@@ -3290,7 +3169,9 @@ process snpPileup_fragcounter {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(hapmap_ref_snps_vcf), path(hapmap_ref_snps_vcf_index) from bams_forFragCounterPileup.combine(hapmap_ref_snps_vcf_forFragCounter).combine(hapmap_ref_snps_vcf_index_forFragCounter)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(hapmap_ref_snps_vcf), path(hapmap_ref_snps_vcf_index) from bams_forFragCounterPileup
+    path hapmap_vcf from hapmap_ref_snps_vcf
+	path hapmap_vcf_index from hapmap_ref_snps_vcf_index
 
     output:
     tuple val(tumor_normal_sample_id), path(fragcounter_snp_pileup)
@@ -3308,7 +3189,7 @@ process snpPileup_fragcounter {
     --min-map-quality 0 \
     --min-base-quality 20 \
     --min-read-counts 3 \
-    "${hapmap_ref_snps_vcf}" \
+    "${hapmap_vcf}" \
     "${tumor_normal_sample_id}.snp_pileup.csv" \
     "${tumor_bam}" \
     "${normal_bam}"
@@ -3371,7 +3252,8 @@ process telomereEstimation_telomerehunter {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(cytoband_bed) from tumor_normal_pair_forTelomereHunter.combine(cytoband_bed)
+	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forTelomereHunter
+	path cytoband from cytoband_bed
 
 	output:
 	path "${tumor_normal_sample_id}/*.tsv"
@@ -3395,7 +3277,7 @@ process telomereEstimation_telomerehunter {
 	--inputBamControl "${normal_bam}" \
 	--outPath . \
 	--pid "${tumor_normal_sample_id}" \
-	--bandingFile "${cytoband_bed}" \
+	--bandingFile "${cytoband}" \
 	--parallel \
 	--plotFileFormat png
 	"""

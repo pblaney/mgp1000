@@ -22,6 +22,7 @@ cut -f 1-4 "${sampleId}.facets.cnv.simplified.bed" > "${finalCnvBed}"
 
 # Read each segment and output the infered major/minor alleles of the NA calls
 # The inference will assume heterozygosity with a single minor allele
+# See issue on the topic and response from dev author https://github.com/mskcc/facets/issues/57
 while read -r cnvSegment
 	do
     	# Check if the minor allele column contains an NA instead of a value

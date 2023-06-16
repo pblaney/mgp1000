@@ -20,6 +20,42 @@ Sys.setenv(DEFAULT_BSGENOME = 'BSgenome.Hsapiens.UCSC.hg38::Hsapiens')
 options(scipen = 999)
 
 #########################
+#####   Functions   #####
+
+# Explicitly calculate the VAF for mutations of various flavors (strelka, svaba)
+calc_vaf <- function(mut_record, caller, mut_type) {
+  
+  if(caller == "strelka" & mut_type == "snv") {
+    # Strelka SNVs
+    # Does not directly report VAF per mutation, instead it reports the depth DP ["Read depth for tier1 (used+filtered)"]
+    # also reports per nucleotide tier read support AU, CU, TU, GU ["Number of 'A/C/G/T' alleles used in tiers 1,2"]
+    # The VAF will be calculated as: [AU_TIER1, CU_TIER1, TU_TIER1, GU_TIER1] / DP
+    
+    # TODO: need to also account for non-union/default format Strelka DT/GR
+    alt_read_depth <- as.data.frame(mut_record)[,colnames(mut_record) == paste0("STRELKA_", mut_record$ALT, "U_TIER1_TUMOR")]
+
+    mut_vaf <- alt_read_depth / mut_record$STRELKA_DP_TUMOR
+    
+  } else if(caller == "strelka" & mut_type == "indel") {
+    # Strelka InDels
+    # Like SNVs, reports depth DP and indel tier read support TIR ["Reads strongly supporting indel allele for tiers 1,2"]
+    # The VAF will be calculated as: TIR_TIER1 / DP
+    mut_vaf <- mut_record$STRELKA_TIR_TIER1_TUMOR / mut_record$STRELKA_DP_TUMOR
+    
+  } else if(caller == "svaba" & mut_type == "indel") {
+    # SvABA InDels
+    # Does not directly report VAF per mutation, instead it reports depth DP ["Depth of coverage: Number of reads covering site."]
+    # also reports allele depth AD ["Allele depth: Number of reads supporting the variant"]
+    # The VAF will be calculated as: AD / DP
+    mut_vaf <- mut_record$SVABA_AD_TUMOR / mut_record$SVABA_DP_TUMOR
+  }
+  
+  # Output the VAF for the mutation record
+  return(mut_vaf)
+}
+
+
+#########################
 #####   Execution   #####
 
 # Accept command line arguments as input
@@ -219,20 +255,240 @@ for(i in 1:nrow(sample_set)) {
   
   # Slim down object before output (rm query.id, subject.id)
   final_union_consensus_gr <- final_union_consensus_gr[,c(-1,-2)]
-  
-  # Write the output; GRanges .rds, .txt
-  message("Writing output .rds / .txt files to ", output_dir, ".....")
-  saveRDS(object = final_union_consensus_gr,
-          file = paste0(output_dir, "/", sample_set$sample[i], ".hq.union.consensus.somatic.", mut_type, ".rds"))
-  
+
+  # Convert GRanges to DT
   final_union_consensus_dt <- gUtils::gr2dt(x = final_union_consensus_gr)
+
+  # Now loop through all union consensus calls to report VAFs in single column
+  final_union_consensus_vaf_metrics_dt <- foreach(i = 1:length(chrom_iter_list), .combine = rrbind, .packages = "gUtils") %dopar% {
+
+    # Split each input loop by chromosome
+    final_union_consensus_per_chrom_dt <- final_union_consensus_dt[final_union_consensus_dt$seqnames == chrom_iter_list[i]]
+
+    vaf_info <- data.table(vaf_combo = rep(NA, nrow(final_union_consensus_per_chrom_dt)),
+                           vaf_mean = rep(NA, nrow(final_union_consensus_per_chrom_dt)))
+
+    for(j in 1:nrow(final_union_consensus_per_chrom_dt)) {
+      
+      # First, determine which callers found the variant to start the decision tree
+      caller_string <- final_union_consensus_per_chrom_dt[j, CALLER]
+
+      # Use the string of callers to find correct VAF combo and mean
+      if(caller_string == "mutect,strelka,svaba,varscan") {
+        # 4 CALLER CONSENSUS
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+        varscan_vaf <- round(as.numeric(str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- str_c(mutect_vaf, strelka_vaf, svaba_vaf, varscan_vaf,
+                                  sep = ",")
+        mean_vaf <- round(mean(c(mutect_vaf, strelka_vaf, svaba_vaf, varscan_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "mutect,strelka,svaba") {
+        # 3 CALLER CONSENSUS
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- str_c(mutect_vaf, strelka_vaf, svaba_vaf, 
+                                  sep = ",")
+        mean_vaf <- round(mean(c(mutect_vaf, strelka_vaf, svaba_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "mutect,strelka,varscan") {
+        # 3 CALLER CONSENSUS
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+        varscan_vaf <- round(as.numeric(stringr::str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(mutect_vaf, strelka_vaf, varscan_vaf, 
+                                           sep = ",")
+        mean_vaf <- round(mean(c(mutect_vaf, strelka_vaf, varscan_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "mutect,svaba,varscan") {
+        # 3 CALLER CONSENSUS
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+        varscan_vaf <- round(as.numeric(stringr::str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(mutect_vaf, svaba_vaf, varscan_vaf,
+                                           sep = ",")
+        mean_vaf <- round(mean(c(mutect_vaf, svaba_vaf, varscan_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "strelka,svaba,varscan") {
+        # 3 CALLER CONSENSUS
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+        varscan_vaf <- round(as.numeric(stringr::str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(strelka_vaf, svaba_vaf, varscan_vaf,
+                                           sep = ",")
+        mean_vaf <- round(mean(c(strelka_vaf, svaba_vaf, varscan_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "mutect,strelka") {
+        # 2 CALLER CONSENSUS
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(mutect_vaf, strelka_vaf,
+                                           sep = ",")
+        mean_vaf <- round(mean(c(mutect_vaf, strelka_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "mutect,svaba") {
+        # 2 CALLER CONSENSUS
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(mutect_vaf, svaba_vaf,
+                                           sep = ",")
+        mean_vaf <- round(mean(c(mutect_vaf, svaba_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "mutect,varscan") {
+        # 2 CALLER CONSENSUS
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+        varscan_vaf <- round(as.numeric(stringr::str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(mutect_vaf, varscan_vaf,
+                                           sep = ",")
+        mean_vaf <- round(mean(c(mutect_vaf, varscan_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "strelka,svaba") {
+        # 2 CALLER CONSENSUS
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(strelka_vaf, svaba_vaf,
+                                           sep = ",")
+        mean_vaf <- round(mean(c(strelka_vaf, svaba_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "strelka,varscan") {
+        # 2 CALLER CONSENSUS
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+        varscan_vaf <- round(as.numeric(stringr::str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(strelka_vaf, varscan_vaf, 
+                                           sep = ",")
+        mean_vaf <- round(mean(c(strelka_vaf, varscan_vaf)),
+                          digits = 4)
+        
+      } else if(caller_string == "svaba,varscan") {
+        # 2 CALLER CONSENSUS
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+        varscan_vaf <- round(as.numeric(stringr::str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+        
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- stringr::str_c(svaba_vaf, varscan_vaf,
+                                           sep = ",")
+        mean_vaf <- round(mean(c(svaba_vaf, varscan_vaf)),
+                          digits = 4)
+
+      } else if(caller_string == "mutect") {
+        # 1 CALLER SINGLETON
+        mutect_vaf <- round(final_union_consensus_per_chrom_dt[j, MUTECT_VAF],
+                            digits = 4)
+
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- mutect_vaf
+        mean_vaf <- mutect_vaf
+
+      } else if(caller_string == "strelka") {
+        # 1 CALLER SINGLETON
+        strelka_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "strelka", mut_type = mutation_type),
+                             digits = 4)
+
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- strelka_vaf
+        mean_vaf <- strelka_vaf
+
+      } else if(caller_string == "svaba") {
+        # 1 CALLER SINGLETON
+        svaba_vaf <- round(calc_vaf(mut_record = final_union_consensus_per_chrom_dt[j,], caller = "svaba", mut_type = mutation_type),
+                           digits = 4)
+
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- svaba_vaf
+        mean_vaf <- svaba_vaf
+
+      } else if(caller_string == "varscan") {
+        # 1 CALLER SINGLETON
+        varscan_vaf <- round(as.numeric(stringr::str_remove(string = final_union_consensus_per_chrom_dt[j, VARSCAN_FREQ_TUMOR], pattern = "%")) / 100,
+                             digits = 4)
+
+        # Ouput string of individual VAFs in same order as CALLER and a mean of the values
+        vaf_combo_string <- varscan_vaf
+        mean_vaf <- varscan_vaf
+      }
+      
+      # Add all VAF info into output DT record
+      vaf_info$vaf_combo[j] <- vaf_combo_string
+      vaf_info$vaf_mean[j] <- mean_vaf
+    }
+    
+    # print foreach output to conclude parallel run
+    vaf_info
+    }
+  }
+
+  # bind the VAF metrics with the main mutation DT
+  final_union_consensus_vaf_dt <- cbind(final_union_consensus_dt, final_union_consensus_vaf_metrics_dt)
+
+  # Write the output
+  message("Writing output .txt files to ", output_dir, ".....")
   data.table::fwrite(x = final_union_consensus_dt,
-                     file = paste0(output_dir, "/", sample_set$sample[i], ".hq.union.consensus.somatic.", mut_type, ".txt"),
+                     file = paste0(output_dir, "/", sample_set$sample[i], ".hq.union.consensus.somatic.", mut_type, ".txt.gz"),
                      quote = FALSE,
                      sep = "\t",
                      row.names = FALSE,
                      col.names = TRUE,
                      logical01 = FALSE,
+                     na = "NA",
                      nThread = threads)
   
   message(sample_set$sample[i], " ", stringr::str_to_upper(mut_type), "s..... D O N E\n")
