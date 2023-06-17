@@ -23,7 +23,9 @@ def helpMessage() {
 	                            |   :_;`.__.'`.__.'`.__.'  |
 	                             .________________________.
 
-	                                      SOMATIC
+	                            ░█▀▀░█▀█░█▄█░█▀█░▀█▀░▀█▀░█▀▀
+                                ░▀▀█░█░█░█░█░█▀█░░█░░░█░░█░░
+                                ░▀▀▀░▀▀▀░▀░▀░▀░▀░░▀░░▀▀▀░▀▀▀
 
 	Usage:
 	  nextflow run somatic.nf --run_id STR --sample_sheet FILE -profile somatic [-bg] [-resume]
@@ -137,6 +139,7 @@ params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.sample_sheet = null
 params.email = null
+params.seq_protocol = "WGS"
 params.mutect_ref_vcf_concatenated = "yes"
 params.battenberg_ref_cached = "yes"
 params.vep_ref_cached = "yes"
@@ -382,19 +385,29 @@ log.info "          |   : :: :; :: :; :: :; :  |          "
 log.info "          |   :_;`.__.'`.__.'`.__.'  |          "
 log.info "           .________________________.           "
 log.info ''
-log.info "                    SOMATIC                     "
+log.info "          ░█▀▀░█▀█░█▄█░█▀█░▀█▀░▀█▀░█▀▀           "
+log.info "          ░▀▀█░█░█░█░█░█▀█░░█░░░█░░█░░           "
+log.info "          ░▀▀▀░▀▀▀░▀░▀░▀░▀░░▀░░▀▀▀░▀▀▀           "
 log.info ''
 log.info "~~~ Launch Time ~~~"
-log.info "${workflowTimestamp}"
+log.info ''
+log.info "	${workflowTimestamp}"
 log.info ''
 log.info "~~~ Input Directory ~~~"
-log.info "${params.input_dir}"
+log.info ''
+log.info "	${params.input_dir}"
 log.info ''
 log.info "~~~ Output Directory ~~~"
-log.info "${params.output_dir}"
+log.info ''
+log.info "	${params.output_dir}"
 log.info ''
 log.info "~~~ Run Report File ~~~"
-log.info "nextflow_report.${params.run_id}.html"
+log.info ''
+log.info "	nextflow_report.${params.run_id}.html"
+log.info ''
+log.info "~~~ Sequencing Protocol ~~~"
+log.info ''
+log.info "	${params.seq_protocol}"
 log.info ''
 log.info '################################################'
 log.info ''
@@ -728,7 +741,7 @@ process svAndIndelCalling_manta {
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
 	tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) into manta_sv_vcf_forPostprocessing
-	tuple val(tumor_normal_sample_id), path(tumor_bam) into manta_tumor_bam_forDuphold
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into manta_tumor_bam_forDuphold
 	tuple path(unfiltered_sv_vcf), path(unfiltered_sv_vcf_index)
 	tuple path(germline_sv_vcf), path(germline_sv_vcf_index)
 	tuple val(tumor_normal_sample_id), path(germline_sv_vcf), path(germline_sv_vcf_index) into germline_indel_vcf_forCaveman
@@ -842,7 +855,7 @@ process falsePostiveSvFilteringManta_duphold {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(final_manta_somatic_sv_vcf) from manta_tumor_bam_forDuphold.join(manta_sv_vcf_forDuphold)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(final_manta_somatic_sv_vcf) from manta_tumor_bam_forDuphold.join(manta_sv_vcf_forDuphold)
     path ref_genome_fasta from ref_genome_fasta_file
     path ref_genome_fasta_index from ref_genome_fasta_index_file
     path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -1017,7 +1030,7 @@ process svAndIndelCalling_svaba {
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
-	tuple val(tumor_normal_sample_id), path(tumor_bam) into svaba_tumor_bam_forDuphold
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into svaba_tumor_bam_forDuphold
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
 	path germline_indel_vcf
@@ -1164,7 +1177,7 @@ process falsePostiveSvFilteringSvaba_duphold {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(final_svaba_somatic_sv_vcf) from svaba_tumor_bam_forDuphold.join(svaba_sv_vcf_forDuphold)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(final_svaba_somatic_sv_vcf) from svaba_tumor_bam_forDuphold.join(svaba_sv_vcf_forDuphold)
     path ref_genome_fasta from ref_genome_fasta_file
     path ref_genome_fasta_index from ref_genome_fasta_index_file
     path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -1219,7 +1232,7 @@ process svAndIndelCalling_delly {
 
 	output:
 	tuple val(tumor_normal_sample_id), val(tumor_id), path(delly_somatic_sv_vcf), path(delly_somatic_sv_vcf_index) into delly_sv_vcf_forPostprocessing
-	tuple val(tumor_normal_sample_id), path(tumor_bam) into delly_tumor_bam_forDuphold
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into delly_tumor_bam_forDuphold
 
 	when:
 	params.delly == "on"
@@ -1314,7 +1327,7 @@ process falsePostiveSvFilteringDelly_duphold {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(tumor_bam), path(final_delly_somatic_sv_vcf) from delly_tumor_bam_forDuphold.join(delly_sv_vcf_forDuphold)
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(final_delly_somatic_sv_vcf) from delly_tumor_bam_forDuphold.join(delly_sv_vcf_forDuphold)
     path ref_genome_fasta from ref_genome_fasta_file
     path ref_genome_fasta_index from ref_genome_fasta_index_file
     path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -3055,8 +3068,6 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-/*
-
 // ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
 // START
 
@@ -3088,10 +3099,6 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-
-*/
-
 
 
 // ~~~~~~~~~~~~~~ fragCounter ~~~~~~~~~~~~~~ \\

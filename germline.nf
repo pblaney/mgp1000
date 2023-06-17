@@ -23,12 +23,14 @@ def helpMessage() {
 	                            |   :_;`.__.'`.__.'`.__.'  |
 	                             .________________________.
 
-	                                      GERMLINE
+	                          ░█▀▀░█▀▀░█▀▄░█▄█░█░░░▀█▀░█▀█░█▀▀
+                              ░█░█░█▀▀░█▀▄░█░█░█░░░░█░░█░█░█▀▀
+                              ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
 
 	Usage:
-	  nextflow run germline.nf --run_id STR --sample_sheet FILE --cohort_name STR -profile germline
+	  nextflow run germline.nf --run_id STR --sample_sheet FILE -profile germline
 	  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix_only STR]
-	  [--vep_ref_cached STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
+	  [--seq_protocol STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 	Mandatory Arguments:
 	  --run_id                       STR  Unique identifier for pipeline run
@@ -36,8 +38,6 @@ def helpMessage() {
 	                                      first column designates the file name of the normal
 	                                      sample, the second column for the file name of the
 	                                      matched tumor sample
-	  --cohort_name                  STR  A user defined collective name of the group of
-	                                      samples, this will be used as the name of the output
 	  -profile                       STR  Configuration profile to use, must use germline
 
 	Main Options:
@@ -57,15 +57,14 @@ def helpMessage() {
 	                                      [Default: output/]
 	  --email                        STR  Email address to send workflow completion/stoppage
 	                                      notification
-	  --fastngsadmix_only            STR  Indicates whether or not to only run the fastNGSadmix
+	  --seq_protocol                 STR  Sequencing protocol of the input, WGS for whole-genome
+	                                      and WES for whole-exome
+	                                      [Default: WGS | Available: WGS, WES]
+	  --deepvariant                  STR  Indicates whether or not to run DeepVariant workflow
+	                                      [Default: on | Available: on, off]
+	  --fastngsadmix                 STR  Indicates whether or not to only run the fastNGSadmix
 	                                      workflow
-	                                      [Default: no | Available: no, yes]
-	  --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
-	                                      for annotation have been downloaded/cached locally,
-	                                      this will be done in a process of the pipeline if it
-	                                      has not, this does not need to be done for every
-	                                      separate run after the first
-	                                      [Default: yes | Available: yes, no]
+	                                      [Default: on | Available: on, off]
 	  --cpus                         INT  Globally set the number of cpus to be allocated
 	  --memory                       STR  Globally set the amount of memory to be allocated,
 	                                      written as '##.GB' or '##.MB'
@@ -86,12 +85,11 @@ params.input_dir = "${workflow.projectDir}/input/preprocessedBams"
 params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
 params.sample_sheet = null
-params.cohort_name = null
 params.email = null
-params.vep_ref_cached = "yes"
+params.seq_protocol = "WGS"
+params.deepvariant = "on"
+params.fastngsadmix = "on"
 params.fastngsadmix_only = "no"
-params.ref_vcf_concatenated = "yes"
-params.admixture_input_vcf = ""
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -109,9 +107,32 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 
 if( params.sample_sheet == null & params.fastngsadmix_only == "no" ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
-if( params.cohort_name == null ) exit 1, "The run command issued does not have the '--cohort_name' parameter set. Please set the '--cohort_name' parameter to a unique identifier for the multi-sample germline GVCF."
-
 // Set channels for reference files
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.fasta') )
+    .set{ ref_genome_fasta_file }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.fasta.fai') )
+    .set{ ref_genome_fasta_index_file }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.dict') )
+    .set{ ref_genome_fasta_dict_file }
+
+Channel
+	.fromList( ['chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
+	            'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
+	            'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18',
+	            'chr19', 'chr20', 'chr21', 'chr22', 'chrX', 'chrY'] )
+	.set{ chromosome_list_forDeepVariant }
+
+
+
+
+
+
+
 Channel
 	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta' )
 	.into{ reference_genome_fasta_forSplitIntervals;
@@ -201,12 +222,6 @@ Channel
 	.fromPath( 'references/hg38/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi' )
 	.set{ gatk_bundle_1000G_snps_index }
 
-if( params.vep_ref_cached == "yes" ) {
-	Channel
-		.fromPath( 'references/hg38/homo_sapiens_vep_101_GRCh38/', type: 'dir', checkIfExists: true )
-		.ifEmpty{ error "The run command issued has the '--vep_ref_cached' parameter set to 'yes', however the directory does not exist. Please set the '--vep_ref_cached' parameter to 'no' and resubmit the run command. For more information, check the README or issue the command 'nextflow run germline.nf --help'"}
-		.set{ vep_ref_dir_preDownloaded }
-}
 
 Channel
     .value( file('references/hg38/fastNGSadmix_markers_refPanel.hg38.txt') )
@@ -248,15 +263,29 @@ log.info "          |   : :: :; :: :; :: :; :  |          "
 log.info "          |   :_;`.__.'`.__.'`.__.'  |          "
 log.info "           .________________________.           "
 log.info ''
-log.info "                    GERMLINE                    "
+log.info "        ░█▀▀░█▀▀░█▀▄░█▄█░█░░░▀█▀░█▀█░█▀▀        "
+log.info "        ░█░█░█▀▀░█▀▄░█░█░█░░░░█░░█░█░█▀▀        "
+log.info "        ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀        "
 log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info "~~~ Launch Time ~~~"
 log.info ''
-log.info "~~~ Input Directory ~~~		${params.input_dir}"
+log.info '	${workflowTimestamp}'
 log.info ''
-log.info "~~~ Output Directory ~~~	${params.output_dir}"
+log.info "~~~ Input Directory ~~~"
 log.info ''
-log.info "~~~ Run Report File ~~~		nextflow_report.${params.run_id}.html"
+log.info '	${params.input_dir}'
+log.info ''
+log.info "~~~ Output Directory ~~~"
+log.info ''
+log.info '	${params.output_dir}'
+log.info ''
+log.info "~~~ Run Report File ~~~"
+log.info ''
+log.info '	nextflow_report.${params.run_id}.html'
+log.info ''
+log.info "~~~ Sequencing Protocol ~~~"
+log.info ''
+log.info "	${params.seq_protocol}"
 log.info ''
 log.info '################################################'
 log.info ''
@@ -272,8 +301,141 @@ if(params.sample_sheet != null) {
                       		 file("${params.input_dir}/${normal_bam_index}*.bai") ] }
         .unique()
         .into{ input_preprocessed_bams_forAngsd;
-               input_preprocessed_bams_forHaplotypeCaller }
+               input_preprocessed_bams_forHaplotypeCaller;
+               input_preprocessed_bams_forDeepVariant }
 }	
+
+// DeepVariant ~ deep learning-based germline variant-calling 
+process snpAndIndelCalling_deepvariant {
+    tag "${sample_id} C=${chromosome}"
+
+    input:
+    tuple path(bam_preprocessed), path(bam_preprocessed_index) from input_preprocessed_bams_forDeepVariant
+    path ref_genome_fasta from ref_genome_fasta_file
+    path ref_genome_fasta_index from ref_genome_fasta_index_file
+    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+    each chromosome from chromosome_list_forDeepVariant
+
+    output:
+    tuple val(sample_id), path(deepvariant_germline_vcf_per_chrom), path(deepvariant_germline_vcf_per_chrom_index) into unfiltered_germline_vcf
+
+    when:
+    params.deepvariant == "on"
+
+    script:
+    sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
+    deepvariant_germline_vcf_per_chrom = "${tumor_normal_sample_id}.deepvariant.germline.snp.indel.${chromosome}.vcf.gz"
+    deepvariant_germline_vcf_per_chrom_index = "${deepvariant_germline_vcf_per_chrom}.tbi"
+    """
+    run_deepvariant \
+    --model_type "${params.seq_protocol}" \
+    --ref "${ref_genome_fasta}" \
+    --reads "${bam_preprocessed}" \
+    --regions "${chromosome}" \
+    --output_vcf "${tumor_normal_sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
+    --num_shards ${task.cpus}
+
+    zcat "${tumor_normal_sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
+    | \
+    awk '($5 !~ ",")' \
+    | \
+    grep -e '^#|PASS' \
+    | \
+    gzip > "${deepvariant_germline_vcf_per_chrom}"
+    """
+}
+
+// GATK SortVcfs ~ merge all GVCF files for each sample and sort them
+process mergeAndSortVcfs_gatk {
+    tag "${sample_id}"
+    
+    input:
+    tuple val(sample_id), path(deepvariant_germline_vcf_per_chrom), path(deepvariant_germline_vcf_per_chrom_index) from unfiltered_germline_vcf.groupTuple()
+
+    output:
+    tuple val(sample_id), path(vcf_merged_unfiltered), path(vcf_merged_unfiltered_index) into merged_unfiltered_germline_vcf
+
+    when:
+    params.deepvariant == "on"
+
+    script:
+    vcf_merged_unfiltered = "${sample_id}.deepvariant.germline.snp.indel.unfiltered.vcf.gz"
+    vcf_merged_unfiltered_index = "${vcf_merged_unfiltered}.tbi"
+    """
+    gatk SortVcf \
+    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+    --VERBOSITY ERROR \
+    --TMP_DIR . \
+    --MAX_RECORDS_IN_RAM 4000000 \
+    ${deepvariant_germline_vcf_per_chrom.collect { "--INPUT $it " }.join()} \
+    --OUTPUT "${vcf_merged_unfiltered}"
+    """
+}
+
+// GATK VariantFiltration ~ hard filter sites based on variant allele frequency and genotype quality
+process variantFilter_gatk {
+    publishDir "${params.output_dir}/germline/${sample_id}", mode: 'copy', pattern: '.{vcf.gz, vcf.gz.tbi}'
+    tag "${sample_id}"
+
+    input:
+    tuple val(sample_id), path(vcf_merged_unfiltered), path(vcf_merged_unfiltered_index) into merged_unfiltered_germline_vcf
+
+    output:
+    path snp_vcf_merged
+    path snp_vcf_merged_index
+    path indel_vcf_merged
+    path indel_vcf_merged_index
+
+    when:
+    params.deepvariant == "on"
+
+    script:
+    snp_vcf_merged = "${sample_id}.deepvariant.germline.snp.vcf.gz"
+    snp_vcf_merged_index = "${snp_vcf_merged}.tbi"
+    indel_vcf_merged = "${sample_id}.deepvariant.germline.indel.vcf.gz"
+    indel_vcf_merged_index = "${indel_vcf_merged}.tbi"
+    """
+    gatk VariantFiltration \
+    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+    --verbosity ERROR \
+    --tmp-dir . \
+    --filter-name "TopOrBottomQuartileVAF" \
+    --filter-expression "(VAF < 0.25 && VAF > 0.0) || VAF > 0.75" \
+    --variant "${vcf_merged_unfiltered}" \
+    --output "${sample_id}.deepvariant.germline.snp.indel.marked.vcf.gz"
+
+    gatk SelectVariants \
+    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+    --verbosity ERROR \
+    --tmp-dir . \
+    --select-type-to-include SNP \
+    --exclude-filtered \
+    --variant "${sample_id}.deepvariant.germline.snp.indel.marked.vcf.gz" \
+    --output "${snp_vcf_merged}"
+
+    gatk SelectVariants \
+    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+    --verbosity ERROR \
+    --tmp-dir . \
+    --select-type-to-include INDEL \
+    --exclude-filtered \
+    --variant "${sample_id}.deepvariant.germline.snp.indel.marked.vcf.gz" \
+    --output "${indel_vcf_merged}"
+    """
+}
+
+
+
+
+
+
+
+
+
+
+
+/*
+
 
 // Combine all needed reference FASTA files into one channel for use in SplitIntervals process
 reference_genome_fasta_forSplitIntervals.combine( reference_genome_fasta_index_forSplitIntervals )
@@ -689,90 +851,16 @@ process splitMultiallelicAndLeftNormalizeVcf_bcftools {
 	"""
 }
 
-// VEP ~ download the reference files used for VEP annotation, if needed
-process downloadVepAnnotationReferences_vep {
-	publishDir "references/hg38", mode: 'copy'
 
-	output:
-	path cached_ref_dir_vep into vep_ref_dir_fromProcess
 
-	when:
-	params.vep_ref_cached == "no"
 
-	script:
-	cached_ref_dir_vep = "homo_sapiens_vep_101_GRCh38"
-	"""
-	curl -O ftp://ftp.ensembl.org/pub/release-101/variation/indexed_vep_cache/homo_sapiens_vep_101_GRCh38.tar.gz && \
-	mkdir -p "${cached_ref_dir_vep}" && \
-	mv homo_sapiens_vep_101_GRCh38.tar.gz "${cached_ref_dir_vep}/" && \
-	cd "${cached_ref_dir_vep}/" && \
-	tar xzf homo_sapiens_vep_101_GRCh38.tar.gz && \
-	rm homo_sapiens_vep_101_GRCh38.tar.gz
-	"""
-}
+*/
 
-// Depending on whether the reference files used for VEP annotation was pre-downloaded, set the input
-// channel for the VEP annotation process
-if( params.vep_ref_cached == "yes" ) {
-	vep_ref_dir = vep_ref_dir_preDownloaded
-}
-else {
-	vep_ref_dir = vep_ref_dir_fromProcess
-}
 
-// Combine all needed reference FASTA files into one channel for use in VEP annotation process
-reference_genome_fasta_forAnnotation.combine( reference_genome_fasta_index_forAnnotation )
-	.combine( reference_genome_fasta_dict_forAnnotation )
-	.set{ reference_genome_bundle_forAnnotation }
-
-// VEP ~ annotate the final germline VCF using databases including Ensembl, GENCODE, RefSeq, PolyPhen, SIFT, dbSNP, COSMIC, etc.
-process annotateGermlineVcf_vep {
-	publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy'
-	tag "${params.cohort_name}"
-
-	input:
-	tuple path(final_germline_vcf), path(final_germline_vcf_index) from final_germline_vcf_forAnnotation
-	path cached_ref_dir_vep from vep_ref_dir
-	tuple path(reference_genome_fasta_forAnnotation), path(reference_genome_fasta_index_forAnnotation), path(reference_genome_fasta_dict_forAnnotation) from reference_genome_bundle_forAnnotation
-
-	output:
-	path final_annotated_germline_vcf
-	path annotation_summary
-
-	when:
-	params.fastngsadmix_only == "no"
-
-	script:
-	final_annotated_germline_vcf = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".annotated.vcf.gz")
-	annotation_summary = "${final_germline_vcf}".replaceFirst(/\.vcf\.gz/, ".vep.summary.html")
-	"""
-	vep \
-	--offline \
-	--cache \
-	--dir "${cached_ref_dir_vep}" \
-	--assembly GRCh38 \
-	--fasta "${reference_genome_fasta_forAnnotation}" \
-	--input_file "${final_germline_vcf}" \
-	--format vcf \
-	--hgvs \
-	--hgvsg \
-	--protein \
-	--symbol \
-	--ccds \
-	--canonical \
-	--biotype \
-	--sift b \
-	--polyphen b \
-	--stats_file "${annotation_summary}" \
-	--output_file "${final_annotated_germline_vcf}" \
-	--compress_output bgzip \
-	--vcf
-	"""
-}
 
 // ANGSD ~ estimate allele frequencies from genotype likelihoods
 process alleleFrequencyEstimation_angsd {
-    tag "COHORT=${params.cohort_name} SAMPLE=${sample_id}"
+    tag "${sample_id}"
 
     input:
     tuple path(normal_bam), path(normal_bam_index) from input_preprocessed_bams_forAngsd
@@ -782,6 +870,9 @@ process alleleFrequencyEstimation_angsd {
 
     output:
     tuple val(sample_id), path(beagle_genotype_likelihoods) into beagle_input_forFastNgsAdmix
+
+    when:
+    params.fastngsadmix == "on"
 
     script:
     sample_id = "${normal_bam}".replaceFirst(/\.final\..*bam/, "")
@@ -804,8 +895,8 @@ process alleleFrequencyEstimation_angsd {
 
 // fastNGSadmix ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised fashion
 process ancestryEstimation_fastngsadmix {
-    publishDir "${params.output_dir}/germline/${params.cohort_name}", mode: 'copy'
-    tag "COHORT=${params.cohort_name} SAMPLE=${sample_id}"
+    publishDir "${params.output_dir}/germline/${sample_id}", mode: 'copy'
+    tag "${sample_id}"
     
     input:
     tuple val(sample_id), path(beagle_genotype_likelihoods) from beagle_input_forFastNgsAdmix
@@ -813,11 +904,14 @@ process ancestryEstimation_fastngsadmix {
     path admix_markers_ref_population_num_of_individuals
 
     output:
-    path cohort_sample_admixture_estimations
+    path sample_admixture_estimations
     path fastngsadmix_log
 
+    when:
+    params.fastngsadmix == "on"
+
     script:
-    cohort_sample_admixture_estimations = "${sample_id}.fastngsadmix.23.qopt"
+    sample_admixture_estimations = "${sample_id}.fastngsadmix.23.qopt"
     fastngsadmix_log = "${sample_id}.fastngsadmix.23.log"
     """
     fastNGSadmix \

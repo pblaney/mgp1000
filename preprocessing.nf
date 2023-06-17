@@ -24,12 +24,14 @@ def helpMessage() {
 	                            |   :_;`.__.'`.__.'`.__.'  |
 	                             .________________________.
 
-	                                   PREPROCESSING
+                     ░█▀█░█▀▄░█▀▀░█▀█░█▀▄░█▀█░█▀▀░█▀▀░█▀▀░█▀▀░▀█▀░█▀█░█▀▀
+                     ░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄░█░█░█░░░█▀▀░▀▀█░▀▀█░░█░░█░█░█░█
+                     ░▀░░░▀░▀░▀▀▀░▀░░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
 
 	Usage:
 	  nextflow run preprocessing.nf --run_id STR --input_format STR -profile preprocessing
 	  [-bg] [-resume] [--lane_split STR] [--input_dir PATH] [--output_dir PATH] [--email STR]
-	  [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
+	  [--seq_protocol STR][--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 	Mandatory Arguments:
 	  --run_id                       STR  Unique identifier for pipeline run
@@ -56,6 +58,9 @@ def helpMessage() {
 	                                      [Default: output/]
 	  --email                        STR  Email address to send workflow completion/stoppage
 	                                      notification
+	  --seq_protocol                 STR  Sequencing protocol of the input, WGS for whole-genome
+	                                      and WES for whole-exome
+	                                      [Default: WGS | Available: WGS, WES]
 	  --cpus                         INT  Globally set the number of cpus to be allocated
 	  --memory                       STR  Globally set the amount of memory to be allocated,
 	                                      written as '##.GB' or '##.MB'
@@ -75,7 +80,7 @@ def helpMessage() {
 params.input_dir = "${workflow.projectDir}/input"
 params.output_dir = "${workflow.projectDir}/output"
 params.run_id = null
-params.seq_protocol = "wgs"
+params.seq_protocol = "WGS"
 params.input_format = "fastq"
 params.lane_split = "no"
 params.email = null
@@ -136,7 +141,7 @@ Channel
 	       reference_genome_fasta_dict_forCollectGcBiasMetrics;
 	       reference_genome_fasta_dict_forCollectHsMetrics }
 
-if( params.seq_protocol == "wgs" ) {
+if( params.seq_protocol == "WGS" ) {
     Channel
         .value( file('references/hg38/wgs_calling_regions.hg38.interval_list') )
         .set{ target_regions }
@@ -144,7 +149,7 @@ if( params.seq_protocol == "wgs" ) {
     Channel
         .empty()
         .set{ target_regions_bed }
-} else if( params.seq_protocol == "wxs" ) {
+} else if( params.seq_protocol == "WES" ) {
     Channel
         .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed') )
         .set{ target_regions_bed }
@@ -153,7 +158,7 @@ if( params.seq_protocol == "wgs" ) {
         .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.interval_list') )
         .set{ target_regions }
 } else {
-    exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'wgs' for whole-genome or 'wxs' for whole-exome."
+    exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole-genome or 'WES' for whole-exome."
 }
 
 Channel
@@ -208,15 +213,29 @@ log.info "          |   : :: :; :: :; :: :; :  |          "
 log.info "          |   :_;`.__.'`.__.'`.__.'  |          "
 log.info "           .________________________.           "
 log.info ''
-log.info "                 PREPROCESSING                  "
+log.info "░█▀█░█▀▄░█▀▀░█▀█░█▀▄░█▀█░█▀▀░█▀▀░█▀▀░█▀▀░▀█▀░█▀█░█▀▀"
+log.info "░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄░█░█░█░░░█▀▀░▀▀█░▀▀█░░█░░█░█░█░█"
+log.info "░▀░░░▀░▀░▀▀▀░▀░░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀"
 log.info ''
-log.info "~~~ Launch Time ~~~		${workflowTimestamp}"
+log.info "~~~ Launch Time ~~~"
 log.info ''
-log.info "~~~ Input Directory ~~~		${params.input_dir}"
+log.info '	${workflowTimestamp}'
 log.info ''
-log.info "~~~ Output Directory ~~~	${params.output_dir}"
+log.info "~~~ Input Directory ~~~"
 log.info ''
-log.info "~~~ Run Report File ~~~		nextflow_report.${params.run_id}.html"
+log.info '	${params.input_dir}'
+log.info ''
+log.info "~~~ Output Directory ~~~"
+log.info ''
+log.info '	${params.output_dir}'
+log.info ''
+log.info "~~~ Run Report File ~~~"
+log.info ''
+log.info '	nextflow_report.${params.run_id}.html'
+log.info ''
+log.info "~~~ Sequencing Protocol ~~~"
+log.info ''
+log.info "	${params.seq_protocol}"
 log.info ''
 log.info '################################################'
 log.info ''
@@ -638,7 +657,7 @@ process localAndGlobalRealignment_abra2 {
     path abra_log
 
     when:
-    params.seq_protocol == "wxs"
+    params.seq_protocol == "WES"
 
     script:
     bam_marked_dup_realigned = "${bam_marked_dup}".replaceFirst(/\.bam/, ".realign.bam")
@@ -655,9 +674,9 @@ process localAndGlobalRealignment_abra2 {
     """
 }
 
-if( params.seq_protocol == "wgs" ) {
+if( params.seq_protocol == "WGS" ) {
     bams_forDownsampleBam = marked_dup_bams_forDownsampleBam
-} else if( params.seq_protocol == "wxs" ) {
+} else if( params.seq_protocol == "WES" ) {
     bams_forDownsampleBam = marked_dup_realigned_bams_forDownsampleBam
 }
 
@@ -735,9 +754,9 @@ process baseRecalibrator_gatk {
 	"""
 }
 
-if( params.seq_protocol == "wgs" ) {
+if( params.seq_protocol == "WGS" ) {
     bams_forApplyBqsr = marked_dup_bams_forApplyBqsr
-} else if( params.seq_protocol == "wxs" ) {
+} else if( params.seq_protocol == "WES" ) {
     bams_forApplyBqsr = marked_dup_realigned_bams_forApplyBqsr
 }
 
@@ -800,7 +819,7 @@ process collectWgsMetrics_gatk {
 	path coverage_metrics
 
 	when:
-	params.seq_protocol == "wgs"
+	params.seq_protocol == "WGS"
 
 	script:
 	coverage_metrics = "${sample_id}.coverage.metrics.txt"
@@ -872,7 +891,7 @@ process collectHsMetrics_gatk {
     path hs_metrics
 
     when:
-    params.seq_protocol == "wxs"
+    params.seq_protocol == "WES"
 
     script:
     hs_metrics = "${sample_id}.hs.metrics.txt"
