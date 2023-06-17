@@ -391,23 +391,23 @@ log.info "          ░▀▀▀░▀▀▀░▀░▀░▀░▀░░▀░
 log.info ''
 log.info "~~~ Launch Time ~~~"
 log.info ''
-log.info "	${workflowTimestamp}"
+log.info " ${workflowTimestamp}"
 log.info ''
 log.info "~~~ Input Directory ~~~"
 log.info ''
-log.info "	${params.input_dir}"
+log.info " ${params.input_dir}"
 log.info ''
 log.info "~~~ Output Directory ~~~"
 log.info ''
-log.info "	${params.output_dir}"
+log.info " ${params.output_dir}"
 log.info ''
 log.info "~~~ Run Report File ~~~"
 log.info ''
-log.info "	nextflow_report.${params.run_id}.html"
+log.info " nextflow_report.${params.run_id}.html"
 log.info ''
 log.info "~~~ Sequencing Protocol ~~~"
 log.info ''
-log.info "	${params.seq_protocol}"
+log.info " ${params.seq_protocol}"
 log.info ''
 log.info '################################################'
 log.info ''
@@ -823,7 +823,7 @@ process filterAndPostprocessMantaVcf_bcftools {
     tuple val(tumor_normal_sample_id), val(tumor_id), val(normal_id), path(manta_somatic_sv_vcf), path(manta_somatic_sv_vcf_index) from manta_sv_vcf_forPostprocessing
 
     output:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forDuphold
+    tuple val(tumor_normal_sample_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forDuphold
     tuple val(tumor_normal_sample_id), path(final_manta_somatic_sv_read_support) into manta_sv_read_support_forAnnotation
 
     when:
