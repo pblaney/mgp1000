@@ -837,7 +837,7 @@ process filterAndPostprocessMantaVcf_bcftools {
     echo "${normal_id}" >> name.txt
 
     bcftools filter \
-    --output-type z \
+    --output-type v \
     --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
     --output "${final_manta_somatic_sv_vcf}" \
     "${manta_somatic_sv_vcf}" 
