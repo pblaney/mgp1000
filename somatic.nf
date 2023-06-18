@@ -1295,12 +1295,10 @@ process filterAndPostprocessDellyVcf_bcftools {
     final_delly_somatic_sv_read_support = "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt"
     """
     bcftools filter \
-    --output-type -u \
     --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
     "${delly_somatic_sv_vcf}" \
     | \
     bcftools filter \
-    --output-type u \
     --include 'INFO/PE>3 || INFO/SR>3' \
     | \
     bcftools view \
