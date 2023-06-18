@@ -2938,7 +2938,7 @@ process mergeResults_caveman {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~ UNION CONSENSUS SNV/INDEL ~~~~~~~~~~~ \\
+// ~~~~~~ UNION CONSENSUS SNV/INDEL ~~~~~~~~ \\
 // START
 
 // devgru ~ merge VCF files by calls, generating a union followed by a consensus pass
@@ -3011,7 +3011,7 @@ process unionAndConsensusIndelCalls_devgru {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~ UNION CONSENSUS CNV BED ~~~~~~~~~~~~ \\
+// ~~~~~~~ UNION CONSENSUS CNV BED ~~~~~~~~~ \\
 // START
 
 // BEDtools unionbedg 2-way ~ transform CNV output into BED files then generate merged CNV segment file
@@ -3068,12 +3068,12 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~~ CONSENSUS SV VCF ~~~~~~~~~~~~ \\
+// ~~~~~~~~ UNION CONSENSUS SV VCF ~~~~~~~~~ \\
 // START
 
 // gGnome ~ merge SV VCF files to generate a consensus
 process mergeAndGenerateConsensusSvCalls_ggnome {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{bedpe}'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{bedpe,pdf}'
     tag  "${tumor_normal_sample_id}"
 
     input:
@@ -3081,12 +3081,14 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
 
     output:
     path hq_union_consensus_sv_bedpe
+    path union_consensus_upset_intersection_plot
 
     when:
     params.manta == "on" && params.svaba == "on" && params.delly == "on" && params.igcaller == "on"
 
     script:
     hq_union_consensus_sv_bedpe = "${tumor_normal_sample_id}.hq.union.consensus.somatic.sv.bedpe"
+    union_consensus_upset_intersection_plot = "${tumor_normal_sample_id}.union.consensus.somatic.sv.intersection.plot.pdf"
     """
     Rscript --vanilla ${workflow.projectDir}/bin/sv_union_consensus_polisher.R \
     "${tumor_normal_sample_id}" \
