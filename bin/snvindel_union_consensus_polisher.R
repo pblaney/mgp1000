@@ -473,7 +473,6 @@ for(i in 1:nrow(sample_set)) {
     
     # print foreach output to conclude parallel run
     vaf_info
-    }
   }
 
   # bind the VAF metrics with the main mutation DT

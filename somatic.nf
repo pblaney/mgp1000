@@ -3091,8 +3091,8 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
     Rscript --vanilla ${workflow.projectDir}/bin/sv_union_consensus_polisher.R \
     "${tumor_normal_sample_id}" \
     "${manta_filtered_final_sv_vcf}" \
+    "${svaba_filtered_final_sv_vcf}" \
     "${delly_filtered_final_sv_vcf}" \
-    "${final_delly_somatic_sv_vcf}" \
     "${igcaller_oncogenic_rearrangements_tsv}"
     """
 }
