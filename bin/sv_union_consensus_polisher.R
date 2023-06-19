@@ -13,6 +13,8 @@ suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(gGnome))
 suppressPackageStartupMessages(library(UpSetR))
 suppressPackageStartupMessages(library(devgru))
+suppressPackageStartupMessages(library(paletteer))
+suppressPackageStartupMessages(library(ggsci))
 
 Sys.setenv(DEFAULT_BSGENOME = 'BSgenome.Hsapiens.UCSC.hg38::Hsapiens')
 options(scipen = 999)
@@ -203,7 +205,7 @@ consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
 							                 delly = delly_jnc[,"name"],
                                svaba = svaba_jnc[,"name"],
                                igcaller = igcaller_jnc[,"name"],
-							                 pad = 500)
+							                 pad = 1000)
 
 # Generate intersection UpSetR plot
 plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.delly, seen.by.svaba, seen.by.igcaller)])))
@@ -219,10 +221,10 @@ UpSetR::upset(plot_data,
               scale.intersections = "identity",
               scale.sets = "identity",
               main.bar.color = paletteer::paletteer_dynamic("cartography::wine.pal",
-                                                                n = length(table(paste0(plot_data$seen.by.manta,
-                                                                                        plot_data$seen.by.delly,
-                                                                                        plot_data$seen.by.svaba,
-                                                                                        plot_data$seen.by.igcaller)))),
+                                                            n = length(table(paste0(plot_data$seen.by.manta,
+                                                                                    plot_data$seen.by.delly,
+                                                                                    plot_data$seen.by.svaba,
+                                                                                    plot_data$seen.by.igcaller)))),
               sets.bar.color = paletteer::paletteer_d("ggsci::default_aaas")[3:6]) # BigY, Yaxistix, LittleX, Xaxistix, callerId, colcountannots
 title(main = tum_norm_id, family = "sans", font.main = 2)
 dev.off()
