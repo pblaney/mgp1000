@@ -91,9 +91,9 @@ tum_norm_id <- input_args[1]
 
 manta_vcf_path <- input_args[2]
 
-delly_vcf_path <- input_args[3]
+svaba_vcf_path <- input_args[3]
 
-svaba_vcf_path <- input_args[4]
+delly_vcf_path <- input_args[4]
 
 igcaller_tsv_path <- input_args[5]
 

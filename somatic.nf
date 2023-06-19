@@ -2941,7 +2941,7 @@ process mergeResults_caveman {
 
 // devgru ~ merge VCF files by calls, generating a union followed by a consensus pass
 process unionAndConsensusSnvCalls_devgru {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{txt,rds}'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
     tag "${tumor_normal_sample_id}"
 
     input:
@@ -2950,14 +2950,12 @@ process unionAndConsensusSnvCalls_devgru {
 
     output:
     path hq_union_consensus_snv_table
-    path hq_union_consensus_snv_gr_rds
 
     when:
     params.varscan == "on" && params.mutect == "on" && params.strelka == "on"
 
     script:
-    hq_union_consensus_snv_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt"
-    hq_union_consensus_snv_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.rds"
+    hq_union_consensus_snv_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt.gz"
     """
     mkdir -p results/
 
@@ -2974,7 +2972,7 @@ process unionAndConsensusSnvCalls_devgru {
 
 // devgru ~ merge VCF files by calls, generating a union followed by a consensus pass
 process unionAndConsensusIndelCalls_devgru {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{txt,rds}'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
     tag "${tumor_normal_sample_id}"
 
     input:
@@ -2983,14 +2981,12 @@ process unionAndConsensusIndelCalls_devgru {
 
     output:
     path hq_union_consensus_indel_table
-    path hq_union_consensus_indel_gr_rds
 
     when:
     params.varscan == "on" && params.mutect == "on" && params.strelka == "on" && params.svaba == "on"
 
     script:
-    hq_union_consensus_indel_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt"
-    hq_union_consensus_indel_gr_rds = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.rds"
+    hq_union_consensus_indel_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt.gz"
     """
     mkdir -p results/
 
