@@ -226,7 +226,6 @@ UpSetR::upset(plot_data,
                                                                                     plot_data$seen.by.svaba,
                                                                                     plot_data$seen.by.igcaller)))),
               sets.bar.color = paletteer::paletteer_d("ggsci::default_aaas")[3:6]) # BigY, Yaxistix, LittleX, Xaxistix, callerId, colcountannots
-title(main = tum_norm_id, family = "sans", font.main = 2)
 dev.off()
 message("Writing output consensus gGnome junctions as BEDPE format.....")
 # TODO: Go from SV gGnome junctions to BEDPE
