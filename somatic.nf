@@ -3010,14 +3010,14 @@ process unionAndConsensusIndelCalls_devgru {
 
 // BEDtools unionbedg 2-way ~ transform CNV output into BED files then generate merged CNV segment file
 process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
-    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{merged.bed}'
+    publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
     tag "${tumor_normal_sample_id}"
 
     input:
     tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed), path(facets_somatic_cnv_bed), path(facets_somatic_alleles_bed) from final_battenberg_cnv_profile_forConsensus.join(final_facets_cnv_profile_forConsensus)
 
     output:
-    tuple val(tumor_normal_sample_id), path(two_way_consensus_merged_cnv_alleles_bed) into two_way_consensus_cnv_and_allele_bed_forConsensusCnvTransform
+    path two_way_consensus_merged_cnv_alleles_bed
 
     when:
     params.battenberg == "on" && params.facets == "on"

@@ -209,7 +209,7 @@ consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
 
 # Generate intersection UpSetR plot
 plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.delly, seen.by.svaba, seen.by.igcaller)])))
-pdf(file = paste0(tum_norm_id, ".union.consensus.somatic.sv.intersection.plot.pdf"),
+pdf(file = paste0(tum_norm_id, ".hq.union.consensus.somatic.sv.intersection.plot.pdf"),
     width = 7,
     height = 7)
 UpSetR::upset(plot_data,
