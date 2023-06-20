@@ -3075,14 +3075,14 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
 
     output:
     path hq_union_consensus_sv_bedpe
-    path union_consensus_upset_intersection_plot
+    path hq_union_consensus_upset_intersection_plot
 
     when:
     params.manta == "on" && params.svaba == "on" && params.delly == "on" && params.igcaller == "on"
 
     script:
     hq_union_consensus_sv_bedpe = "${tumor_normal_sample_id}.hq.union.consensus.somatic.sv.bedpe"
-    union_consensus_upset_intersection_plot = "${tumor_normal_sample_id}.union.consensus.somatic.sv.intersection.plot.pdf"
+    hq_union_consensus_upset_intersection_plot = "${tumor_normal_sample_id}.hq.union.consensus.somatic.sv.intersection.plot.pdf"
     """
     Rscript --vanilla ${workflow.projectDir}/bin/sv_union_consensus_polisher.R \
     "${tumor_normal_sample_id}" \
