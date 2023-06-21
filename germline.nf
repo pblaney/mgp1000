@@ -378,7 +378,7 @@ process variantFilter_gatk {
     tag "${sample_id}"
 
     input:
-    tuple val(sample_id), path(vcf_merged_unfiltered), path(vcf_merged_unfiltered_index) into merged_unfiltered_germline_vcf
+    tuple val(sample_id), path(vcf_merged_unfiltered), path(vcf_merged_unfiltered_index) from merged_unfiltered_germline_vcf
 
     output:
     path snp_vcf_merged
