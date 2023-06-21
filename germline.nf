@@ -376,7 +376,7 @@ process mergeAndSortVcfs_gatk {
 
 // GATK VariantFiltration ~ hard filter sites based on variant allele frequency and genotype quality
 process variantFilter_gatk {
-    publishDir "${params.output_dir}/germline/${sample_id}", mode: 'copy', pattern: '.{vcf.gz, vcf.gz.tbi}'
+    publishDir "${params.output_dir}/germline", mode: 'copy'
     tag "${sample_id}"
 
     input:
@@ -397,22 +397,13 @@ process variantFilter_gatk {
     indel_vcf_merged = "${sample_id}.deepvariant.germline.indel.vcf.gz"
     indel_vcf_merged_index = "${indel_vcf_merged}.tbi"
     """
-    gatk VariantFiltration \
-    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-    --verbosity ERROR \
-    --tmp-dir . \
-    --filter-name "TopOrBottomQuartileVAF" \
-    --filter-expression "(VAF < 0.25 && VAF > 0.0) || VAF > 0.75" \
-    --variant "${vcf_merged_unfiltered}" \
-    --output "${sample_id}.deepvariant.germline.snp.indel.marked.vcf.gz"
-
     gatk SelectVariants \
     --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
     --verbosity ERROR \
     --tmp-dir . \
     --select-type-to-include SNP \
     --exclude-filtered \
-    --variant "${sample_id}.deepvariant.germline.snp.indel.marked.vcf.gz" \
+    --variant "${vcf_merged_unfiltered}" \
     --output "${snp_vcf_merged}"
 
     gatk SelectVariants \
@@ -421,7 +412,7 @@ process variantFilter_gatk {
     --tmp-dir . \
     --select-type-to-include INDEL \
     --exclude-filtered \
-    --variant "${sample_id}.deepvariant.germline.snp.indel.marked.vcf.gz" \
+    --variant "${vcf_merged_unfiltered}" \
     --output "${indel_vcf_merged}"
     """
 }
