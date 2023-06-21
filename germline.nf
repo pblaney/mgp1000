@@ -339,7 +339,7 @@ process snpAndIndelCalling_deepvariant {
     | \
     awk '(\$5 !~ ",")' \
     | \
-    grep -e '^#|PASS' \
+    grep -E '^#|PASS' \
     | \
     gzip > "${deepvariant_germline_vcf_per_chrom}"
     """
