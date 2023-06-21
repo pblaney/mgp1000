@@ -324,7 +324,7 @@ process snpAndIndelCalling_deepvariant {
 
     script:
     sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
-    deepvariant_germline_vcf_per_chrom = "${tumor_normal_sample_id}.deepvariant.germline.snp.indel.${chromosome}.vcf.gz"
+    deepvariant_germline_vcf_per_chrom = "${sample_id}.deepvariant.germline.snp.indel.${chromosome}.vcf.gz"
     deepvariant_germline_vcf_per_chrom_index = "${deepvariant_germline_vcf_per_chrom}.tbi"
     """
     run_deepvariant \
@@ -332,10 +332,10 @@ process snpAndIndelCalling_deepvariant {
     --ref "${ref_genome_fasta}" \
     --reads "${bam_preprocessed}" \
     --regions "${chromosome}" \
-    --output_vcf "${tumor_normal_sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
+    --output_vcf "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
     --num_shards ${task.cpus}
 
-    zcat "${tumor_normal_sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
+    zcat "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
     | \
     awk '(\$5 !~ ",")' \
     | \
