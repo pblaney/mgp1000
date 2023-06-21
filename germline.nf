@@ -341,7 +341,7 @@ process snpAndIndelCalling_deepvariant {
     | \
     grep -E '^#|PASS' \
     | \
-    gzip > "${deepvariant_germline_vcf_per_chrom}"
+    bgzip > "${deepvariant_germline_vcf_per_chrom}"
 
     tabix "${deepvariant_germline_vcf_per_chrom}"
     """
