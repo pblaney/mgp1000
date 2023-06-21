@@ -29,7 +29,7 @@ def helpMessage() {
 
 	Usage:
 	  nextflow run germline.nf --run_id STR --sample_sheet FILE -profile germline
-	  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix_only STR]
+	  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix STR]
 	  [--seq_protocol STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 	Mandatory Arguments:
@@ -89,7 +89,7 @@ params.email = null
 params.seq_protocol = "WGS"
 params.deepvariant = "on"
 params.fastngsadmix = "on"
-params.fastngsadmix_only = "no"
+//params.fastngsadmix_only = "no"
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -337,7 +337,7 @@ process snpAndIndelCalling_deepvariant {
 
     zcat "${tumor_normal_sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
     | \
-    awk '($5 !~ ",")' \
+    awk '(\$5 !~ ",")' \
     | \
     grep -e '^#|PASS' \
     | \
