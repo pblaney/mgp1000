@@ -581,7 +581,7 @@ process cnvCalling_battenberg {
     ${params.battenberg_preset_psi} \
     "${battenberg_fit_cnv_profile_csv}"
 
-    cp "${output_dir}/${tumor_id}.logRsegmented.txt.gz" "${battenberg_fit_segmented_logr}"
+    gzip -c "${output_dir}/${tumor_id}.logRsegmented.txt" > "${battenberg_fit_segmented_logr}"
     echo "purity\tploidy" > "${battenberg_fit_purity_ploidy}"
     grep 'FRAC_GENOME' "${output_dir}/${tumor_id}_rho_and_psi.txt" | awk 'BEGIN {OFS="\t"} {print \$2,\$4}' >> "${battenberg_fit_purity_ploidy}"
     cp "${output_dir}/${tumor_id}_second_nonroundedprofile.png" "${battenberg_fit_cnv_profile_png}"
