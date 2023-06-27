@@ -520,95 +520,130 @@ else {
 
 // Battenberg ~ whole genome sequencing subclonal copy number caller
 process cnvCalling_battenberg {
-  	publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
-  	tag "${tumor_normal_sample_id}"
-
-  	input:
-  	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(battenberg_references) from bams_and_sex_of_sample_forBattenberg.combine(battenberg_ref_dir)
-
-  	output:
-  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) into final_battenberg_cnv_profile_forConsensusPrep
-  	tuple path(battenberg_rho_and_psi), path(battenberg_purity_and_ploidy), path(battenberg_cnv_profile_png)
-  	path "${output_dir}/*.tumour.png"
-  	path "${output_dir}/*.germline.png"
-  	path "${output_dir}/*_distance.png"
-  	path "${output_dir}/*_coverage.png"
-  	path "${output_dir}/*_alleleratio.png"
-  	path "${output_dir}/*_BattenbergProfile_subclones.png"
-  	path "${output_dir}/*chr*_heterozygousData.png"
-  	path "${output_dir}/*_nonroundedprofile.png"
-  	path "${output_dir}/*_segment_chr*.png"
-  	path "${output_dir}/*_GCwindowCorrelations_*Correction.txt"
-  	path "${output_dir}/*_refit_suggestion.txt"
-  	path "${output_dir}/*_segment_masking_details.txt"
-  	path "${output_dir}/*_subclones_alternatives.txt"
-  	path "${output_dir}/*_subclones_chr*.png"
-  	path "${output_dir}/*_totalcn_chrom_plot.png"
-  	path "${output_dir}/*_copynumberprofile.png"
-  	tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) into tumor_cnv_profile_forCaveman
-
-  	when:
-  	params.battenberg == "on"
-
-  	script:
-  	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
-  	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
-  	output_dir = "${tumor_normal_sample_id}_results"
-  	battenberg_cnv_profile = "${tumor_normal_sample_id}.battenberg.cnv.txt"
-  	battenberg_rho_and_psi = "${tumor_normal_sample_id}.battenberg.rho.psi.txt"
-  	battenberg_purity_and_ploidy = "${tumor_normal_sample_id}.battenberg.purity.ploidy.txt"
-  	battenberg_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.cnv.png"
-  	"""
-  	cp /opt/downloads/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
-
-  	sex=\$(cut -d ' ' -f 1 "${sample_sex}")
-
-  	battenberg_executor.sh \
-  	"${tumor_id}" \
-  	"${normal_id}" \
-  	"${tumor_bam}" \
-  	"${normal_bam}" \
-  	"\${sex}" \
-  	"${output_dir}" \
-  	"${task.cpus}" \
-  	"${params.battenberg_min_depth}" \
-  	${params.battenberg_preset_rho_psi} \
-    ${params.battenberg_preset_rho} \
-    ${params.battenberg_preset_psi}
-
-  	cp "${output_dir}/${tumor_id}_subclones.txt" "${battenberg_cnv_profile}"
-  	cp "${output_dir}/${tumor_id}_rho_and_psi.txt" "${battenberg_rho_and_psi}"
-  	cp "${output_dir}/${tumor_id}_purity_ploidy.txt" "${battenberg_purity_and_ploidy}"
-  	cp "${output_dir}/${tumor_id}_BattenbergProfile_average.png" "${battenberg_cnv_profile_png}"
-  	"""
-}
-
-// Battenberg Consensus CNV Prep ~ extract and prepare CNV output for consensus
-process consensusCnvPrep_battenberg {
+    publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
+    tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(battenberg_references) from bams_and_sex_of_sample_forBattenberg.combine(battenberg_ref_dir)
 
     output:
-    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed) into final_battenberg_cnv_profile_forConsensus
-    tuple val(tumor_normal_sample_id), path(battenberg_subclones_file) into battenberg_subclones_forConsensusSubclones
+    tuple val(tumor_normal_sample_id), path(battenberg_fit_cnv_profile_csv), path(battenberg_fit_segmented_logr) into fit_cnv_data
+    path battenberg_fit_purity_ploidy
+    path battenberg_fit_cnv_profile_png
+    path "${output_dir}/*_subclones.txt"
+    path "${output_dir}/*_rho_and_psi.txt"
+    path "${output_dir}/*_purity_ploidy.txt"
+    path "${output_dir}/*.tumour.png"
+    path "${output_dir}/*.germline.png"
+    path "${output_dir}/*_distance.png"
+    path "${output_dir}/*_coverage.png"
+    path "${output_dir}/*_alleleratio.png"
+    path "${output_dir}/*_BattenbergProfile_subclones.png"
+    path "${output_dir}/*_BattenbergProfile_average.png"
+    path "${output_dir}/*chr*_heterozygousData.png"
+    path "${output_dir}/*_nonroundedprofile.png"
+    path "${output_dir}/*_segment_chr*.png"
+    path "${output_dir}/*_GCwindowCorrelations_*Correction.txt"
+    path "${output_dir}/*_refit_suggestion.txt"
+    path "${output_dir}/*_segment_masking_details.txt"
+    path "${output_dir}/*_subclones_alternatives.txt"
+    path "${output_dir}/*_subclones_chr*.png"
+    path "${output_dir}/*_totalcn_chrom_plot.png"
+    path "${output_dir}/*_copynumberprofile.png"
 
     when:
     params.battenberg == "on"
 
     script:
-    battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
-    battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
-    battenberg_subclones_file = "${tumor_normal_sample_id}.battenberg.subclones.txt"
+    tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
+    normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
+    output_dir = "${tumor_normal_sample_id}_results"
+    battenberg_fit_cnv_profile_csv = "${tumor_normal_sample_id}.battenberg.fit.cnv.csv.gz"
+    battenberg_fit_segmented_logr = "${tumor_normal_sample_id}.logRsegmented.txt.gz"
+    battenberg_fit_purity_ploidy = "${tumor_normal_sample_id}.battenberg.fit.purity.ploidy.txt"
+    battenberg_fit_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.fit.cnv.png"
     """
-    battenberg_clonal_and_subclonal_extractor.py \
-    <(grep -v 'startpos' "${battenberg_cnv_profile}" | cut -f 1-3,8-13) \
-    "${battenberg_somatic_cnv_bed}" \
-    "${battenberg_somatic_alleles_bed}" \
-    "${battenberg_subclones_file}"
+    cp /opt/downloads/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
+
+    sex=\$(cut -d ' ' -f 1 "${sample_sex}")
+
+    battenberg_executor.sh \
+    "${tumor_id}" \
+    "${normal_id}" \
+    "${tumor_bam}" \
+    "${normal_bam}" \
+    "\${sex}" \
+    "${output_dir}" \
+    "${task.cpus}" \
+    "${params.battenberg_min_depth}" \
+    ${params.battenberg_preset_rho_psi} \
+    ${params.battenberg_preset_rho} \
+    ${params.battenberg_preset_psi} \
+    "${battenberg_fit_cnv_profile_csv}"
+
+    cp "${output_dir}/${tumor_id}.logRsegmented.txt.gz" "${battenberg_fit_segmented_logr}"
+    echo "purity\tploidy" > "${battenberg_fit_purity_ploidy}"
+    grep 'FRAC_GENOME' "${output_dir}/${tumor_id}_rho_and_psi.txt" | awk 'BEGIN {OFS="\t"} {print \$2,\$4}' >> "${battenberg_fit_purity_ploidy}"
+    cp "${output_dir}/${tumor_id}_second_nonroundedprofile.png" "${battenberg_fit_cnv_profile_png}"
     """
 }
+
+// devgru ~ Extract fit copy number data from Battenberg for final output
+process fitCnvProfileExtract_devgru {
+    publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
+    tag "${tumor_normal_sample_id}"
+
+    input:
+    tuple val(tumor_normal_sample_id), path(battenberg_fit_cnv_profile_csv), path(battenberg_fit_segmented_logr) from fit_cnv_data
+
+    output:
+    tuple val(tumor_normal_sample_id), path(final_battenberg_cnv_profile) into final_battenberg_cnv_profile_forConsensus
+    tuple val(tumor_normal_sample_id), path(final_battenberg_cnv_profile) into tumor_cnv_profile_forCaveman
+
+    when:
+    params.battenberg == "on"
+
+    script:
+    final_battenberg_cnv_profile = "${tumor_normal_sample_id}.battenberg.fit.cnv.bed"
+    """
+    Rscript --vanilla ${workflow.projectDir}/bin/battenberg_segment_chainer.R \
+    "${tumor_normal_sample_id}" \
+    "${battenberg_fit_cnv_profile_csv}" \
+    "${battenberg_fit_segmented_logr}" \
+    ${task.cpus} \
+    "${final_battenberg_cnv_profile}"
+    """
+}
+
+
+// Battenberg Consensus CNV Prep ~ extract and prepare CNV output for consensus
+//process consensusCnvPrep_battenberg {
+//    tag "${tumor_normal_sample_id}"
+//
+//    input:
+//    tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
+//
+//    output:
+//    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed) into final_battenberg_cnv_profile_forConsensus
+//    tuple val(tumor_normal_sample_id), path(battenberg_subclones_file) into battenberg_subclones_forConsensusSubclones
+//
+//    when:
+//    params.battenberg == "on"
+//
+//    script:
+//    battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
+//    battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
+//    battenberg_subclones_file = "${tumor_normal_sample_id}.battenberg.subclones.txt"
+//    """
+//    battenberg_clonal_and_subclonal_extractor.py \
+//    <(grep -v 'startpos' "${battenberg_cnv_profile}" | cut -f 1-3,8-13) \
+//    "${battenberg_somatic_cnv_bed}" \
+//    "${battenberg_somatic_alleles_bed}" \
+//    "${battenberg_subclones_file}"
+//    """
+//}
+
+
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
@@ -3008,6 +3043,10 @@ process unionAndConsensusIndelCalls_devgru {
 // ~~~~~~~ UNION CONSENSUS CNV BED ~~~~~~~~~ \\
 // START
 
+
+
+/*
+
 // BEDtools unionbedg 2-way ~ transform CNV output into BED files then generate merged CNV segment file
 process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
@@ -3032,7 +3071,7 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     ### Create consensus total copy number file ###
     bedtools unionbedg \
     -filler . \
-    -i "${battenberg_somatic_cnv_bed}" "${facets_somatic_cnv_bed}" \
+    -i <(grep -v 'seqnames' "${battenberg_somatic_cnv_bed}" | cut -f 1-3,9-11) "${facets_somatic_cnv_bed}" \
     -header \
     -names battenberg_total_cn facets_total_cn > "${two_way_merged_cnv_bed}"
 
@@ -3057,6 +3096,9 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$6,\$5,\$7}' > "${two_way_consensus_merged_cnv_alleles_bed}"
     """
 }
+
+
+*/
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
