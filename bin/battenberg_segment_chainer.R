@@ -180,14 +180,12 @@ output_bed_filename <- input_args[5]
 message("Reading in segmented Battenberg input.....")
 cnv_csv <- data.table::fread(input = fit_cnv_profile_csv,
                              sep = ",",
-                             header = T,
-                             nThread = threads)
+                             header = T)
 
 seg_logr <- data.table::fread(input = segmented_logr_file,
                               sep = "\t",
                               header = F,
-                              col.names = c("seqnames", "start", "segmentedR"),
-                              nThread = threads)
+                              col.names = c("seqnames", "start", "segmentedR"))
 
 cnv_profile_per_segment <- data.table::data.table(seqnames = paste0("chr",seg_logr$seqnames),
                                                   start = seg_logr$start,
