@@ -213,7 +213,7 @@ chained_cnv_alleles <- chain_battenberg_segments(cnv_segments_file = complete_en
 
 message("Writing output CNV profile BED.....")
 data.table::fwrite(x = chained_cnv_alleles,
-                   file = ,
+                   file = output_bed_filename,
                    sep = "\t",
                    row.names = F,
                    col.names = T)
