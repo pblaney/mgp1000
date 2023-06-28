@@ -24,6 +24,8 @@ rho=${10}
 
 psi=${11}
 
+fitCnvCsv=${12}
+
 # Update the path to the reference files for use
 sed -E 's|\$\{REF_PATH\}|'${PWD}'/battenberg_reference|g' battenberg_reference/impute_info.txt > battenberg_reference/imputation/impute_info.txt
 
@@ -49,4 +51,5 @@ Rscript --vanilla battenberg_wgs.R \
 -g "hg38" \
 --prp ${presetRhoPis} \
 --rho ${rho} \
---psi ${psi}
+--psi ${psi} \
+--fit_csv ${fitCnvCsv}

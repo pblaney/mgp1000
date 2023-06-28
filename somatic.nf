@@ -586,7 +586,7 @@ process cnvCalling_battenberg {
     echo "purity\tploidy" > "${battenberg_fit_purity_ploidy}"
     grep 'FRAC_GENOME' "${output_dir}/${tumor_id}_rho_and_psi.txt" | awk 'BEGIN {OFS="\t"} {print \$2,\$4}' >> "${battenberg_fit_purity_ploidy}"
     cp "${output_dir}/${tumor_id}_second_nonroundedprofile.png" "${battenberg_fit_cnv_profile_png}"
-    gzip -c "${output_dir}/${tumor_id}_fit_cnv.csv" > "${battenberg_fit_cnv_profile_csv}"
+    gzip -c "${tumor_id}_fit_cnv.csv" > "${battenberg_fit_cnv_profile_csv}"
     """
 }
 
