@@ -530,6 +530,7 @@ process cnvCalling_battenberg {
     tuple val(tumor_normal_sample_id), path(battenberg_fit_cnv_profile_csv), path(battenberg_fit_segmented_logr) into fit_cnv_data
     path battenberg_fit_purity_ploidy
     path battenberg_fit_cnv_profile_png
+    path "${output_dir}/*_fit_cnv.csv"
     path "${output_dir}/*_subclones.txt"
     path "${output_dir}/*_rho_and_psi.txt"
     path "${output_dir}/*_purity_ploidy.txt"
@@ -579,12 +580,13 @@ process cnvCalling_battenberg {
     ${params.battenberg_preset_rho_psi} \
     ${params.battenberg_preset_rho} \
     ${params.battenberg_preset_psi} \
-    "${battenberg_fit_cnv_profile_csv}"
+    "${tumor_id}_fit_cnv.csv"
 
     gzip -c "${output_dir}/${tumor_id}.logRsegmented.txt" > "${battenberg_fit_segmented_logr}"
     echo "purity\tploidy" > "${battenberg_fit_purity_ploidy}"
     grep 'FRAC_GENOME' "${output_dir}/${tumor_id}_rho_and_psi.txt" | awk 'BEGIN {OFS="\t"} {print \$2,\$4}' >> "${battenberg_fit_purity_ploidy}"
     cp "${output_dir}/${tumor_id}_second_nonroundedprofile.png" "${battenberg_fit_cnv_profile_png}"
+    gzip -c "${output_dir}/${tumor_id}_fit_cnv.csv" > "${battenberg_fit_cnv_profile_csv}"
     """
 }
 
