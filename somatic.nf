@@ -599,8 +599,7 @@ process fitCnvProfileExtract_devgru {
     tuple val(tumor_normal_sample_id), path(battenberg_fit_cnv_profile_csv), path(battenberg_fit_segmented_logr) from fit_cnv_data
 
     output:
-    tuple val(tumor_normal_sample_id), path(final_battenberg_cnv_profile) into final_battenberg_cnv_profile_forConsensus
-    tuple val(tumor_normal_sample_id), path(final_battenberg_cnv_profile) into tumor_cnv_profile_forCaveman
+    tuple val(tumor_normal_sample_id), path(final_battenberg_cnv_profile) into final_battenberg_cnv_profile_forConsensusPrep
 
     when:
     params.battenberg == "on"
@@ -617,35 +616,30 @@ process fitCnvProfileExtract_devgru {
     """
 }
 
-
 // Battenberg Consensus CNV Prep ~ extract and prepare CNV output for consensus
-//process consensusCnvPrep_battenberg {
-//    tag "${tumor_normal_sample_id}"
-//
-//    input:
-//    tuple val(tumor_normal_sample_id), path(battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
-//
-//    output:
-//    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed) into final_battenberg_cnv_profile_forConsensus
-//    tuple val(tumor_normal_sample_id), path(battenberg_subclones_file) into battenberg_subclones_forConsensusSubclones
-//
-//    when:
-//    params.battenberg == "on"
-//
-//    script:
-//    battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
-//    battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
-//    battenberg_subclones_file = "${tumor_normal_sample_id}.battenberg.subclones.txt"
-//    """
-//    battenberg_clonal_and_subclonal_extractor.py \
-//    <(grep -v 'startpos' "${battenberg_cnv_profile}" | cut -f 1-3,8-13) \
-//    "${battenberg_somatic_cnv_bed}" \
-//    "${battenberg_somatic_alleles_bed}" \
-//    "${battenberg_subclones_file}"
-//    """
-//}
+process consensusCnvPrep_battenberg {
+    tag "${tumor_normal_sample_id}"
 
+    input:
+    tuple val(tumor_normal_sample_id), path(final_battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
 
+    output:
+    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed), path(battenberg_somatic_alleles_bed) into final_battenberg_cnv_profile_forConsensus
+    tuple val(tumor_normal_sample_id), path(battenberg_somatic_cnv_bed) into tumor_cnv_profile_forCaveman
+
+    when:
+    params.battenberg == "on"
+
+    script:
+    battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
+    battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
+    """
+    battenberg_cnv_profile_postprocesser.sh \
+    "${battenberg_cnv_profile}" \
+    "${battenberg_somatic_cnv_bed}" \
+    "${battenberg_somatic_alleles_bed}"
+    """
+}
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
@@ -2416,10 +2410,6 @@ process setup_caveman {
 	echo "snpBed=${dbsnp}" >> "${postprocessing_config_file}"
 	echo "" >> "${postprocessing_config_file}"
 
-	grep -v 'startpos' "${tumor_cnv_profile}" \
-	| \
-	awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$8+\$9}' > "${tumor_cnv_profile_bed}"
-
 	touch "${normal_cnv_profile_bed}"
 
 	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
@@ -3045,10 +3035,6 @@ process unionAndConsensusIndelCalls_devgru {
 // ~~~~~~~ UNION CONSENSUS CNV BED ~~~~~~~~~ \\
 // START
 
-
-
-/*
-
 // BEDtools unionbedg 2-way ~ transform CNV output into BED files then generate merged CNV segment file
 process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
@@ -3073,7 +3059,7 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     ### Create consensus total copy number file ###
     bedtools unionbedg \
     -filler . \
-    -i <(grep -v 'seqnames' "${battenberg_somatic_cnv_bed}" | cut -f 1-3,9-11) "${facets_somatic_cnv_bed}" \
+    -i "${battenberg_somatic_cnv_bed}" "${facets_somatic_cnv_bed}" \
     -header \
     -names battenberg_total_cn facets_total_cn > "${two_way_merged_cnv_bed}"
 
@@ -3098,9 +3084,6 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$6,\$5,\$7}' > "${two_way_consensus_merged_cnv_alleles_bed}"
     """
 }
-
-
-*/
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
