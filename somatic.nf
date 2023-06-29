@@ -635,7 +635,7 @@ process consensusCnvPrep_battenberg {
     battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
     """
     battenberg_cnv_profile_postprocesser.sh \
-    "${battenberg_cnv_profile}" \
+    "${final_battenberg_cnv_profile}" \
     "${battenberg_somatic_cnv_bed}" \
     "${battenberg_somatic_alleles_bed}"
     """
