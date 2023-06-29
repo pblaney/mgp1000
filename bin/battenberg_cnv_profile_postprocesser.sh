@@ -4,9 +4,9 @@
 
 inputBattenbergBed=$1
 
-finalCnvBed=$3
+finalCnvBed=$2
 
-finalAllelesBed=$4
+finalAllelesBed=$3
 
 # Parse the CNV file, first remove header for simplest confroming BED format
 grep -v 'seqnames' "${inputBattenbergBed}" \
