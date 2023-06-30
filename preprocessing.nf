@@ -24,9 +24,9 @@ def helpMessage() {
 	                            |   :_;`.__.'`.__.'`.__.'  |
 	                             .________________________.
 
-                     ░█▀█░█▀▄░█▀▀░█▀█░█▀▄░█▀█░█▀▀░█▀▀░█▀▀░█▀▀░▀█▀░█▀█░█▀▀
-                     ░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄░█░█░█░░░█▀▀░▀▀█░▀▀█░░█░░█░█░█░█
-                     ░▀░░░▀░▀░▀▀▀░▀░░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
+                  ░█▀█░█▀▄░█▀▀░█▀█░█▀▄░█▀█░█▀▀░█▀▀░█▀▀░█▀▀░▀█▀░█▀█░█▀▀
+                  ░█▀▀░█▀▄░█▀▀░█▀▀░█▀▄░█░█░█░░░█▀▀░▀▀█░▀▀█░░█░░█░█░█░█
+                  ░▀░░░▀░▀░▀▀▀░▀░░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
 
 	Usage:
 	  nextflow run preprocessing.nf --run_id STR --input_format STR -profile preprocessing
@@ -69,7 +69,6 @@ def helpMessage() {
 	  --executor                     STR  Set the job executor for the run
 	                                      [Default: slurm | Available: local, slurm, lsf]
 	  --help                        FLAG  Prints this message
-
 	""".stripIndent()
 }
 

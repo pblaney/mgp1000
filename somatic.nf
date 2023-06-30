@@ -24,8 +24,8 @@ def helpMessage() {
 	                             .________________________.
 
 	                            ░█▀▀░█▀█░█▄█░█▀█░▀█▀░▀█▀░█▀▀
-                                ░▀▀█░█░█░█░█░█▀█░░█░░░█░░█░░
-                                ░▀▀▀░▀▀▀░▀░▀░▀░▀░░▀░░▀▀▀░▀▀▀
+	                            ░▀▀█░█░█░█░█░█▀█░░█░░░█░░█░░
+	                            ░▀▀▀░▀▀▀░▀░▀░▀░▀░░▀░░▀▀▀░▀▀▀
 
 	Usage:
 	  nextflow run somatic.nf --run_id STR --sample_sheet FILE -profile somatic [-bg] [-resume]
@@ -126,7 +126,6 @@ def helpMessage() {
 	                                      [Default: off | Available: off, on]
 	  --telomerehunter               STR  Indicates whether or not to use this tool
 	                                      [Default: off | Available: off, on]
-
 	""".stripIndent()
 }
 
@@ -846,7 +845,7 @@ process svAndIndelCalling_manta {
 	"""
 }
 
-// BCFtools filter / view ~ filter out additional false positives based on alternative variant reads in normal sample, prepare VCF for SURVIVOR
+// BCFtools filter / view ~ filter out additional false positives based on alternative variant reads in normal sample
 process filterAndPostprocessMantaVcf_bcftools {
     tag "${tumor_normal_sample_id}"
 
@@ -855,14 +854,12 @@ process filterAndPostprocessMantaVcf_bcftools {
 
     output:
     tuple val(tumor_normal_sample_id), path(final_manta_somatic_sv_vcf) into manta_sv_vcf_forDuphold
-    tuple val(tumor_normal_sample_id), path(final_manta_somatic_sv_read_support) into manta_sv_read_support_forAnnotation
 
     when:
     params.manta == "on"
 
     script:
     final_manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.vcf"
-    final_manta_somatic_sv_read_support = "${tumor_normal_sample_id}.manta.somatic.sv.readsupp.txt"
     """
     touch name.txt
     echo "${normal_id}" >> name.txt
@@ -872,11 +869,6 @@ process filterAndPostprocessMantaVcf_bcftools {
     --exclude 'FORMAT/SR[@name.txt:1]>2 || FORMAT/PR[@name.txt:1]>2' \
     --output "${final_manta_somatic_sv_vcf}" \
     "${manta_somatic_sv_vcf}" 
-
-    bcftools query \
-    --format '%ID\t[%PR{1}]\t[%SR{1}]\n' \
-    --output "${final_manta_somatic_sv_read_support}" \
-    "${final_manta_somatic_sv_vcf}"
     """
 }
 
@@ -1120,7 +1112,7 @@ process svAndIndelCalling_svaba {
 }
 
 // BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality score and support
-// read mapping quality, prepare VCF for consensus
+// read mapping quality
 process filterAndPostprocessSvabaVcf_bcftools {
     tag "${tumor_normal_sample_id}"
 
@@ -1129,14 +1121,12 @@ process filterAndPostprocessSvabaVcf_bcftools {
 
     output:
     tuple val(tumor_normal_sample_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forDuphold
-    tuple val(tumor_normal_sample_id), path(final_svaba_somatic_sv_read_support) into svaba_sv_read_support_forAnnotation
 
     when:
     params.svaba == "on"
 
     script:
     final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
-    final_svaba_somatic_sv_read_support = "${tumor_normal_sample_id}.svaba.somatic.sv.readsupp.txt"
     """
     bcftools filter \
     --output-type u \
@@ -1160,11 +1150,6 @@ process filterAndPostprocessSvabaVcf_bcftools {
     "${svaba_somatic_sv_unclassified_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
 
     cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
-
-    bcftools query \
-    --format '%ID\t[%DR]\t[%SR]\n' \
-    --output "${final_svaba_somatic_sv_read_support}" \
-    "${final_svaba_somatic_sv_vcf}"
     """
 }
 
@@ -1307,7 +1292,7 @@ process svAndIndelCalling_delly {
 }
 
 // BCFtools filter / reheader / view ~ filter out additional false positives based on overall quality
-// score and support read mapping quality, prepare VCF for SURVIVOR 
+// score and support read mapping quality
 process filterAndPostprocessDellyVcf_bcftools {
     tag "${tumor_normal_sample_id}"
 
@@ -1316,14 +1301,12 @@ process filterAndPostprocessDellyVcf_bcftools {
 
     output:
     tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_vcf) into delly_sv_vcf_forDuphold
-    tuple val(tumor_normal_sample_id), path(final_delly_somatic_sv_read_support) into delly_sv_read_support_forAnnotation
 
     when:
     params.delly == "on"
 
     script:
     final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
-    final_delly_somatic_sv_read_support = "${tumor_normal_sample_id}.delly.somatic.sv.readsupp.txt"
     """
     bcftools filter \
     --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
@@ -1342,11 +1325,6 @@ process filterAndPostprocessDellyVcf_bcftools {
     "${final_delly_somatic_sv_vcf}" > "${tumor_normal_sample_id}.delly.splitmates.txt"
 
     cat "${tumor_normal_sample_id}.delly.splitmates.txt" >> "${final_delly_somatic_sv_vcf}"
-
-    bcftools query \
-    --format '%ID\t%PE\t%SR\n' \
-    --output "${final_delly_somatic_sv_read_support}" \
-    "${final_delly_somatic_sv_vcf}"
     """
 }
 
@@ -3063,20 +3041,12 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
     -header \
     -names battenberg_total_cn facets_total_cn > "${two_way_merged_cnv_bed}"
 
-    #two_way_consensus_cnv_generator.py \
-    #<(grep -v 'chrom' "${two_way_merged_cnv_bed}") \
-    #"${two_way_consensus_cnv_bed}"
-
     ### Create consensus major and minor allele file ###
     bedtools unionbedg \
     -filler . \
     -i "${battenberg_somatic_alleles_bed}" "${facets_somatic_alleles_bed}" \
     -header \
     -names battenberg_major_minor_alleles facets_major_minor_alleles > "${two_way_merged_alleles_bed}"
-
-    #two_way_consensus_allele_generator.py \
-    #<(grep -v 'chrom' "${two_way_merged_alleles_bed}") \
-    #"${two_way_consensus_alleles_bed}"
 
     ### Merge both consensus CNV and called alleles per segment ###
     paste "${two_way_merged_cnv_bed}" <(cut -f 4-8 "${two_way_merged_alleles_bed}") \
@@ -3316,5 +3286,3 @@ process telomereEstimation_telomerehunter {
 
 // END
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
-
-

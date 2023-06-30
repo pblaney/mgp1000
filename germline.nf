@@ -24,8 +24,8 @@ def helpMessage() {
 	                             .________________________.
 
 	                          ░█▀▀░█▀▀░█▀▄░█▄█░█░░░▀█▀░█▀█░█▀▀
-                              ░█░█░█▀▀░█▀▄░█░█░█░░░░█░░█░█░█▀▀
-                              ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
+	                          ░█░█░█▀▀░█▀▄░█░█░█░░░░█░░█░█░█▀▀
+	                          ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
 
 	Usage:
 	  nextflow run germline.nf --run_id STR --sample_sheet FILE -profile germline
@@ -73,7 +73,6 @@ def helpMessage() {
 	  --executor                     STR  Set the job executor for the run
 	                                      [Default: slurm | Available: local, slurm, lsf]
 	  --help                        FLAG  Prints this message
-
 	""".stripIndent()
 }
 
@@ -89,7 +88,6 @@ params.email = null
 params.seq_protocol = "WGS"
 params.deepvariant = "on"
 params.fastngsadmix = "on"
-//params.fastngsadmix_only = "no"
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -105,7 +103,7 @@ if( !file(params.input_dir).exists() ) exit 1, "The user-specified input directo
 // Print error messages if required parameters are not set
 if( params.run_id == null ) exit 1, "The run command issued does not have the '--run_id' parameter set. Please set the '--run_id' parameter to a unique identifier for the run."
 
-if( params.sample_sheet == null & params.fastngsadmix_only == "no" ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
+if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
 // Set channels for reference files
 Channel
@@ -397,23 +395,35 @@ process variantFilter_gatk {
     indel_vcf_merged = "${sample_id}.deepvariant.germline.indel.vcf.gz"
     indel_vcf_merged_index = "${indel_vcf_merged}.tbi"
     """
-    gatk SelectVariants \
-    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-    --verbosity ERROR \
-    --tmp-dir . \
-    --select-type-to-include SNP \
-    --exclude-filtered \
-    --variant "${vcf_merged_unfiltered}" \
-    --output "${snp_vcf_merged}"
+    gatk VariantFiltration \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+	--verbosity ERROR \
+	--tmp-dir . \
+	--variant "${vcf_merged_unfiltered}" \
+	--genotype-filter-name "GQbelow20" \
+	--genotype-filter-expression "GQ < 20.0" \
+	--genotype-filter-name "DPbelow10" \
+	--genotype-filter-expression "DP < 10.0" \
+	--output "${sample_id}.deepvariant.germline.snp.indel.marked.vcf.gz"
 
-    gatk SelectVariants \
-    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-    --verbosity ERROR \
-    --tmp-dir . \
-    --select-type-to-include INDEL \
-    --exclude-filtered \
-    --variant "${vcf_merged_unfiltered}" \
-    --output "${indel_vcf_merged}"
+
+    #gatk SelectVariants \
+    #--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+    #--verbosity ERROR \
+    #--tmp-dir . \
+    #--select-type-to-include SNP \
+    #--exclude-filtered \
+    #--variant "${vcf_merged_unfiltered}" \
+    #--output "${snp_vcf_merged}"
+
+    #gatk SelectVariants \
+    #--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+    #--verbosity ERROR \
+    #--tmp-dir . \
+    #--select-type-to-include INDEL \
+    #--exclude-filtered \
+    #--variant "${vcf_merged_unfiltered}" \
+    #--output "${indel_vcf_merged}"
     """
 }
 
