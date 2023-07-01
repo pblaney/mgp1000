@@ -201,11 +201,11 @@ igcaller_jnc <- gGnome::jJ(rafile = temp_igcaller_bedpe_filename,
                   		   seqlengths = ref_seq_info)
 
 # Comprehensive coordinate-based merge to create consensus junction set
-consensus_jnc <- GenomicRanges::trim(gGnome::merge(manta = manta_jnc[,"name"],
-							                                     delly = delly_jnc[,"name"],
-                                                   svaba = svaba_jnc[,"name"],
-                                                   igcaller = igcaller_jnc[,"name"],
-							                                     pad = 1000))
+consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
+							                 delly = delly_jnc[,"name"],
+                               svaba = svaba_jnc[,"name"],
+                               igcaller = igcaller_jnc[,"name"],
+							                 pad = 1000)
 
 # Generate intersection UpSetR plot
 plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.delly, seen.by.svaba, seen.by.igcaller)])))
