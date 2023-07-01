@@ -1,9 +1,8 @@
-// Myeloma Genome Project 1000
+// Myeloma Genome Pipeline 1000
 // Comprehensive pipeline for analysis of matched T/N Multiple Myeloma WGS data
 // https://github.com/pblaney/mgp1000
 
-// This portion of the pipeline is used for germline variant analysis of normal WGS samples.
-// It is designed to be run with BAMs that were genereated via the Preprocessing module of this pipeline.
+// This module of the pipeline is used for germline variant analysis of normal WGS samples.
 
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"

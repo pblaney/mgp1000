@@ -2,9 +2,8 @@
 // Comprehensive pipeline for analysis of matched T/N Multiple Myeloma WGS data
 // https://github.com/pblaney/mgp1000
 
-// This portion of the pipeline is used for consistent preprocessing of all input WGS files.
+// This module of the pipeline is used for consistent preprocessing of all input WGS files.
 // Both FASTQ and BAM files are supported formats for the input WGS files.
-// The pipeline assumes that all FASTQs are in raw form.
 
 import java.text.SimpleDateFormat;
 def workflowTimestamp = "${workflow.start.format('MM-dd-yyyy HH:mm')}"
