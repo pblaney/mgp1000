@@ -284,37 +284,23 @@ process variantFilter_gatk {
     tuple val(sample_id), path(vcf_merged_unfiltered), path(vcf_merged_unfiltered_index) from merged_unfiltered_germline_vcf
 
     output:
-    path snp_vcf_merged
-    path snp_vcf_merged_index
-    path indel_vcf_merged
-    path indel_vcf_merged_index
+    path snp_indel_vcf_merged
+    path snp_indel_vcf_merged_index
 
     when:
     params.deepvariant == "on"
 
     script:
-    snp_vcf_merged = "${sample_id}.deepvariant.germline.snp.vcf.gz"
-    snp_vcf_merged_index = "${snp_vcf_merged}.tbi"
-    indel_vcf_merged = "${sample_id}.deepvariant.germline.indel.vcf.gz"
-    indel_vcf_merged_index = "${indel_vcf_merged}.tbi"
+    snp_indel_vcf_merged = "${sample_id}.deepvariant.germline.snp.indel.vcf.gz"
+    snp_indel_vcf_merged_index = "${snp_indel_vcf_merged}.tbi"
     """
     gatk SelectVariants \
     --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
     --verbosity ERROR \
     --tmp-dir . \
-    --select-type-to-include SNP \
     --exclude-filtered \
     --variant "${vcf_merged_unfiltered}" \
-    --output "${snp_vcf_merged}"
-
-    gatk SelectVariants \
-    --java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-    --verbosity ERROR \
-    --tmp-dir . \
-    --select-type-to-include INDEL \
-    --exclude-filtered \
-    --variant "${vcf_merged_unfiltered}" \
-    --output "${indel_vcf_merged}"
+    --output "${snp_indel_vcf_merged}"
     """
 }
 
