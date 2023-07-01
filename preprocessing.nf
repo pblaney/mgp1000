@@ -370,7 +370,7 @@ process revertMappedBam_gatk {
 	path bam_mapped from input_mapped_bams
 
 	output:
-	path bam_unmapped into unmapped_bams
+	tuple val(sample_id), path(bam_unmapped) into unmapped_bams
 
 	when:
 	params.input_format == "bam"
@@ -400,7 +400,7 @@ process bamToFastq_biobambam {
 	tag "${sample_id}"
 
 	input:
-	path bam_unmapped from unmapped_bams
+	tuple val(sample_id), path(bam_unmapped) from unmapped_bams
 
 	output:
 	tuple val(sample_id), path(fastq_R1), path(fastq_R2) into converted_fastqs_forTrimming

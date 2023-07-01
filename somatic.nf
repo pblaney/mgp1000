@@ -1144,11 +1144,11 @@ process filterAndPostprocessSvabaVcf_bcftools {
     --samples "${tumor_id}" \
     --output-file "${final_svaba_somatic_sv_vcf}"
 
-    svaba_interchromosomal_mate_finder.sh \
-    "${final_svaba_somatic_sv_vcf}" \
-    "${svaba_somatic_sv_unclassified_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
+    #svaba_interchromosomal_mate_finder.sh \
+    #"${final_svaba_somatic_sv_vcf}" \
+    #"${svaba_somatic_sv_unclassified_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
 
-    cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
+    #cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
     """
 }
 
