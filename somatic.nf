@@ -2314,13 +2314,13 @@ process setup_caveman {
 	path dbsnp_index from dbsnp_bed_index
 
 	output:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file) into setup_forCavemanSplit, setup_forCavemanConcat, setup_forCavemanMstep, setup_forCavemanMerge, setup_forCavemanEstep, setup_forCavemanFlag, setup_forCavemanResults
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file) into setup_forCavemanSplit, setup_forCavemanConcat, setup_forCavemanMstep, setup_forCavemanMerge, setup_forCavemanEstep, setup_forCavemanFlag, setup_forCavemanResults
 
 	when:
 	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
-	normal_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.normal.cvn.bed"
+	normal_cnv_profile = "${tumor_normal_sample_id}.caveman.normal.cvn.bed"
 	postprocessing_config_file = "${tumor_normal_sample_id}.cavemanpostprocessing.config.ini"
 	config_species = "HOMO_SAPIENS"
 	config_study_type = "WGS"
@@ -2386,7 +2386,7 @@ process setup_caveman {
 	echo "snpBed=${dbsnp}" >> "${postprocessing_config_file}"
 	echo "" >> "${postprocessing_config_file}"
 
-	touch "${normal_cnv_profile_bed}"
+	touch "${normal_cnv_profile}"
 
 	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
 
@@ -2396,8 +2396,8 @@ process setup_caveman {
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-tumour-cn "${tumor_cnv_profile_bed}" \
-	-normal-cn "${normal_cnv_profile_bed}" \
+	-tumour-cn "${tumor_cnv_profile}" \
+	-normal-cn "${normal_cnv_profile}" \
 	-norm-cn-default 2 \
 	-species Homo_sapiens \
 	-species-assembly GRCh38 \
@@ -2419,7 +2419,7 @@ process split_caveman {
 	tag "${tumor_normal_sample_id} C=${chromosome}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file) from setup_forCavemanSplit
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file) from setup_forCavemanSplit
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -2467,8 +2467,8 @@ process split_caveman {
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-tumour-cn "${tumor_cnv_profile_bed}" \
-	-normal-cn "${normal_cnv_profile_bed}" \
+	-tumour-cn "${tumor_cnv_profile}" \
+	-normal-cn "${normal_cnv_profile}" \
 	-norm-cn-default 2 \
 	-species Homo_sapiens \
 	-species-assembly GRCh38 \
@@ -2490,7 +2490,7 @@ process splitConcat_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome) from setup_forCavemanConcat.join(split_per_chromosome_forCavemanConcat.groupTuple())
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome) from setup_forCavemanConcat.join(split_per_chromosome_forCavemanConcat.groupTuple())
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -2537,8 +2537,8 @@ process splitConcat_caveman {
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-tumour-cn "${tumor_cnv_profile_bed}" \
-	-normal-cn "${normal_cnv_profile_bed}" \
+	-tumour-cn "${tumor_cnv_profile}" \
+	-normal-cn "${normal_cnv_profile}" \
 	-norm-cn-default 2 \
 	-species Homo_sapiens \
 	-species-assembly GRCh38 \
@@ -2567,7 +2567,7 @@ process mstep_caveman {
 	tag "${tumor_normal_sample_id} IDX=${index}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), val(index_dirty) from input_forCavemanMstep
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), val(index_dirty) from input_forCavemanMstep
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -2615,8 +2615,8 @@ process mstep_caveman {
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-tumour-cn "${tumor_cnv_profile_bed}" \
-	-normal-cn "${normal_cnv_profile_bed}" \
+	-tumour-cn "${tumor_cnv_profile}" \
+	-normal-cn "${normal_cnv_profile}" \
 	-norm-cn-default 2 \
 	-species Homo_sapiens \
 	-species-assembly GRCh38 \
@@ -2641,7 +2641,7 @@ process merge_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(mstep_results_directory_per_index) from setup_forCavemanMerge.join(split_per_chromosome_forCavemanMerge.groupTuple()).join(split_concat_forCavemanMerge).join(mstep_covs_forCavemanMerge.groupTuple())
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(mstep_results_directory_per_index) from setup_forCavemanMerge.join(split_per_chromosome_forCavemanMerge.groupTuple()).join(split_concat_forCavemanMerge).join(mstep_covs_forCavemanMerge.groupTuple())
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -2691,8 +2691,8 @@ process merge_caveman {
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-tumour-cn "${tumor_cnv_profile_bed}" \
-	-normal-cn "${normal_cnv_profile_bed}" \
+	-tumour-cn "${tumor_cnv_profile}" \
+	-normal-cn "${normal_cnv_profile}" \
 	-norm-cn-default 2 \
 	-species Homo_sapiens \
 	-species-assembly GRCh38 \
@@ -2721,7 +2721,7 @@ process snvCalling_caveman {
 	tag "${tumor_normal_sample_id} IDX=${index}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(mstep_results_directory_per_index), path(covariate_file), path(probabilities_file), path(split_list), val(index_dirty) from input_forCavemanEstep
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(mstep_results_directory_per_index), path(covariate_file), path(probabilities_file), path(split_list), val(index_dirty) from input_forCavemanEstep
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -2773,8 +2773,8 @@ process snvCalling_caveman {
 	-ignore-file "${blacklist}" \
 	-tumour-bam "${tumor_bam}" \
 	-normal-bam "${normal_bam}" \
-	-tumour-cn "${tumor_cnv_profile_bed}" \
-	-normal-cn "${normal_cnv_profile_bed}" \
+	-tumour-cn "${tumor_cnv_profile}" \
+	-normal-cn "${normal_cnv_profile}" \
 	-norm-cn-default 2 \
 	-species Homo_sapiens \
 	-species-assembly GRCh38 \
@@ -2805,7 +2805,7 @@ process flag_caveman {
 	tag "${tumor_normal_sample_id} IDX=${index}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(estep_results_directory_per_index), path(split_list), val(index_dirty) from input_forCavemanFlag
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(estep_results_directory_per_index), path(split_list), val(index_dirty) from input_forCavemanFlag
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -2881,7 +2881,7 @@ process mergeResults_caveman {
 	tag "${tumor_normal_sample_id}"
 
 	input:
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile_bed), path(normal_cnv_profile_bed), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(flag_results_directory_per_index) from setup_forCavemanResults.join(split_per_chromosome_forCavemanResults.groupTuple()).join(split_concat_forCavemanResults).join(postprocessing_output_forCavemanResults.groupTuple())
+	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(tumor_cnv_profile), path(normal_cnv_profile), path(germline_indel_bed), path(germline_indel_bed_index), path(normal_contamination_file), path(postprocessing_config_file), path(config_file), path(alg_bean_file), path(split_list_per_chromosome), path(read_position_per_chromosome), path(split_list), path(index_step_list), path(flag_results_directory_per_index) from setup_forCavemanResults.join(split_per_chromosome_forCavemanResults.groupTuple()).join(split_concat_forCavemanResults).join(postprocessing_output_forCavemanResults.groupTuple())
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
