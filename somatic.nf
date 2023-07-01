@@ -2320,7 +2320,6 @@ process setup_caveman {
 	params.caveman == "on" && params.battenberg == "on" && params.manta == "on" && params.conpair == "on"
 
 	script:
-	tumor_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.tumor.cvn.bed"
 	normal_cnv_profile_bed = "${tumor_normal_sample_id}.caveman.normal.cvn.bed"
 	postprocessing_config_file = "${tumor_normal_sample_id}.cavemanpostprocessing.config.ini"
 	config_species = "HOMO_SAPIENS"
