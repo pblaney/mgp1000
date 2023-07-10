@@ -1,5 +1,5 @@
 <div align="center">
-	<img alt="MGP1000 logo" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/mgp1000Logo.svg" width="275" />
+	<img alt="MGP1000 logo" src="https://raw.githubusercontent.com/pblaney/mgp1000/4c6c86d956b30e6b64bdad50619c9f5b76cee2d9/docs/mgp1000Logo.svg" width="250" />
 
 # Myeloma Genome Pipeline 1000
 Comprehensive bioinformatics pipeline for the large-scale collaborative analysis of Multiple Myeloma genomes in an effort to delineate the broad spectrum of somatic events
@@ -10,7 +10,7 @@ In order to analyze over one thousand matched tumor/normal whole-genome samples 
 
 The entire pipeline is divided into 3 modules: Preprocessing, Germline, and Somatic
 <div align="center">
-	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/development/docs/pipelineArchitectureForGitHub.png?raw=true" width="575" />
+	<img alt="Pipeline flowchart" src="https://github.com/pblaney/mgp1000/blob/development/docs/pipelineArchitectureForGitHub.png?raw=true" width="475" />
 </div>
 
 ## Deploying the Pipeline
@@ -122,13 +122,13 @@ $ nextflow run preprocessing.nf --help
 Usage:
   nextflow run preprocessing.nf --run_id STR --input_format STR -profile preprocessing
   [-bg] [-resume] [--lane_split STR] [--input_dir PATH] [--output_dir PATH] [--email STR]
-  [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
+  [--seq_protocol STR][--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 Mandatory Arguments:
   --run_id                       STR  Unique identifier for pipeline run
   --input_format                 STR  Format of input files
                                       [Default: fastq | Available: fastq, bam]
-  -profile                       STR  Configuration profile to use, must use preprocessing
+  -profile                       STR  Configuration profile to use, must use preprocessing                               
 
 Main Options:
   -bg                           FLAG  Runs the pipeline processes in the background, this
@@ -149,6 +149,9 @@ Main Options:
                                       [Default: output/]
   --email                        STR  Email address to send workflow completion/stoppage
                                       notification
+  --seq_protocol                 STR  Sequencing protocol of the input, WGS for whole-genome
+                                      and WES for whole-exome
+                                      [Default: WGS | Available: WGS, WES]
   --cpus                         INT  Globally set the number of cpus to be allocated
   --memory                       STR  Globally set the amount of memory to be allocated,
                                       written as '##.GB' or '##.MB'
@@ -184,17 +187,12 @@ make preprocessing-completion
 ## Run the Germline Module
 The most important component of this module of the pipeline is the user-provided sample sheet CSV. This file includes two comma-separated columns: filename of normal sample BAMs and filename of corresponding paired tumor sample BAMs. An example of this is provided in `samplesheet.csv` within the `testSamples` directory. The sample sheet file should typically be within the main `mgp1000` directory.
 
-### Note on Parameters
-There are is a parameter that will prepare necessary reference files as part of this module of the pipeline, `--vep_ref_cached`. This parameter only need be set to `no` for the **first run** of the Germline module.
-
 ```
 nextflow run germline.nf \
   -bg \
   --run_id batch1 \
   --sample_sheet wgs_samples.csv \
-  --cohort_name wgs_set \
   --email user@example.com \
-  --vep_ref_cached no \
   -profile germline
 ```
 
@@ -203,9 +201,9 @@ Here is the full help message for the Germline module.
 $ nextflow run germline.nf --help
 
 Usage:
-  nextflow run germline.nf --run_id STR --sample_sheet FILE --cohort_name STR -profile germline
-  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix_only STR]
-  [--vep_ref_cached STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
+  nextflow run germline.nf --run_id STR --sample_sheet FILE -profile germline [-bg] [-resume]
+     [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix STR] [--seq_protocol STR]
+     [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 Mandatory Arguments:
   --run_id                       STR  Unique identifier for pipeline run
@@ -213,8 +211,6 @@ Mandatory Arguments:
                                       first column designates the file name of the normal
                                       sample, the second column for the file name of the
                                       matched tumor sample
-  --cohort_name                  STR  A user defined collective name of the group of
-                                      samples, this will be used as the name of the output
   -profile                       STR  Configuration profile to use, must use germline
 
 Main Options:
@@ -234,15 +230,14 @@ Main Options:
                                       [Default: output/]
   --email                        STR  Email address to send workflow completion/stoppage
                                       notification
-  --fastngsadmix_only            STR  Indicates whether or not to only run the fastNGSadmix
+  --seq_protocol                 STR  Sequencing protocol of the input, WGS for whole-genome
+                                      and WES for whole-exome
+                                      [Default: WGS | Available: WGS, WES]
+  --deepvariant                  STR  Indicates whether or not to run DeepVariant workflow
+                                      [Default: on | Available: on, off]
+  --fastngsadmix                 STR  Indicates whether or not to only run the fastNGSadmix
                                       workflow
-                                      [Default: no | Available: no, yes]
-  --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
-                                      for annotation have been downloaded/cached locally,
-                                      this will be done in a process of the pipeline if it
-                                      has not, this does not need to be done for every
-                                      separate run after the first
-                                      [Default: yes | Available: yes, no]
+                                      [Default: on | Available: on, off]
   --cpus                         INT  Globally set the number of cpus to be allocated
   --memory                       STR  Globally set the amount of memory to be allocated,
                                       written as '##.GB' or '##.MB'
@@ -254,14 +249,13 @@ Main Options:
 ```
 
 ### Germline Output Description
-This module of the pipeline generates a per-cohort joint genotyped VCF and admixture estimation of individual ancestries in the context of 23 populations outlined in the 1000 Genomes Project. By default, all output files are stored into a subdirectory which is named based on the user-defined `--cohort_name` parameter within the `output/` directory.
+This module of the pipeline generates a per-patient VCF and admixture estimation of individual ancestries in the context of 23 populations outlined in the 1000 Genomes Project. By default, all output files are stored within the `output/` directory.
 
-Here is a snapshot of the expected subdirectories within the `output/germline/[cohort_name]` base directory after a successful run of the [Germline module](https://github.com/pblaney/mgp1000/wiki/Germline):
+Here is a snapshot of the expected subdirectories within the `output/germline/` base directory after a successful run of the [Germline module](https://github.com/pblaney/mgp1000/wiki/Germline):
 
 | Germline Output File | Description of File |
 | --- | --- |
-| `*.germline.annotated.vcf.gz` | filtered and annotated germline SNP VCF |
-| `*.germline.vep.summary.html` | annotation summary HTML file for SNPs |
+| `*.deepvariant.germline.snp.indel.vcf.gz` | germline SNP and InDel VCF |
 | `*.fastngsadmix.23.qopt` | per patient estimated admixture proportions, first two rows with the names of the populations analyzed and the converged upon estimates, and then 100 rows with the bootstrapping estimates |
 
 Upon completion of the Germline module there is a `make germline-completion` command that is useful for collecting the run-related logs.
@@ -274,7 +268,7 @@ make germline-completion
 This module uses the same user-provided sample sheet CSV as the Germline module.
 
 ### Note on Parameters
-There are three parameters that will prepare necessary reference files as part of this module of the pipeline: `--mutect_ref_vcf_concatenated`, `--annotsv_ref_cached`, and `--vep_ref_cached`. These parameters only need be set to `no` for the **first run** of the Somatic module of the pipeline. By default, all tools in this module will be used with the standard command in the usage example. The consensus output per variant type expects all tools to be included in the run for consensus processes to be run.
+There is one parameter that will prepare necessary reference file as part of this module of the pipeline: `--mutect_ref_vcf_concatenated`. This parameters only needs be set to `no` for the **first run** of the Somatic module of the pipeline. By default, all tools in this module will be used with the standard command in the usage example. The consensus output per variant type expects all tools to be included in the run for consensus processes to be run.
 ```
 nextflow run somatic.nf --help
 
@@ -313,25 +307,13 @@ Main Options:
                                       concatenated, this will be done in a process of the
                                       pipeline if it has not, this does not need to be done
                                       for every separate run after the first
-                                      [Default: yes | Available: yes, no]
+                                      [Default: no | Available: yes, no]
   --battenberg_ref_cached        STR  Indicates whether or not the reference files used for
                                       Battenberg have been downloaded/cached locally, this
                                       will be done in a process of the pipeline if it has
                                       not, this does not need to be done for every separate
                                       run after the first
-                                      [Default: yes | Available: yes, no]
-  --annotsv_ref_cached           STR  Indicates whether or not the AnnotSV reference filee
-                                      used for annotation have been downloaded/cached
-                                      locally, this will be done in a process of the
-                                      pipeline if it has not, this does not need to be done
-                                      for every separate run after the first
-                                      [Default: yes | Available: yes, no]
-  --vep_ref_cached               STR  Indicates whether or not the VEP reference files used
-                                      for annotation have been downloaded/cached locally,
-                                      this will be done in a process of the pipeline if it
-                                      has not, this does not need to be done for every
-                                      separate run after the first
-                                      [Default: yes | Available: yes, no]
+                                      [Default: no | Available: yes, no]
   --cpus                         INT  Globally set the number of cpus to be allocated
   --memory                       STR  Globally set the amount of memory to be allocated,
                                       written as '##.GB' or '##.MB'
@@ -342,54 +324,22 @@ Main Options:
   --help                        FLAG  Prints this message
 
 Toolbox Options:
-  --telomerecat                  STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --telomerehunter               STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --conpair                      STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --varscan                      STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --mutect                       STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --strelka                      STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --copycat                      STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
   --battenberg                   STR  Indicates whether or not to use this tool
                                       [Default: on | Available: off, on]
   --battenberg_min_depth         STR  Manually set the minimum read depth in the normal
                                       sample for SNP filtering in BAF calculations,
                                       default is for 30x coverage
                                       [Default: 10]
-  --controlfreec                 STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --controlfreec_read_length     STR  Manually set the read length to be used for the
-                                      mappability
-                                      [Default: 151]
-  --controlfreec_bp_threshold  FLOAT  Manually set the breakpoint threshold value, lower if
-                                      the sample is expected to have large number of CNV
-                                      segments or increase for the opposite assumption
-                                      [Default: 0.8]
-  --controlfreec_ploidy          INT  Manually set the ploidy value
-                                      [Default: 2 | Available: 3, 4]
-  --sclust                       STR  Indicates whether or not to use this tool
-                                      [Default: on | Available: off, on]
-  --sclust_minp                FLOAT  Manually set the minimal expected ploidy
-                                      [Default: 1.5]
-  --sclust_maxp                FLOAT  Manually set the maximal expected ploidy
-                                      [Default: 4.5]
-  --sclust_mutclustering         STR  Manually turn on or off the mutational clustering step
-                                      of the Sclust process, turn off if a solution cannot be
-                                      reached after lowering lambda value
-                                      [Default: on | Available: off]
-  --sclust_lambda                STR  Manually set the degree of smoothing for clustering
-                                      mutations, increasing the value should resolve issues
-                                      with QP iterations related errors
-                                      [Default: 1e-7]
+  --battenberg_preset_rho_psi    STR  Wish to manually set the rho/psi for this run?
+                                      If TRUE, must set both rho and psi.
+                                      [Default: FALSE | Available: FALSE, TRUE]
+  --battenberg_preset_rho        INT  Manually set the value of rho (purity)
+                                      [Default: NA]
+  --battenberg_preset_psi        INT  Manually set the value of psi (ploidy)
+                                      [Default: NA]
   --facets                       STR  Indicates whether or not to use this tool
                                       [Default: on | Available: off, on]
-  --facets_min_depth             STR  Manually set the minimum read depth in the normal
+  --facets_min_depth             INT  Manually set the minimum read depth in the normal
                                       sample for SNP filtering in BAF calculations,
                                       default is for 30x coverage
                                       [Default: 20]
@@ -399,33 +349,42 @@ Toolbox Options:
                                       [Default: on | Available: off, on]
   --delly                        STR  Indicates whether or not to use this tool
                                       [Default: on | Available: off, on]
+  --delly_strict                 STR  Enforce stricter thresholds for calling SVs with DELLY
+                                      to overcome libraries with extraordinary number of
+                                      interchromosomal reads
+                                      [Default: off | Available: off, on]
   --igcaller                     STR  Indicates whether or not to use this tool
                                       [Default: on | Available: off, on]
-
-Consensus Workflow Options:
-  --min_consensus_snv_callers    INT  Set minimum of caller agreement for SNV consensus
-                                      [Default: 2]
-  --min_consensus_indel_callers  INT  Set minimum of caller agreement for InDel consensus
-                                      [Default: 2]
+  --varscan                      STR  Indicates whether or not to use this tool
+                                      [Default: on | Available: off, on]
+  --mutect                       STR  Indicates whether or not to use this tool
+                                      [Default: on | Available: off, on]
+  --strelka                      STR  Indicates whether or not to use this tool
+                                      [Default: on | Available: off, on]
+  --conpair                      STR  Indicates whether or not to use this tool
+                                      [Default: on | Available: off, on]
+  --conpair_min_cov              INT  Manually set the minimum coverage
+                                      [Default: 10]
+  --fragcounter                  STR  Indicates whether or not to use this tool
+                                      [Default: on | Available: off, on]
+  --telomerecat                  STR  Indicates whether or not to use this tool
+                                      [Default: off | Available: off, on]
+  --telomerehunter               STR  Indicates whether or not to use this tool
+                                      [Default: off | Available: off, on]
 ```
 
 ### Somatic Output Description
-This module of the pipeline generates per tumor-normal pair consensus calls for SNVs, InDels, CNVs, and SVs, capture telomere length and composition, and aggregate metadata information on tumor-normal concordance, contamination, purity, ploidy, and subclonal populations. Each tool used has its native output kept within a self-named subdirectory while the final consensus output files per tumor-normal pair are funneled into the `consensus` subdirectory.
+This module of the pipeline generates per tumor-normal pair consensus calls for SNVs, InDels, CNVs, and SVs, with some additional supporting tools for telomere analysis and graph-based inference of rearrangement state. Each tool used has its native output kept within a self-named subdirectory while the final consensus output files per tumor-normal pair are funneled into the `consensus` subdirectory.
 
 Here is a snapshot of the final `output/somatic/consensus/[tumor_normal_id]` directory after a successful run of the [Somatic module](https://github.com/pblaney/mgp1000/wiki/Somatic):
 
 | Somatic Consensus Output File | Description of File |
 | --- | --- |
-| `*.hq.consensus.somatic.snv.annotated.vcf.gz` | filtered and annotated consensus SNV VCF |
-| `*.hq.consensus.somatic.snv.vep.summary.html` | annotation summary HTML file for SNVs |
-| `*.hq.consensus.somatic.indel.annotated.vcf.gz` | filtered and annotated consensus InDel VCF |
-| `*.hq.consensus.somatic.indel.vep.summary.html` | annotation summary HTML file for InDels |
-| `*.hq.consensus.somatic.cnv.annotated.bed` | consensus annotated CNV BED |
-| `*.consensus.somatic.cnvalleles.merged.bed` | all per segment CNV calls per tool |
-| `*.consensus.somatic.cnv.subclonal.txt` | aggregated subclonal population estimates |
-| `*.hq.consensus.somatic.sv.annotated.bedpe` | consensus annotated SV BEDPE |
-| `*.hq.consensus.somatic.sv.annotated.genesplit.bed` | annotations per each gene overlapped by SV in BEDPE |
-| `*.consensus.somatic.metadata.txt` | aggregated metadata |
+| `*.hq.union.consensus.somatic.snv.txt.gz` | consensus SNV table |
+| `*.hq.union.consensus.somatic.indel.txt.gz` | consensus InDel table |
+| `*.hq.union.consensus.somatic.cnv.bed` | consensus CNV BED |
+| `*.hq.union.consensus.somatic.sv.bedpe` | consensus SV BEDPE |
+| `*.hq.union.consensus.somatic.sv.intersection.plot.pdf` | intersection of SV caller consensus |
 
 Additional per-tool subdirectories included in the base `output/somatic` output directory:
 
@@ -433,14 +392,11 @@ Additional per-tool subdirectories included in the base `output/somatic` output 
 | --- | --- |
 | `battenberg` | native output of Battenberg |
 | `conpair` | native output of Conpair |
-| `controlFreec` | native output of Control-FREEC |
-| `copycat` | read coverage per 10kb bins for CNV/SV support |
 | `delly` | native output of DELLY2 |
 | `facets` | native output of FACETS |
 | `igcaller` | native output of IgCaller |
 | `manta` | native output of Manta |
 | `mutect` | native output of Mutect2 |
-| `sclust` | native output of Sclust |
 | `sexOfSamples` | sample sex estimation using alleleCount |
 | `strelka` | native output of Strelka2 |
 | `svaba` | native output of SvABA |
