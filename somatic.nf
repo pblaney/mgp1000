@@ -383,9 +383,9 @@ log.info "          |   : :: :; :: :; :: :; :  |          "
 log.info "          |   :_;`.__.'`.__.'`.__.'  |          "
 log.info "           .________________________.           "
 log.info ''
-log.info "          ░█▀▀░█▀█░█▄█░█▀█░▀█▀░▀█▀░█▀▀           "
-log.info "          ░▀▀█░█░█░█░█░█▀█░░█░░░█░░█░░           "
-log.info "          ░▀▀▀░▀▀▀░▀░▀░▀░▀░░▀░░▀▀▀░▀▀▀           "
+log.info "          ░█▀▀░█▀█░█▄█░█▀█░▀█▀░▀█▀░█▀▀          "
+log.info "          ░▀▀█░█░█░█░█░█▀█░░█░░░█░░█░░          "
+log.info "          ░▀▀▀░▀▀▀░▀░▀░▀░▀░░▀░░▀▀▀░▀▀▀          "
 log.info ''
 log.info "~~~ Launch Time ~~~"
 log.info ''
@@ -1031,10 +1031,6 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 
 // ~~~~~~~~~~~~~~~~~ SvABA ~~~~~~~~~~~~~~~~~ \\
 // START
-
-// Combine all needed reference FASTA files into one channel for use in SvABA process
-//bwa_ref_genome_files.collect()
-//	.set{ bwa_ref_genome_and_wgs_bed }
 
 // SvABA ~ detecting structural variants using genome-wide local assembly
 process svAndIndelCalling_svaba {
