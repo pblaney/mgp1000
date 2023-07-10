@@ -2559,7 +2559,7 @@ process splitConcat_caveman {
 
 setup_forCavemanMstep.join(split_per_chromosome_forCavemanMstep.groupTuple())
 	.join(split_concat_forCavemanMstep)
-	.splitText(elem: 17, by:1)
+	.splitText(elem: 16, by:1)
 	.set{ input_forCavemanMstep }
 
 // CaVEMan mstep ~ build a profile of each split section of the genome using various covariates
@@ -2713,7 +2713,7 @@ setup_forCavemanEstep.join(split_per_chromosome_forCavemanEstep.groupTuple())
 	.join(mstep_covs_forCavemanEstep.groupTuple())
 	.join(merged_covs_probs_forCavemanEstep)
 	.join(split_concat_forCavemanEstep)
-	.splitText(elem: 20, by:1)
+	.splitText(elem: 19, by:1)
 	.set{ input_forCavemanEstep }
 
 // CaVEMan estep ~ assign probability to genotype at each position using mstep profile, sequence data, and copy number information
@@ -2797,7 +2797,7 @@ process snvCalling_caveman {
 setup_forCavemanFlag.join(split_per_chromosome_forCavemanFlag.groupTuple())
 	.join(raw_vcfs_forCavemanFlag.groupTuple())
 	.join(split_concat_forCavemanFlag)
-	.splitText(elem: 18, by:1)
+	.splitText(elem: 17, by:1)
 	.set{ input_forCavemanFlag }
 
 // CaVEMan flag ~ apply filtering on raw VCF calls generated using CaVEMan
