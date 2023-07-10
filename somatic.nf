@@ -1139,12 +1139,6 @@ process filterAndPostprocessSvabaVcf_bcftools {
     --output-type v \
     --samples "${tumor_id}" \
     --output-file "${final_svaba_somatic_sv_vcf}"
-
-    #svaba_interchromosomal_mate_finder.sh \
-    #"${final_svaba_somatic_sv_vcf}" \
-    #"${svaba_somatic_sv_unclassified_vcf}" > "${tumor_normal_sample_id}.svaba.missingmates.txt"
-
-    #cat "${tumor_normal_sample_id}.svaba.missingmates.txt" >> "${final_svaba_somatic_sv_vcf}"
     """
 }
 
@@ -1314,12 +1308,6 @@ process filterAndPostprocessDellyVcf_bcftools {
     --output-type v \
     --samples "${tumor_id}" \
     --output-file "${final_delly_somatic_sv_vcf}"
-
-    touch "${tumor_normal_sample_id}.delly.splitmates.txt"
-    delly_interchromosomal_record_splitter.sh \
-    "${final_delly_somatic_sv_vcf}" > "${tumor_normal_sample_id}.delly.splitmates.txt"
-
-    cat "${tumor_normal_sample_id}.delly.splitmates.txt" >> "${final_delly_somatic_sv_vcf}"
     """
 }
 
