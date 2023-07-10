@@ -83,7 +83,8 @@ params.input_format = "fastq"
 params.lane_split = "no"
 params.email = null
 params.trimmomatic_min_len = 35
-params.skip_trimming = "no"
+params.skip_trimming = "yes"
+params.qc_only = "no"
 params.cpus = null
 params.memory = null
 params.queue_size = 100
@@ -104,6 +105,56 @@ if( params.input_format == null ) exit 1, "The run command issued does not have 
 if( params.input_format == "bam" & params.skip_trimming == "yes" ) exit 1, "This run command cannot be executed. If '--input_format' parameter is 'bam', then trimming must be performed. Please set '--skip_trimming to 'no'."
 
 // Set channels for reference files
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.fasta') )
+    .set{ ref_genome_fasta_file }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.fasta.fai') )
+    .set{ ref_genome_fasta_index_file }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.dict') )
+    .set{ ref_genome_fasta_dict_file }
+
+Channel
+	.value( file('references/trimmomaticContaminants.fa') )
+	.set{ trimmomatic_contaminants_file }
+
+Channel
+	.value( file('references/hg38/wgs_calling_regions.hg38.interval_list') )
+	.set{ gatk_wgs_interval_list }
+
+Channel
+    .value( file('references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz') )
+    .set{ gatk_mills_1000G }
+
+Channel
+    .value( file('references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi') )
+    .set{ gatk_mills_1000G_index }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38_autosome.interval_list') )
+    .set{ autosome_chromosome_list }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.known_indels.vcf.gz') )
+    .set{ gatk_known_indels }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi') )
+    .set{ gatk_known_indels_index }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz') )
+    .set{ gatk_dbsnp138 }
+
+Channel
+    .value( file('references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi') )
+    .set{ gatk_dbsnp138_index }
+
+
+
 Channel
 	.fromPath( 'references/trimmomaticContaminants.fa' )
 	.set{ trimmomatic_contaminants }
@@ -147,6 +198,7 @@ if( params.seq_protocol == "WGS" ) {
     Channel
         .empty()
         .set{ target_regions_bed }
+
 } else if( params.seq_protocol == "WES" ) {
     Channel
         .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed') )
@@ -155,6 +207,7 @@ if( params.seq_protocol == "WGS" ) {
     Channel
         .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.interval_list') )
         .set{ target_regions }
+
 } else {
     exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole-genome or 'WES' for whole-exome."
 }
@@ -376,16 +429,15 @@ process revertMappedBam_gatk {
 	params.input_format == "bam"
 
 	script:
-	bam_unmapped = "${bam_mapped}".replaceFirst(/\..*bam/, ".unmapped.bam")
-	sample_id = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "")
+	sample_id = "${bam_unmapped}".replaceFirst(/\..*bam/, "")
+	bam_unmapped = "${sample_id}.unmapped.bam"
 	"""
 	gatk RevertSam \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--VERBOSITY ERROR \
 	--VALIDATION_STRINGENCY LENIENT \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
-	--SANITIZE true \
 	--ATTRIBUTE_TO_CLEAR XT \
 	--ATTRIBUTE_TO_CLEAR XN \
 	--ATTRIBUTE_TO_CLEAR OC \
@@ -424,10 +476,13 @@ process bamToFastq_biobambam {
 // Depending on which input data type was used, set an input variable for the Trimmomatic process
 if( params.input_format == "bam" & params.skip_trimming == "no" ) {
 	input_fastqs_forTrimming = converted_fastqs_forTrimming
+
 } else if( params.input_format == "fastq" & params.skip_trimming == "no" ) {
 	input_fastqs_forTrimming = paired_input_fastqs
+
 } else if( params.input_format == "fastq" & params.skip_trimming == "yes" ) {
 	input_fastqs_forTrimming = Channel.empty()
+
 }
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
@@ -436,7 +491,8 @@ process fastqTrimming_trimmomatic {
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(input_R1_fastqs), path(input_R2_fastqs), path(trimmomatic_contaminants) from input_fastqs_forTrimming.combine(trimmomatic_contaminants)
+	tuple val(sample_id), path(input_R1_fastqs), path(input_R2_fastqs) from input_fastqs_forTrimming
+	path contaminants from trimmomatic_contaminants
 
 	output:
 	tuple val(sample_id), path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
@@ -460,7 +516,7 @@ process fastqTrimming_trimmomatic {
 	"${fastq_R1_unpaired}" \
 	"${fastq_R2_trimmed}" \
 	"${fastq_R2_unpaired}" \
-	ILLUMINACLIP:${trimmomatic_contaminants}:2:30:10:1:true \
+	ILLUMINACLIP:${contaminants}:2:30:10:1:true \
 	TRAILING:5 \
 	SLIDINGWINDOW:4:15 \
 	MINLEN:${params.trimmomatic_min_len} \
@@ -472,6 +528,7 @@ process fastqTrimming_trimmomatic {
 if( params.skip_trimming == "no" ) {
 	fastqs_forFastqc = trimmed_fastqs_forFastqc
 	fastqs_forAlignment = trimmed_fastqs_forAlignment
+
 } else if( params.skip_trimming == "yes" ) {
 	fastqs_forFastqc = paired_input_fastqs_forFastqc
 	fastqs_forAlignment = paired_input_fastqs_forAlignment
@@ -508,7 +565,7 @@ process alignment_bwa {
 	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
 
 	output:
-	path bam_aligned into aligned_bams
+	tuple val(sample_id), path(bam_aligned) into aligned_bams
 	tuple val(sample_id), path(bam_aligned) into aligned_bam_forFlagstats
 
 	script:
@@ -563,13 +620,13 @@ process postAlignmentFlagstats_sambamba {
 
 // GATK FixMateInformation / SortSam ~ veryify/fix mate-pair information and sort output BAM by coordinate
 process fixMateInformationAndSort_gatk {
-	tag "${bam_aligned.baseName}"
+	tag "${sample_id}"
 
 	input:
-	path bam_aligned from aligned_bams
+	tuple val(sample_id), path(bam_aligned) from aligned_bams
 
 	output:
-	path bam_fixed_mate into fixed_mate_bams
+	tuple val(sample_id), path(bam_fixed_mate) into fixed_mate_bams
 
 	script:
 	bam_fixed_mate_unsorted = "${bam_aligned}".replaceFirst(/\.bam/, ".unsorted.fixedmate.bam")
@@ -661,7 +718,7 @@ process localAndGlobalRealignment_abra2 {
     bam_marked_dup_realigned = "${bam_marked_dup}".replaceFirst(/\.bam/, ".realign.bam")
     abra_log = "${sample_id}.abra.realign.log"
     """
-    java -jar -Xmx16G \$ABRA2JAR \
+    java -jar -Xmx16G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \$ABRA2JAR \
     --in "${bam_marked_dup}" \
     --out "${bam_marked_dup_realigned}" \
     --ref "${reference_genome_fasta_forRealignment}" \
@@ -692,7 +749,7 @@ process downsampleBam_gatk {
 	bam_downsampled = "${bam_for_downsample}".replaceFirst(/\.bam/, ".downsampled.bam")
 	"""
 	gatk DownsampleSam \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--VERBOSITY ERROR \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
@@ -738,7 +795,7 @@ process baseRecalibrator_gatk {
 	bqsr_table = "${sample_id}.recaldata.table"
 	"""
 	gatk BaseRecalibrator \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
@@ -788,7 +845,7 @@ process applyBqsr_gatk {
 	bam_preprocessed_final_index = "${bam_preprocessed_final}".replaceFirst(/\.bam$/, ".bai")
 	"""
 	gatk ApplyBQSR \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \

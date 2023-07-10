@@ -27,9 +27,9 @@ def helpMessage() {
 	                          ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░▀░▀░▀▀▀
 
 	Usage:
-	  nextflow run germline.nf --run_id STR --sample_sheet FILE -profile germline
-	  [-bg] [-resume] [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix STR]
-	  [--seq_protocol STR] [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
+	  nextflow run germline.nf --run_id STR --sample_sheet FILE -profile germline [-bg] [-resume]
+      [--input_dir PATH] [--output_dir PATH] [--email STR] [--fastngsadmix STR] [--seq_protocol STR]
+      [--cpus INT] [--memory STR] [--queue_size INT] [--executor STR] [--help]
 
 	Mandatory Arguments:
 	  --run_id                       STR  Unique identifier for pipeline run
@@ -201,9 +201,8 @@ if(params.sample_sheet != null) {
               		 return[ file("${params.input_dir}/${normal_bam}"), 
                       		 file("${params.input_dir}/${normal_bam_index}*.bai") ] }
         .unique()
-        .into{ input_preprocessed_bams_forAngsd;
-               input_preprocessed_bams_forHaplotypeCaller;
-               input_preprocessed_bams_forDeepVariant }
+        .into{ input_preprocessed_bams_forDeepVariant;
+               input_preprocessed_bams_forAngsd }
 }	
 
 // DeepVariant ~ deep learning-based germline variant-calling 
@@ -237,12 +236,9 @@ process snpAndIndelCalling_deepvariant {
     --num_shards ${task.cpus}
 
     zcat "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
-    | \
-    awk '(\$5 !~ ",")' \
-    | \
-    grep -E '^#|PASS' \
-    | \
-    bgzip > "${deepvariant_germline_vcf_per_chrom}"
+        | awk '(\$5 !~ ",")' \
+        | grep -E '^#|PASS' \
+        | bgzip > "${deepvariant_germline_vcf_per_chrom}"
 
     tabix "${deepvariant_germline_vcf_per_chrom}"
     """
