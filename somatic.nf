@@ -125,6 +125,9 @@ def helpMessage() {
 	                                      [Default: off | Available: off, on]
 	  --telomerehunter               STR  Indicates whether or not to use this tool
 	                                      [Default: off | Available: off, on]
+	  --caveman                      STR  Indicates whether or not to use this tool
+	                                      EXPERIMENTAL! many process directories and WES only
+	                                      [Default: off | Available: off, on]
 	""".stripIndent()
 }
 
@@ -451,11 +454,6 @@ process identifySampleSex_allelecount {
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex) into bams_and_sex_of_sample_forBattenberg
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forFacetsPileup
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forCaveman
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusSnvMpileup
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) into bams_forConsensusIndelMpileup
-	tuple val(tumor_normal_sample_id), path(sample_sex) into sex_of_sample_forConsensusCnvTransform
-	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into bam_forConsensusSvFpFilter
-	tuple val(tumor_normal_sample_id), path(sample_sex) into allelecount_output_forConsensusMetadata
 
 	script:
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
@@ -797,12 +795,9 @@ process svAndIndelCalling_manta {
 
 	touch "${manta_somatic_config}"
 	cat \${MANTA_DIR}/bin/configManta.py.ini \
-	| \
-	sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
-	| \
-	sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
-	| \
-	sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
+		| sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
+		| sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
+		| sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
 
 	python \${MANTA_DIR}/bin/configManta.py \
 	--tumorBam "${tumor_bam}" \
@@ -823,22 +818,18 @@ process svAndIndelCalling_manta {
 	mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi "${candidate_indel_vcf_index}"
 
 	zcat manta/results/variants/diploidSV.vcf.gz \
-	| \
-	grep -E "^#|PASS" \
-	| \
-	bgzip > "${germline_sv_vcf}"
+		| grep -E "^#|PASS" \
+		| bgzip > "${germline_sv_vcf}"
 	tabix "${germline_sv_vcf}"
 
 	zcat manta/results/variants/somaticSV.vcf.gz \
-	| \
-	grep -E "^#|PASS" > somaticSV.passonly.vcf
+		| grep -E "^#|PASS" > somaticSV.passonly.vcf
 
 	\${MANTA_DIR}/libexec/convertInversion.py \
 	\${MANTA_DIR}/libexec/samtools \
 	"${ref_genome_fasta}" \
 	somaticSV.passonly.vcf \
-	| \
-	bgzip > "${manta_somatic_sv_vcf}"
+		| bgzip > "${manta_somatic_sv_vcf}"
 	tabix "${manta_somatic_sv_vcf}"
 	"""
 }
@@ -898,15 +889,8 @@ process falsePostiveSvFilteringManta_duphold {
     --output "${tumor_normal_sample_id}.manta.somatic.sv.fpmarked.vcf"
 
     # Filter using recommended thresholds for DEL/DUP
-    bcftools filter \
-    --output-type u \
-    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
-    "${tumor_normal_sample_id}.manta.somatic.sv.fpmarked.vcf" \
-    | \
-    bcftools filter \
-    --output-type z \
-    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
-    --output "${manta_filtered_final_sv_vcf}"
+    bcftools filter --output-type u --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' "${tumor_normal_sample_id}.manta.somatic.sv.fpmarked.vcf" \
+    	| bcftools filter --output-type z --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' --output "${manta_filtered_final_sv_vcf}"
     """
 }
 
@@ -995,30 +979,13 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 	strelka_indel_realign_normalize_stats = "${tumor_normal_sample_id}.strelka.indel.realignnormalizestats.txt"
 	"""
 	zgrep -E "^#|PASS" "${unfiltered_strelka_snv_vcf}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--multiallelics -snps \
-	--output-type z \
-	--output "${final_strelka_snv_vcf}" \
-	- 2>"${strelka_snv_multiallelics_stats}"
+		| bcftools norm --threads ${task.cpus} --multiallelics -snps --output-type z --output "${final_strelka_snv_vcf}" - 2>"${strelka_snv_multiallelics_stats}"
 
 	tabix "${final_strelka_snv_vcf}"
 	
 	zgrep -E "^#|PASS" "${unfiltered_strelka_indel_vcf}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--multiallelics -indels \
-	--output-type u \
-	- 2>"${strelka_indel_multiallelics_stats}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--fasta-ref "${ref_genome_fasta}" \
-	--output-type z \
-	--output "${final_strelka_indel_vcf}" \
-	- 2>"${strelka_indel_realign_normalize_stats}"
+		| bcftools norm --threads ${task.cpus} --multiallelics -indels --output-type u - 2>"${strelka_indel_multiallelics_stats}" \
+		| bcftools norm --threads ${task.cpus} --fasta-ref "${ref_genome_fasta}" --output-type z --output "${final_strelka_indel_vcf}" - 2>"${strelka_indel_realign_normalize_stats}"
 
 	tabix "${final_strelka_indel_vcf}"
 	"""
@@ -1092,10 +1059,8 @@ process svAndIndelCalling_svaba {
 
 	gunzip -c "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" > "${svaba_somatic_sv_unclassified_vcf}"
 
-	svaba_sv_classifier.py \
-	"${svaba_somatic_sv_unclassified_vcf}" \
-	| \
-	bgzip > "${svaba_somatic_sv_vcf}"
+	svaba_sv_classifier.py "${svaba_somatic_sv_unclassified_vcf}" \
+		| bgzip > "${svaba_somatic_sv_vcf}"
 
 	tabix "${filtered_somatic_indel_vcf}"
 	tabix "${svaba_somatic_sv_vcf}"
@@ -1122,22 +1087,10 @@ process filterAndPostprocessSvabaVcf_bcftools {
     script:
     final_svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.vcf"
     """
-    bcftools filter \
-    --output-type u \
-    --exclude 'QUAL<6' \
-    "${svaba_somatic_sv_vcf}" \
-    | \
-    bcftools filter \
-    --output-type u \
-    --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
-    | \
-    bcftools reheader \
-    --samples "${sample_renaming_file}" \
-    | \
-    bcftools view \
-    --output-type v \
-    --samples "${tumor_id}" \
-    --output-file "${final_svaba_somatic_sv_vcf}"
+    bcftools filter --output-type u --exclude 'QUAL<6' "${svaba_somatic_sv_vcf}" \
+    	| bcftools filter --output-type u --include 'INFO/MAPQ=60 || INFO/DISC_MAPQ=60' \
+    	| bcftools reheader --samples "${sample_renaming_file}" \
+    	| bcftools view --output-type v --samples "${tumor_id}" --output-file "${final_svaba_somatic_sv_vcf}"
     """
 }
 
@@ -1203,15 +1156,8 @@ process falsePostiveSvFilteringSvaba_duphold {
     --output "${tumor_normal_sample_id}.svaba.somatic.sv.fpmarked.vcf"
 
     # Filter using recommended thresholds for DEL/DUP
-    bcftools filter \
-    --output-type u \
-    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
-    "${tumor_normal_sample_id}.svaba.somatic.sv.fpmarked.vcf" \
-    | \
-    bcftools filter \
-    --output-type z \
-    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
-    --output "${svaba_filtered_final_sv_vcf}"
+    bcftools filter --output-type u --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' "${tumor_normal_sample_id}.svaba.somatic.sv.fpmarked.vcf" \
+    	| bcftools filter --output-type z --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' --output "${svaba_filtered_final_sv_vcf}"
     """
 }
 
@@ -1261,19 +1207,8 @@ process svAndIndelCalling_delly {
 	echo "${tumor_id}\ttumor" >> samples.tsv
 	echo "${normal_id}\tcontrol" >> samples.tsv
 
-	delly filter \
-	--filter somatic \
-	--pass \
-	--altaf 0.05 \
-	--minsize 51 \
-	--coverage 10 \
-	--samples samples.tsv \
-	"${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
-	| \
-	bcftools view \
-    --output-type z \
-    --threads ${task.cpus} \
-    --output-file "${delly_somatic_sv_vcf}"
+	delly filter --filter somatic --pass --altaf 0.05 --minsize 51 --coverage 10 --samples samples.tsv "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
+		| bcftools view --output-type z --threads ${task.cpus} --output-file "${delly_somatic_sv_vcf}"
 
 	tabix "${delly_somatic_sv_vcf}"
 	"""
@@ -1296,17 +1231,9 @@ process filterAndPostprocessDellyVcf_bcftools {
     script:
     final_delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.vcf"
     """
-    bcftools filter \
-    --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' \
-    "${delly_somatic_sv_vcf}" \
-    | \
-    bcftools filter \
-    --include 'INFO/PE>3 || INFO/SR>3' \
-    | \
-    bcftools view \
-    --output-type v \
-    --samples "${tumor_id}" \
-    --output-file "${final_delly_somatic_sv_vcf}"
+    bcftools filter --include 'INFO/MAPQ=60 || INFO/SRMAPQ=60' "${delly_somatic_sv_vcf}" \
+    	| bcftools filter --include 'INFO/PE>3 || INFO/SR>3' \
+    	| bcftools view --output-type v --samples "${tumor_id}" --output-file "${final_delly_somatic_sv_vcf}"
     """
 }
 
@@ -1338,15 +1265,8 @@ process falsePostiveSvFilteringDelly_duphold {
     --output "${tumor_normal_sample_id}.delly.somatic.sv.fpmarked.vcf"
 
     # Filter using recommended thresholds for DEL/DUP
-    bcftools filter \
-    --output-type u \
-    --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' \
-    "${tumor_normal_sample_id}.delly.somatic.sv.fpmarked.vcf" \
-    | \
-    bcftools filter \
-    --output-type z \
-    --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' \
-    --output "${delly_filtered_final_sv_vcf}"
+    bcftools filter --output-type u --exclude 'INFO/SVTYPE="DEL" && FORMAT/DHFFC>0.7' "${tumor_normal_sample_id}.delly.somatic.sv.fpmarked.vcf" \
+    	| bcftools filter --output-type z --exclude 'INFO/SVTYPE="DUP" && FORMAT/DHBFC<1.3' --output "${delly_filtered_final_sv_vcf}"
     """
 }
 
@@ -1709,29 +1629,13 @@ process splitMultiallelicAndLeftNormalizeVarscanVcf_bcftools {
 	varscan_indel_realign_normalize_stats = "${tumor_normal_sample_id}.varscan.indel.realignnormalizestats.txt"
 	"""
 	bgzip --stdout < "${fp_filtered_snv_vcf}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--multiallelics -snps \
-	--output-type z \
-	--output "${final_varscan_snv_vcf}" \
-	- 2>"${varscan_snv_multiallelics_stats}"
+		| bcftools norm --threads ${task.cpus} --multiallelics -snps --output-type z --output "${final_varscan_snv_vcf}" - 2>"${varscan_snv_multiallelics_stats}"
 
 	tabix "${final_varscan_snv_vcf}"
 	
 	bgzip --stdout < "${fp_filtered_indel_vcf}" \
-	| \
-	bcftools norm \
-	--multiallelics -indels \
-	--output-type u \
-	- 2>"${varscan_indel_multiallelics_stats}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--fasta-ref "${ref_genome_fasta}" \
-	--output-type z \
-	--output "${final_varscan_indel_vcf}" \
-	- 2>"${varscan_indel_realign_normalize_stats}"
+		| bcftools norm --multiallelics -indels --output-type u - 2>"${varscan_indel_multiallelics_stats}" \
+		| bcftools norm --threads ${task.cpus} --fasta-ref "${ref_genome_fasta}" --output-type z --output "${final_varscan_indel_vcf}" - 2>"${varscan_indel_realign_normalize_stats}"
 
 	tabix "${final_varscan_indel_vcf}"
 	"""
@@ -2083,21 +1987,9 @@ process splitMultiallelicAndLeftNormalizeMutect2Vcf_bcftools {
 	mutect_realign_normalize_stats = "${tumor_normal_sample_id}.mutect.realignnormalizestats.txt"
 	"""
 	zcat "${filtered_vcf}" \
-	| \
-	grep -E '^#|PASS' \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--multiallelics -both \
-	--output-type u \
-	- 2>"${mutect_multiallelics_stats}" \
-	| \
-	bcftools norm \
-	--threads ${task.cpus} \
-	--fasta-ref "${ref_genome_fasta}" \
-	--output-type z \
-	- 2>"${mutect_realign_normalize_stats}" \
-	--output "${final_mutect_vcf}"
+		| grep -E '^#|PASS' \
+		| bcftools norm --threads ${task.cpus} --multiallelics -both --output-type u - 2>"${mutect_multiallelics_stats}" \
+		| bcftools norm --threads ${task.cpus} --fasta-ref "${ref_genome_fasta}" --output-type z --output "${final_mutect_vcf}" - 2>"${mutect_realign_normalize_stats}" 
 
 	tabix "${final_mutect_vcf}"
 	"""
@@ -2258,20 +2150,15 @@ process prepGermlineBedForCaveman_bedops {
 	germline_indel_bed_index = "${germline_indel_bed}.tbi"
 	"""
 	zgrep -E '^#|MantaINS.*PASS' "${germline_sv_vcf}" \
-	| \
-	vcf2bed --insertions \
-	| \
-	cut -f 1-4 > "${germline_insertions_bed}"
+		| vcf2bed --insertions \
+		| cut -f 1-4 > "${germline_insertions_bed}"
 
 	zgrep -E '^#|MantaDEL.*PASS' "${germline_sv_vcf}" \
-	| \
-	vcf2bed --deletions \
-	| \
-	cut -f 1-4 > "${germline_deletions_bed}"
+		| vcf2bed --deletions \
+		| cut -f 1-4 > "${germline_deletions_bed}"
 
 	sort-bed "${germline_insertions_bed}" "${germline_deletions_bed}" \
-	| \
-	bgzip > "${germline_indel_bed}"
+		| bgzip > "${germline_indel_bed}"
 
 	tabix -p bed "${germline_indel_bed}"
 	"""
@@ -2910,9 +2797,8 @@ process mergeResults_caveman {
 	--splitlist "${split_list}" \
 	-f tmpCaveman/results/%/%.flagged.fixedheader.muts.vcf
 
-	grep -E '^#' "${tumor_normal_sample_id}.caveman.somatic.vcf" \
-	| \
-	bgzip > "${final_caveman_snv_vcf}"
+	grep -E '^#|PASS' "${tumor_normal_sample_id}.caveman.somatic.vcf" \
+		| bgzip > "${final_caveman_snv_vcf}"
 
 	tabix "${final_caveman_snv_vcf}"
 	"""
@@ -3031,8 +2917,7 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
 
     ### Merge both consensus CNV and called alleles per segment ###
     paste "${two_way_merged_cnv_bed}" <(cut -f 4-8 "${two_way_merged_alleles_bed}") \
-    | \
-    awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$6,\$5,\$7}' > "${two_way_consensus_merged_cnv_alleles_bed}"
+    	| awk 'BEGIN {OFS="\t"} {print \$1,\$2,\$3,\$4,\$6,\$5,\$7}' > "${two_way_consensus_merged_cnv_alleles_bed}"
     """
 }
 
@@ -3178,8 +3063,7 @@ process snpPileup_fragcounter {
 
     echo -e "seqname\tstart\tend\talt.count.t\tref.count.t\talt.count.n\tref.count.n" > "${tumor_normal_sample_id}.snp_pileup.txt"
     grep -v 'Chromosome' "${tumor_normal_sample_id}.snp_pileup.csv" \
-    | \
-    awk -F ',' 'BEGIN {OFS="\t"} {print \$1,\$2,\$2,\$6,\$5,\$10,\$9}' >> "${tumor_normal_sample_id}.snp_pileup.txt"
+    	| awk -F ',' 'BEGIN {OFS="\t"} {print \$1,\$2,\$2,\$6,\$5,\$10,\$9}' >> "${tumor_normal_sample_id}.snp_pileup.txt"
 
     gzip "${tumor_normal_sample_id}.snp_pileup.txt"
     """
