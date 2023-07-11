@@ -126,7 +126,8 @@ def helpMessage() {
 	  --telomerehunter               STR  Indicates whether or not to use this tool
 	                                      [Default: off | Available: off, on]
 	  --caveman                      STR  Indicates whether or not to use this tool
-	                                      EXPERIMENTAL! many process directories and WES only
+	                                      EXPERIMENTAL! Requires many process directories
+	                                      and only calls in WES targets currently
 	                                      [Default: off | Available: off, on]
 	""".stripIndent()
 }
