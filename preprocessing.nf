@@ -837,8 +837,6 @@ process applyBqsr_gatk {
 	"""
 }
 
-
-
 // Depending on whether the user wants to perform QC only on input BAMs, set input for Alfred
 if( params.qc_only == "yes" & params.input_format == "bam") {
     bams_forAlfred = input_mapped_bams_forAlfred
@@ -884,9 +882,6 @@ process alignmentQualityControl_alfred {
         | sed 's|#||g' > "${alignment_qc_stats_summary}"
     """
 }
-
-
-
 
 // Create additional channel for the reference FASTA and autosome chromosome only interval list to be used in GATK CollectWgsMetrics process
 reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_index_forCollectWgsMetrics )
