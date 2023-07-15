@@ -196,17 +196,17 @@ if( params.seq_protocol == "WGS" ) {
         .set{ target_regions }
 
     Channel
-        .empty()
+        .value( file('references/hg38/wgs_calling_regions.hg38.bed') )
         .set{ target_regions_bed }
 
 } else if( params.seq_protocol == "WES" ) {
     Channel
-        .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed') )
-        .set{ target_regions_bed }
-
-    Channel
         .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.interval_list') )
         .set{ target_regions }
+
+    Channel
+        .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed') )
+        .set{ target_regions_bed }
 
 } else {
     exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole-genome or 'WES' for whole-exome."
@@ -297,12 +297,12 @@ if( params.input_format == "bam" ) {
 		.fromPath( "${params.input_dir}/*.bam" )
 		.ifEmpty{ error "BAM format specified but cannot find files with .bam extension in input directory" }
 		.into{ input_mapped_bams; 
-		       input_mapped_bams_forQaulimap }
+		       input_mapped_bams_forAlfred }
 } else {
 	Channel
 		.empty()
 		.into{ input_mapped_bams;
-			   input_mapped_bams_forQaulimap }
+			   input_mapped_bams_forAlfred }
 }
 
 // If input files are FASTQs, set channel up for both R1 and R2 reads then merge into single channel
@@ -464,9 +464,8 @@ process bamToFastq_biobambam {
 	params.input_format == "bam"
 
 	script:
-	sample_id = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "")
-	fastq_R1 = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "_R1.fastq.gz")
-	fastq_R2 = "${bam_unmapped}".replaceFirst(/\.unmapped\.bam/, "_R2.fastq.gz")
+	fastq_R1 = "${sample_id}_R1.fastq.gz"
+	fastq_R2 = "${sample_id}_R2.fastq.gz"
 	"""
 	bamtofastq \
 	filename="${bam_unmapped}" \
@@ -505,10 +504,10 @@ process fastqTrimming_trimmomatic {
 	params.skip_trimming == "no"
 
 	script:
-	fastq_R1_trimmed = "${sample_id}_R1_trim.fastq.gz"
-	fastq_R2_trimmed = "${sample_id}_R2_trim.fastq.gz"
-	fastq_R1_unpaired = "${sample_id}_R1_unpaired.fastq.gz"
-	fastq_R2_unpaired = "${sample_id}_R2_unpaired.fastq.gz"
+	fastq_R1_trimmed = "${sample_id}_R1.trim.fastq.gz"
+	fastq_R2_trimmed = "${sample_id}_R2.trim.fastq.gz"
+	fastq_R1_unpaired = "${sample_id}_R1.unpaired.fastq.gz"
+	fastq_R2_unpaired = "${sample_id}_R2.unpaired.fastq.gz"
 	fastq_trim_log = "${sample_id}.trim.log"
 	"""
 	trimmomatic PE \
@@ -550,10 +549,10 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
-	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
-	fastqc_R2_html = "${fastq_R2}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
-	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
+	fastqc_R1_html = "${sample_id}_R1.fastqc.html"
+	fastqc_R1_zip = "${sample_id}_R1.fastqc.zip"
+	fastqc_R2_html = "${sample_id}_R2.fastqc.html"
+	fastqc_R2_zip = "${sample_id}_R2.fastqc.zip"
 	"""
 	fastqc --outdir . "${fastq_R1}"
 	fastqc --outdir . "${fastq_R2}"
@@ -568,8 +567,7 @@ process alignment_bwa {
 	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
 
 	output:
-	tuple val(sample_id), path(bam_aligned) into aligned_bams
-	tuple val(sample_id), path(bam_aligned) into aligned_bam_forFlagstats
+	tuple val(sample_id), path(bam_aligned) into aligned_bams, aligned_bam_forFlagstats
 
 	script:
 	bam_aligned = "${sample_id}.bam"
@@ -632,8 +630,8 @@ process fixMateInformationAndSort_gatk {
 	tuple val(sample_id), path(bam_fixed_mate) into fixed_mate_bams
 
 	script:
-	bam_fixed_mate_unsorted = "${bam_aligned}".replaceFirst(/\.bam/, ".unsorted.fixedmate.bam")
-	bam_fixed_mate = "${bam_aligned}".replaceFirst(/\.bam/, ".fixedmate.bam")
+	bam_fixed_mate_unsorted = "${sample_id}.fixmate.bam"
+	bam_fixed_mate = "${sample_id}.sort.fixmate.bam"
 	"""
 	gatk FixMateInformation \
 	--java-options "-Xmx16G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
@@ -662,7 +660,7 @@ process markDuplicatesAndIndex_sambamba {
 	tag "${sample_id}"
 
 	input:
-	path bam_fixed_mate from fixed_mate_bams
+	tuple val(sample_id), path(bam_fixed_mate) from fixed_mate_bams
 
 	output:
 	tuple val(sample_id), path(bam_marked_dup) into marked_dup_bams_forRealignment, marked_dup_bams_forDownsampleBam, marked_dup_bams_forApplyBqsr
@@ -671,8 +669,7 @@ process markDuplicatesAndIndex_sambamba {
 	path bam_markdup_flagstat_log
 
 	script:
-	sample_id = "${bam_fixed_mate}".replaceFirst(/\.fixedmate\.bam/, "")
-	bam_marked_dup = "${sample_id}.markdup.bam"
+	bam_marked_dup = "${sample_id}.markdup.sort.fixmate.bam"
 	bam_marked_dup_index = "${bam_marked_dup}.bai"
 	markdup_output_log = "${sample_id}.markdup.log"
 	bam_markdup_flagstat_log = "${sample_id}.markdup.flagstat.log"
@@ -697,17 +694,16 @@ process markDuplicatesAndIndex_sambamba {
 	"""	
 }
 
-reference_genome_fasta_forRealignment.combine( reference_genome_fasta_index_forRealignment )
-    .combine( reference_genome_fasta_dict_forRealignment )
-    .set{ reference_genome_and_targets_bundle_forRealignment }
-
 // ABRA2 ~ local and global realignment for improvement of InDel calling in exome data
 process localAndGlobalRealignment_abra2 {
     publishDir "${params.output_dir}/preprocessing/realignment", mode: 'copy', pattern: '*.{log}'
     tag "${sample_id}"
 
     input:
-    tuple val(sample_id), path(bam_marked_dup), path(reference_genome_fasta_forRealignment), path(reference_genome_fasta_index_forRealignment), path(reference_genome_fasta_dict_forRealignment) from marked_dup_bams_forRealignment.combine(reference_genome_and_targets_bundle_forRealignment)
+    tuple val(sample_id), path(bam_marked_dup) from marked_dup_bams_forRealignment
+    path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
     path target_bed from target_regions_bed
 
     output:
@@ -724,7 +720,7 @@ process localAndGlobalRealignment_abra2 {
     java -jar -Xmx16G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \$ABRA2JAR \
     --in "${bam_marked_dup}" \
     --out "${bam_marked_dup_realigned}" \
-    --ref "${reference_genome_fasta_forRealignment}" \
+    --ref "${ref_genome_fasta}" \
     --targets "${target_bed}" \
     --threads ${task.cpus} \
     --tmpdir . \
@@ -749,7 +745,7 @@ process downsampleBam_gatk {
 	tuple val(sample_id), path(bam_downsampled) into downsampled_bams
 
 	script:
-	bam_downsampled = "${bam_for_downsample}".replaceFirst(/\.bam/, ".downsampled.bam")
+	bam_downsampled = "${sample_id}.ds.markdup.sort.fixmate.bam"
 	"""
 	gatk DownsampleSam \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
@@ -766,29 +762,21 @@ process downsampleBam_gatk {
 	"""
 }
 
-// Combine all needed GATK bundle files and reference FASTA into one channel for use in GATK BaseRecalibrator process
-gatk_bundle_mills_1000G.combine( gatk_bundle_mills_1000G_index )
-	.combine( gatk_bundle_known_indels )
-	.combine( gatk_bundle_known_indels_index )
-	.combine( gatk_bundle_dbsnp138 )
-	.combine( gatk_bundle_dbsnp138_index )
-	.set{ gatk_reference_bundle }
-
-reference_genome_fasta_forBaseRecalibrator.combine( reference_genome_fasta_index_forBaseRecalibrator )
-	.combine( reference_genome_fasta_dict_forBaseRecalibrator )
-	.set{ reference_genome_bundle_forBaseRecalibrator }
-
-// Combine the the input BAM, GATK bundle, and reference FASTA files into one channel
-downsampled_bams.combine( reference_genome_bundle_forBaseRecalibrator )
-	.combine( gatk_reference_bundle )
-	.set{ input_and_reference_files_forBaseRecalibrator }
-
 // GATK BaseRecalibrator ~ generate base quality score recalibration table based on covariates
 process baseRecalibrator_gatk {
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(bam_downsampled), path(reference_genome_fasta_forBaseRecalibrator), path(reference_genome_fasta_index_forBaseRecalibrator), path(reference_genome_fasta_dict_forBaseRecalibrator), path(gatk_bundle_mills_1000G), path(gatk_bundle_mills_1000G_index), path(gatk_bundle_known_indels), path(gatk_bundle_known_indels_index), path(gatk_bundle_dbsnp138), path(gatk_bundle_dbsnp138_index) from input_and_reference_files_forBaseRecalibrator
+	tuple val(sample_id), path(bam_downsampled) from downsampled_bams
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+	path mills_1000G from gatk_mills_1000G
+	path mills_1000G_index from gatk_mills_1000G_index
+	path known_indels from gatk_known_indels
+	path known_indels_index from gatk_known_indels_index
+	path dbsnp138 from gatk_dbsnp138
+	path dbsnp138_index from gatk_dbsnp138_index
 	path targets_list from target_regions
 
 	output:
@@ -802,13 +790,13 @@ process baseRecalibrator_gatk {
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
-	--reference "${reference_genome_fasta_forBaseRecalibrator}" \
+	--reference "${ref_genome_fasta}" \
 	--intervals "${targets_list}" \
 	--input "${bam_downsampled}" \
 	--output "${bqsr_table}" \
-	--known-sites "${gatk_bundle_mills_1000G}" \
-	--known-sites "${gatk_bundle_known_indels}" \
-	--known-sites "${gatk_bundle_dbsnp138}"
+	--known-sites "${mills_1000G}" \
+	--known-sites "${known_indels}" \
+	--known-sites "${dbsnp138}"
 	"""
 }
 
@@ -818,46 +806,87 @@ if( params.seq_protocol == "WGS" ) {
     bams_forApplyBqsr = marked_dup_realigned_bams_forApplyBqsr
 }
 
-// Create additional channel for the reference FASTA to be used in GATK ApplyBQSR process
-reference_genome_fasta_forApplyBqsr.combine( reference_genome_fasta_index_forApplyBqsr )
-	.combine( reference_genome_fasta_dict_forApplyBqsr )
-	.set{ reference_genome_bundle_forApplyBqsr }
-
-// First join the input BAM files with their respective BQSR recalibration table, then combine that with the
-// reference FASTA files into one channel
-bams_forApplyBqsr.join( base_quality_score_recalibration_data )
-	.set{ bams_and_bqsr_tables }
-
-bams_and_bqsr_tables.combine( reference_genome_bundle_forApplyBqsr )
-	.set{ input_and_reference_files_forApplyBqsr }
-
 // GATK ApplyBQSR ~ apply base quality score recalibration using generated table
 process applyBqsr_gatk {
 	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: '*.{final.bam,bai}'
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(bam_for_bqsr), path(bqsr_table), path(reference_genome_fasta_forApplyBqsr), path(reference_genome_fasta_index_forApplyBqsr), path(reference_genome_fasta_dict_forApplyBqsr) from input_and_reference_files_forApplyBqsr
+	tuple val(sample_id), path(bam_for_bqsr), path(bqsr_table) from bams_forApplyBqsr.join(base_quality_score_recalibration_data)
+	path ref_genome_fasta from ref_genome_fasta_file
+	path ref_genome_fasta_index from ref_genome_fasta_index_file
+	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
-	tuple val(sample_id), path(bam_preprocessed_final) into final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics, final_preprocessed_bams_forCollectHsMetrics
+	tuple val(sample_id), path(bam_preprocessed_final) into final_preprocessed_bams_forAlfred, final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics, final_preprocessed_bams_forCollectHsMetrics
 	path bam_preprocessed_final_index
 
 	script:
-	bam_preprocessed_final = "${bam_for_bqsr}".replaceFirst(/\..*\.bam/, ".final.bam")
-	bam_preprocessed_final_index = "${bam_preprocessed_final}".replaceFirst(/\.bam$/, ".bai")
+	bam_preprocessed_final = "${sample_id}.final.bam"
+	bam_preprocessed_final_index = "${bam_preprocessed_final}.bai"
 	"""
 	gatk ApplyBQSR \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--read-filter GoodCigarReadFilter \
-	--reference "${reference_genome_fasta_forApplyBqsr}" \
+	--reference "${ref_genome_fasta}" \
 	--input "${bam_for_bqsr}" \
 	--output "${bam_preprocessed_final}" \
 	--bqsr-recal-file "${bqsr_table}"
 	"""
 }
+
+
+
+// Depending on whether the user wants to perform QC only on input BAMs, set input for Alfred
+//if( params.qc_only == "yes" & params.input_format == "bam") {
+//    bams_forAlfred = input_mapped_bams_forAlfred
+//}
+//else {
+//    bams_forAlfred = final_preprocessed_bams_forAlfred
+//}
+
+// Alfred ~ full alignment QC 
+//process alignmentQualityControl_alfred {
+//    publishDir "${params.output_dir}/preprocessing/alfred", mode: 'copy'
+//    tag "${sample_id}"
+//
+//    input:
+//    tuple val(sample_id), path(bam_for_qc) from bams_forAlfred
+//    path ref_genome_fasta from ref_genome_fasta_file
+//    path ref_genome_fasta_index from ref_genome_fasta_index_file
+//    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+//    path target_bed from target_regions_bed
+//
+//    output:
+//    path alignment_qc_stats_full_txt
+//    path alignment_qc_stats_json
+//    path alignment_qc_stats_summary
+//
+//    script:
+//    alignment_qc_stats_full_txt = "${sample_id}.alfred.qc.txt.gz"
+//    alignment_qc_stats_json = "${sample_id}.alfred.qc.json.gz"
+//    alignment_qc_stats_summary = "${sample_id}.alfred.qc.summary.txt"
+//    """
+//    alfred qc \
+//    --reference "${ref_genome_fasta}" \
+//    --bed "${target_bed}" \
+//    --name "${sample_id}" \
+//    --outfile "${alignment_qc_stats_txt}" \
+//    --jsonout "${alignment_qc_stats_json}" \
+//    --supplementary \
+//    "${bam_for_qc}"
+//
+//    zcat "${alignment_qc_stats_txt}" \
+//        | grep '^ME' \
+//        | cut -f 2- \
+//        | sed 's|#||g' > "${alignment_qc_stats_summary}"
+//    """
+//}
+
+
+
 
 // Create additional channel for the reference FASTA and autosome chromosome only interval list to be used in GATK CollectWgsMetrics process
 reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_index_forCollectWgsMetrics )
