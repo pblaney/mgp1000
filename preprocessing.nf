@@ -594,9 +594,9 @@ process alignmentPostprocessing_samtools {
     bam_postprocessed = "${sample_id}.postprocessed.bam"
     """
     samtools collate -@ ${task.cpus} -Ou ${bam_aligned} \
-        | samtools fixmate -@ ${task.cpus} -mu - \
+        | samtools fixmate -@ ${task.cpus} -mu - - \
         | samtools sort -@ ${task.cpus} -u -m 2G - \
-        | samtools markdup -@ ${task.cpus} - > "${bam_postprocessed}"
+        | samtools markdup -@ ${task.cpus} - "${bam_postprocessed}"
     """
 }
 
