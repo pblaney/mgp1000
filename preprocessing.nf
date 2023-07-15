@@ -602,14 +602,6 @@ process alignmentPostprocessing_samtools {
 
 
 
-
-
-
-
-
-
-
-
 /*
 
 
@@ -749,32 +741,39 @@ process markDuplicatesAndIndex_sambamba {
 	"""	
 }
 
+
+
+
+*/
+
+
+
 // ABRA2 ~ local and global realignment for improvement of InDel calling in exome data
 process localAndGlobalRealignment_abra2 {
     publishDir "${params.output_dir}/preprocessing/realignment", mode: 'copy', pattern: '*.{log}'
     tag "${sample_id}"
 
     input:
-    tuple val(sample_id), path(bam_marked_dup) from marked_dup_bams_forRealignment
+    tuple val(sample_id), path(bam_postprocessed) from postprocessed_bams_forRealignment
     path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
     path target_bed from target_regions_bed
 
     output:
-    tuple val(sample_id), path(bam_marked_dup_realigned) into marked_dup_realigned_bams_forDownsampleBam, marked_dup_realigned_bams_forApplyBqsr
+    tuple val(sample_id), path(bam_postprocessed_realigned) into postprocessed_realigned_bams_forDownsampleBam, postprocessed_realigned_bams_forApplyBqsr
     path abra_log
 
     when:
     params.seq_protocol == "WES"
 
     script:
-    bam_marked_dup_realigned = "${bam_marked_dup}".replaceFirst(/\.bam/, ".realign.bam")
+    bam_postprocessed_realigned = "${sample_id}.postprocessed.realigned.bam"
     abra_log = "${sample_id}.abra.realign.log"
     """
     java -jar -Xmx16G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \$ABRA2JAR \
-    --in "${bam_marked_dup}" \
-    --out "${bam_marked_dup_realigned}" \
+    --in "${bam_postprocessed}" \
+    --out "${bam_postprocessed_realigned}" \
     --ref "${ref_genome_fasta}" \
     --targets "${target_bed}" \
     --threads ${task.cpus} \
@@ -784,9 +783,9 @@ process localAndGlobalRealignment_abra2 {
 }
 
 if( params.seq_protocol == "WGS" ) {
-    bams_forDownsampleBam = marked_dup_bams_forDownsampleBam
+    bams_forDownsampleBam = postprocessed_bams_forDownsampleBam
 } else if( params.seq_protocol == "WES" ) {
-    bams_forDownsampleBam = marked_dup_realigned_bams_forDownsampleBam
+    bams_forDownsampleBam = postprocessed_realigned_bams_forDownsampleBam
 }
 
 // GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
@@ -800,7 +799,7 @@ process downsampleBam_gatk {
 	tuple val(sample_id), path(bam_downsampled) into downsampled_bams
 
 	script:
-	bam_downsampled = "${sample_id}.ds.markdup.sort.fixmate.bam"
+	bam_downsampled = "${bam_for_downsample}".replaceFirst(/\.bam/, ".ds.bam")
 	"""
 	gatk DownsampleSam \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
@@ -856,9 +855,9 @@ process baseRecalibrator_gatk {
 }
 
 if( params.seq_protocol == "WGS" ) {
-    bams_forApplyBqsr = marked_dup_bams_forApplyBqsr
+    bams_forApplyBqsr = postprocessed_bams_forApplyBqsr
 } else if( params.seq_protocol == "WES" ) {
-    bams_forApplyBqsr = marked_dup_realigned_bams_forApplyBqsr
+    bams_forApplyBqsr = postprocessed_realigned_bams_forApplyBqsr
 }
 
 // GATK ApplyBQSR ~ apply base quality score recalibration using generated table
@@ -937,6 +936,3 @@ process alignmentQualityControl_alfred {
         | sed 's|#||g' > "${alignment_qc_stats_summary}"
     """
 }
-
-
-*/
