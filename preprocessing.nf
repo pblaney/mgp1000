@@ -83,7 +83,7 @@ params.input_format = "fastq"
 params.lane_split = "no"
 params.email = null
 params.trimmomatic_min_len = 35
-params.skip_trimming = "yes"
+params.skip_trimming = "no"
 params.qc_only = "no"
 params.cpus = null
 params.memory = null
@@ -432,7 +432,7 @@ process revertMappedBam_gatk {
 	params.input_format == "bam"
 
 	script:
-	sample_id = "${bam_unmapped}".replaceFirst(/\..*bam/, "")
+	sample_id = "${bam_mapped}".replaceFirst(/\..*bam/, "")
 	bam_unmapped = "${sample_id}.unmapped.bam"
 	"""
 	gatk RevertSam \
