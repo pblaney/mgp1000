@@ -559,6 +559,49 @@ process fastqQualityControlMetrics_fastqc {
 	"""
 }
 
+
+
+
+
+
+
+// BWA MEM ~ align trimmed FASTQ files to reference genome to produce BAM file
+process alignment_bwa {
+    tag "${sample_id}"
+
+    input:
+    tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
+
+    output:
+    tuple val(sample_id), path(bam_aligned) into aligned_bams
+
+    script:
+    bam_aligned = "${sample_id}.bam"
+    """
+    bwa mem -Y -K 100000000 -t ${task.cpus} \
+        -R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
+        "${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
+        "${fastq_R1}" "${fastq_R2}" \
+        	| samtools view -hb -@ ${task.cpus} -o ${bam_aligned} -
+    """
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+
 // BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
 	tag "${sample_id}"
@@ -818,7 +861,7 @@ process applyBqsr_gatk {
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
-	tuple val(sample_id), path(bam_preprocessed_final) into final_preprocessed_bams_forAlfred, final_preprocessed_bams_forCollectWgsMetrics, final_preprocessed_bams_forCollectGcBiasMetrics, final_preprocessed_bams_forCollectHsMetrics
+	tuple val(sample_id), path(bam_preprocessed_final) into final_preprocessed_bams_forAlfred
 	path bam_preprocessed_final_index
 
 	script:
@@ -883,110 +926,5 @@ process alignmentQualityControl_alfred {
     """
 }
 
-// Create additional channel for the reference FASTA and autosome chromosome only interval list to be used in GATK CollectWgsMetrics process
-reference_genome_fasta_forCollectWgsMetrics.combine( reference_genome_fasta_index_forCollectWgsMetrics )
-	.combine( reference_genome_fasta_dict_forCollectWgsMetrics )
-	.combine( autosome_chromosome_list )
-	.set{ reference_genome_bundle_forCollectWgsMetrics }
 
-// GATK CollectWgsMetrics ~ generate covearge and performance metrics from final BAM
-process collectWgsMetrics_gatk {
-	publishDir "${params.output_dir}/preprocessing/coverageMetrics", mode: 'copy'
-	tag "${sample_id}"
-
-	input:
-	tuple val(sample_id), path(bam_preprocessed_final), path(reference_genome_fasta_forCollectWgsMetrics), path(reference_genome_fasta_index_forCollectWgsMetrics), path(reference_genome_fasta_dict_forCollectWgsMetrics), path(autosome_chromosome_list) from final_preprocessed_bams_forCollectWgsMetrics.combine( reference_genome_bundle_forCollectWgsMetrics)
-
-	output:
-	path coverage_metrics
-
-	when:
-	params.seq_protocol == "WGS"
-
-	script:
-	coverage_metrics = "${sample_id}.coverage.metrics.txt"
-	"""
-	gatk CollectWgsMetrics \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
-	--VERBOSITY ERROR \
-	--TMP_DIR . \
-	--INCLUDE_BQ_HISTOGRAM \
-	--MINIMUM_BASE_QUALITY 20 \
-	--MINIMUM_MAPPING_QUALITY 20 \
-	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectWgsMetrics}" \
-	--INTERVALS "${autosome_chromosome_list}" \
-	--INPUT "${bam_preprocessed_final}" \
-	--OUTPUT "${coverage_metrics}"
-	"""
-}
-
-// Create additional channel for the reference FASTA and interfal list to be used in GATK CollectWgsMetrics process
-reference_genome_fasta_forCollectGcBiasMetrics.combine( reference_genome_fasta_index_forCollectGcBiasMetrics )
-	.combine( reference_genome_fasta_dict_forCollectGcBiasMetrics )
-	.set{ reference_genome_bundle_forCollectGcBiasMetrics }
-
-// GATK CollectGcBiasMetrics ~ generate GC content bias in reads in final BAM
-process collectGcBiasMetrics_gatk {
-	publishDir "${params.output_dir}/preprocessing/gcBiasMetrics", mode: 'copy'
-	tag "${sample_id}"
-
-	input:
-	tuple val(sample_id), path(bam_preprocessed_final), path(reference_genome_fasta_forCollectGcBiasMetrics), path(reference_genome_fasta_index_forCollectGcBiasMetrics), path(reference_genome_fasta_dict_forCollectGcBiasMetrics) from final_preprocessed_bams_forCollectGcBiasMetrics.combine(reference_genome_bundle_forCollectGcBiasMetrics)
-
-	output:
-	path gc_bias_metrics
-	path gc_bias_chart
-	path gc_bias_summary
-
-	script:
-	gc_bias_metrics = "${sample_id}.gcbias.metrics.txt"
-	gc_bias_chart = "${sample_id}.gcbias.metrics.pdf"
-	gc_bias_summary = "${sample_id}.gcbias.summary.txt"
-	"""
-	gatk CollectGcBiasMetrics \
-	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
-	--VERBOSITY ERROR \
-	--TMP_DIR . \
-	--REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectGcBiasMetrics}" \
-	--INPUT "${bam_preprocessed_final}" \
-	--OUTPUT "${gc_bias_metrics}" \
-	--CHART_OUTPUT "${gc_bias_chart}" \
-	--SUMMARY_OUTPUT "${gc_bias_summary}"
-	"""
-}
-
-// Create additional channel for the reference FASTA to be used in GATK CollectHsMetrics process
-reference_genome_fasta_forCollectHsMetrics.combine( reference_genome_fasta_index_forCollectHsMetrics )
-	.combine( reference_genome_fasta_dict_forCollectHsMetrics )
-	.set{ reference_genome_bundle_forCollectHsMetrics }
-
-// GATK CollectHsMetrics ~ generate exome capture coverage data in final BAM
-process collectHsMetrics_gatk {
-    publishDir "${params.output_dir}/preprocessing/hsMetrics", mode: 'copy'
-    tag "${sample_id}"
-
-    input:
-    tuple val(sample_id), path(bam_preprocessed_final), path(reference_genome_fasta_forCollectHsMetrics), path(reference_genome_fasta_index_forCollectHsMetrics), path(reference_genome_fasta_dict_forCollectHsMetrics) from final_preprocessed_bams_forCollectHsMetrics.combine(reference_genome_bundle_forCollectHsMetrics)
-    path targets_list from target_regions
-
-    output:
-    path hs_metrics
-
-    when:
-    params.seq_protocol == "WES"
-
-    script:
-    hs_metrics = "${sample_id}.hs.metrics.txt"
-    """
-    gatk CollectHsMetrics \
-    --java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=." \
-    --VERBOSITY ERROR \
-    --TMP_DIR . \
-    --COVERAGE_CAP 500 \
-    --REFERENCE_SEQUENCE "${reference_genome_fasta_forCollectHsMetrics}" \
-    --BAIT_INTERVALS "${targets_list}" \
-    --TARGET_INTERVALS "${targets_list}" \
-    --INPUT "${bam_preprocessed_final}" \
-    --OUTPUT "${hs_metrics}" \
-    """
-}
+*/
