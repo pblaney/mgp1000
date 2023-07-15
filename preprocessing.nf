@@ -576,7 +576,7 @@ process alignment_bwa {
         -R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
         "${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
         "${fastq_R1}" "${fastq_R2}" \
-        	| samtools view -hb -@ ${task.cpus} -o ${bam_aligned} -
+        	| samtools sort -@ ${task.cpus} -n -m 2G -o ${bam_aligned} -
     """
 }
 
@@ -593,9 +593,9 @@ process alignmentPostprocessing_samtools {
     script:
     bam_postprocessed = "${sample_id}.postprocessed.bam"
     """
-    samtools collate -Ou -r 10000 -@ ${task.cpus} ${bam_aligned} \
-        | samtools fixmate -mu -@ ${task.cpus} - \
-        | samtools sort -u -m 2G -@ ${task.cpus} - \
+    samtools collate -@ ${task.cpus} -Ou ${bam_aligned} \
+        | samtools fixmate -@ ${task.cpus} -mu - \
+        | samtools sort -@ ${task.cpus} -u -m 2G - \
         | samtools markdup -@ ${task.cpus} - > "${bam_postprocessed}"
     """
 }
