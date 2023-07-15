@@ -324,7 +324,7 @@ Channel
 
 Channel
 	.value( file('references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed') )
-	.set{ wgs_bed_blacklist_0based }
+	.set{ wgs_bed_blacklist_1based }
 
 Channel
 	.value( file('references/hg38/exome_blacklist.hg38.bed') )
@@ -1007,7 +1007,7 @@ process svAndIndelCalling_svaba {
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa") from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_files.collect())
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path wgs_blacklist_0based_bed from wgs_bed_blacklist_0based
+	path wgs_blacklist_1based_bed from wgs_bed_blacklist_1based
 	path dbsnp_known_indel_vcf from dbsnp_known_indel_ref_vcf
 	path dbsnp_known_indel_vcf_index from dbsnp_known_indel_ref_vcf_index
 	path simple_and_centromeric_repeats from simple_and_centromeric_repeats_bed
@@ -1045,7 +1045,7 @@ process svAndIndelCalling_svaba {
 	-t "${tumor_bam}" \
 	-n "${normal_bam}" \
 	--reference-genome Homo_sapiens_assembly38.fasta \
-	--blacklist "${wgs_blacklist_0based_bed}" \
+	--blacklist "${wgs_blacklist_1based_bed}" \
 	--id-string "${tumor_normal_sample_id}" \
 	--dbsnp-vcf "${dbsnp_known_indel_vcf}" \
 	--simple-seq-database "${simple_and_centromeric_repeats_bed}" \
