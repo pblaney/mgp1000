@@ -549,10 +549,10 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
 	script:
-	fastqc_R1_html = "${sample_id}_R1.fastqc.html"
-	fastqc_R1_zip = "${sample_id}_R1.fastqc.zip"
-	fastqc_R2_html = "${sample_id}_R2.fastqc.html"
-	fastqc_R2_zip = "${sample_id}_R2.fastqc.zip"
+	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
+	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
+	fastqc_R2_html = "${fastq_R2}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
+	fastqc_R2_zip = "${fastq_R2}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
 	"""
 	fastqc --outdir . "${fastq_R1}"
 	fastqc --outdir . "${fastq_R2}"
@@ -823,7 +823,7 @@ process applyBqsr_gatk {
 
 	script:
 	bam_preprocessed_final = "${sample_id}.final.bam"
-	bam_preprocessed_final_index = "${bam_preprocessed_final}.bai"
+	bam_preprocessed_final_index = "${sample_id}.final.bai"
 	"""
 	gatk ApplyBQSR \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
@@ -840,50 +840,50 @@ process applyBqsr_gatk {
 
 
 // Depending on whether the user wants to perform QC only on input BAMs, set input for Alfred
-//if( params.qc_only == "yes" & params.input_format == "bam") {
-//    bams_forAlfred = input_mapped_bams_forAlfred
-//}
-//else {
-//    bams_forAlfred = final_preprocessed_bams_forAlfred
-//}
+if( params.qc_only == "yes" & params.input_format == "bam") {
+    bams_forAlfred = input_mapped_bams_forAlfred
+}
+else {
+    bams_forAlfred = final_preprocessed_bams_forAlfred
+}
 
 // Alfred ~ full alignment QC 
-//process alignmentQualityControl_alfred {
-//    publishDir "${params.output_dir}/preprocessing/alfred", mode: 'copy'
-//    tag "${sample_id}"
-//
-//    input:
-//    tuple val(sample_id), path(bam_for_qc) from bams_forAlfred
-//    path ref_genome_fasta from ref_genome_fasta_file
-//    path ref_genome_fasta_index from ref_genome_fasta_index_file
-//    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-//    path target_bed from target_regions_bed
-//
-//    output:
-//    path alignment_qc_stats_full_txt
-//    path alignment_qc_stats_json
-//    path alignment_qc_stats_summary
-//
-//    script:
-//    alignment_qc_stats_full_txt = "${sample_id}.alfred.qc.txt.gz"
-//    alignment_qc_stats_json = "${sample_id}.alfred.qc.json.gz"
-//    alignment_qc_stats_summary = "${sample_id}.alfred.qc.summary.txt"
-//    """
-//    alfred qc \
-//    --reference "${ref_genome_fasta}" \
-//    --bed "${target_bed}" \
-//    --name "${sample_id}" \
-//    --outfile "${alignment_qc_stats_txt}" \
-//    --jsonout "${alignment_qc_stats_json}" \
-//    --supplementary \
-//    "${bam_for_qc}"
-//
-//    zcat "${alignment_qc_stats_txt}" \
-//        | grep '^ME' \
-//        | cut -f 2- \
-//        | sed 's|#||g' > "${alignment_qc_stats_summary}"
-//    """
-//}
+process alignmentQualityControl_alfred {
+    publishDir "${params.output_dir}/preprocessing/alfred", mode: 'copy'
+    tag "${sample_id}"
+
+    input:
+    tuple val(sample_id), path(bam_for_qc) from bams_forAlfred
+    path ref_genome_fasta from ref_genome_fasta_file
+    path ref_genome_fasta_index from ref_genome_fasta_index_file
+    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+    path target_bed from target_regions_bed
+
+    output:
+    path alignment_qc_stats_full_txt
+    path alignment_qc_stats_json
+    path alignment_qc_stats_summary
+
+    script:
+    alignment_qc_stats_full_txt = "${sample_id}.alfred.qc.txt.gz"
+    alignment_qc_stats_json = "${sample_id}.alfred.qc.json.gz"
+    alignment_qc_stats_summary = "${sample_id}.alfred.qc.summary.txt"
+    """
+    alfred qc \
+    --reference "${ref_genome_fasta}" \
+    --bed "${target_bed}" \
+    --name "${sample_id}" \
+    --outfile "${alignment_qc_stats_txt}" \
+    --jsonout "${alignment_qc_stats_json}" \
+    --supplementary \
+    "${bam_for_qc}"
+
+    zcat "${alignment_qc_stats_txt}" \
+        | grep '^ME' \
+        | cut -f 2- \
+        | sed 's|#||g' > "${alignment_qc_stats_summary}"
+    """
+}
 
 
 
