@@ -270,19 +270,19 @@ log.info "░▀░░░▀░▀░▀▀▀░▀░░░▀░▀░▀▀�
 log.info ''
 log.info "~~~ Launch Time ~~~"
 log.info ''
-log.info ' ${workflowTimestamp}'
+log.info " ${workflowTimestamp}"
 log.info ''
 log.info "~~~ Input Directory ~~~"
 log.info ''
-log.info ' ${params.input_dir}'
+log.info " ${params.input_dir}"
 log.info ''
 log.info "~~~ Output Directory ~~~"
 log.info ''
-log.info ' ${params.output_dir}'
+log.info " ${params.output_dir}"
 log.info ''
 log.info "~~~ Run Report File ~~~"
 log.info ''
-log.info ' nextflow_report.${params.run_id}.html'
+log.info " nextflow_report.${params.run_id}.html"
 log.info ''
 log.info "~~~ Sequencing Protocol ~~~"
 log.info ''
@@ -871,12 +871,12 @@ process alignmentQualityControl_alfred {
     --reference "${ref_genome_fasta}" \
     --bed "${target_bed}" \
     --name "${sample_id}" \
-    --outfile "${alignment_qc_stats_txt}" \
+    --outfile "${alignment_qc_stats_full_txt}" \
     --jsonout "${alignment_qc_stats_json}" \
     --supplementary \
     "${bam_for_qc}"
 
-    zcat "${alignment_qc_stats_txt}" \
+    zcat "${alignment_qc_stats_full_txt}" \
         | grep '^ME' \
         | cut -f 2- \
         | sed 's|#||g' > "${alignment_qc_stats_summary}"

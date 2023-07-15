@@ -170,19 +170,19 @@ log.info "        ░▀▀▀░▀▀▀░▀░▀░▀░▀░▀▀▀�
 log.info ''
 log.info "~~~ Launch Time ~~~"
 log.info ''
-log.info ' ${workflowTimestamp}'
+log.info " ${workflowTimestamp}"
 log.info ''
 log.info "~~~ Input Directory ~~~"
 log.info ''
-log.info ' ${params.input_dir}'
+log.info " ${params.input_dir}"
 log.info ''
 log.info "~~~ Output Directory ~~~"
 log.info ''
-log.info ' ${params.output_dir}'
+log.info " ${params.output_dir}"
 log.info ''
 log.info "~~~ Run Report File ~~~"
 log.info ''
-log.info ' nextflow_report.${params.run_id}.html'
+log.info " nextflow_report.${params.run_id}.html"
 log.info ''
 log.info "~~~ Sequencing Protocol ~~~"
 log.info ''
