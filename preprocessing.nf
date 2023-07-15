@@ -559,12 +559,6 @@ process fastqQualityControlMetrics_fastqc {
 	"""
 }
 
-
-
-
-
-
-
 // BWA MEM ~ align trimmed FASTQ files to reference genome to produce BAM file
 process alignment_bwa {
     tag "${sample_id}"
@@ -586,7 +580,25 @@ process alignment_bwa {
     """
 }
 
+// samtools ~ stream of alignment post-processing including collate, fixmate, sort, and markdup
+process alignmentPostprocessing_samtools {
+    tag "${sample_id}"
 
+    input:
+    tuple val(sample_id), path(bam_aligned) from aligned_bams
+
+    output:
+    tuple val(sample_id), path(bam_postprocessed) into postprocessed_bams_forRealignment, postprocessed_bams_forDownsampleBam, postprocessed_bams_forApplyBqsr
+
+    script:
+    bam_postprocessed = "${sample_id}.postprocessed.bam"
+    """
+    samtools collate -Ou -r 10000 -@ ${task.cpus} ${bam_aligned} \
+        | samtools fixmate -mu -@ ${task.cpus} - \
+        | samtools sort -u -m 2G -@ ${task.cpus} - \
+        | samtools markdup -@ ${task.cpus} - > "${bam_postprocessed}"
+    """
+}
 
 
 
