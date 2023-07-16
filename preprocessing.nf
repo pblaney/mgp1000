@@ -122,8 +122,8 @@ Channel
 	.set{ trimmomatic_contaminants_file }
 
 Channel
-	.value( file('references/hg38/wgs_calling_regions.hg38.interval_list') )
-	.set{ gatk_wgs_interval_list }
+	.fromPath( 'references/hg38' )
+	.set{ bwa_reference_dir }
 
 Channel
     .value( file('references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz') )
@@ -132,10 +132,6 @@ Channel
 Channel
     .value( file('references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi') )
     .set{ gatk_mills_1000G_index }
-
-Channel
-    .value( file('references/hg38/Homo_sapiens_assembly38_autosome.interval_list') )
-    .set{ autosome_chromosome_list }
 
 Channel
     .value( file('references/hg38/Homo_sapiens_assembly38.known_indels.vcf.gz') )
@@ -152,43 +148,6 @@ Channel
 Channel
     .value( file('references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi') )
     .set{ gatk_dbsnp138_index }
-
-
-
-Channel
-	.fromPath( 'references/trimmomaticContaminants.fa' )
-	.set{ trimmomatic_contaminants }
-
-Channel
-	.fromPath( 'references/hg38' )
-	.set{ bwa_reference_dir }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta' )
-	.into{ reference_genome_fasta_forRealignment;
-		   reference_genome_fasta_forBaseRecalibrator;
-	       reference_genome_fasta_forApplyBqsr;
-	       reference_genome_fasta_forCollectWgsMetrics;
-	       reference_genome_fasta_forCollectGcBiasMetrics;
-	       reference_genome_fasta_forCollectHsMetrics }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.fasta.fai' )
-	.into{ reference_genome_fasta_index_forRealignment;
-	       reference_genome_fasta_index_forBaseRecalibrator;
-	       reference_genome_fasta_index_forApplyBqsr;
-	       reference_genome_fasta_index_forCollectWgsMetrics;
-	       reference_genome_fasta_index_forCollectGcBiasMetrics;
-	       reference_genome_fasta_index_forCollectHsMetrics }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dict' )
-	.into{ reference_genome_fasta_dict_forRealignment;
-	       reference_genome_fasta_dict_forBaseRecalibrator;
-	       reference_genome_fasta_dict_forApplyBqsr;
-	       reference_genome_fasta_dict_forCollectWgsMetrics;
-	       reference_genome_fasta_dict_forCollectGcBiasMetrics;
-	       reference_genome_fasta_dict_forCollectHsMetrics }
 
 if( params.seq_protocol == "WGS" ) {
     Channel
@@ -211,38 +170,6 @@ if( params.seq_protocol == "WGS" ) {
 } else {
     exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole-genome or 'WES' for whole-exome."
 }
-
-Channel
-	.fromPath( 'references/hg38/wgs_calling_regions.hg38.interval_list' )
-	.set{ gatk_bundle_wgs_interval_list }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38_autosome.interval_list' )
-	.set{ autosome_chromosome_list }
-
-Channel
-	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz' )
-	.set{ gatk_bundle_mills_1000G }
-
-Channel
-	.fromPath( 'references/hg38/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz.tbi' )
-	.set{ gatk_bundle_mills_1000G_index }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.known_indels.vcf.gz' )
-	.set{ gatk_bundle_known_indels }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.known_indels.vcf.gz.tbi' )
-	.set{ gatk_bundle_known_indels_index }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz' )
-	.set{ gatk_bundle_dbsnp138 }
-
-Channel
-	.fromPath( 'references/hg38/Homo_sapiens_assembly38.dbsnp138.vcf.gz.tbi' )
-	.set{ gatk_bundle_dbsnp138_index }
 
 
 // #################################################### \\
@@ -435,18 +362,40 @@ process revertMappedBam_gatk {
 	sample_id = "${bam_mapped}".replaceFirst(/\..*bam/, "")
 	bam_unmapped = "${sample_id}.unmapped.bam"
 	"""
-	gatk RevertSam \
+	#gatk RevertSam \
+	#--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+	#--VERBOSITY ERROR \
+	#--VALIDATION_STRINGENCY LENIENT \
+	#--MAX_RECORDS_IN_RAM 4000000 \
+	#--TMP_DIR . \
+	#--SANITIZE true \
+	#--ATTRIBUTE_TO_CLEAR XT \
+	#--ATTRIBUTE_TO_CLEAR XN \
+	#--ATTRIBUTE_TO_CLEAR OC \
+	#--ATTRIBUTE_TO_CLEAR OP \
+	#--INPUT "${bam_mapped}" \
+	#--OUTPUT "${bam_unmapped}"
+
+	# UPDATE TO SPARK
+	gatk RevertSamSpark \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-	--VERBOSITY ERROR \
-	--VALIDATION_STRINGENCY LENIENT \
-	--MAX_RECORDS_IN_RAM 4000000 \
-	--TMP_DIR . \
-	--ATTRIBUTE_TO_CLEAR XT \
-	--ATTRIBUTE_TO_CLEAR XN \
-	--ATTRIBUTE_TO_CLEAR OC \
-	--ATTRIBUTE_TO_CLEAR OP \
-	--INPUT "${bam_mapped}" \
-	--OUTPUT "${bam_unmapped}"
+	--spark-master local[${task.cpus}] \
+	--input "${bam_mapped}" \
+	--output "${bam_unmapped}" \
+	--attributes-to-clear XT \
+	--attributes-to-clear XN \
+	--attributes-to-clear OC \
+	--attributes-to-clear OP \
+	--attributes-to-clear AS \
+	--attributes-to-clear XS \
+	--attributes-to-clear XA \
+	--dont-restore-original-qualities false \
+	--keep-alignment-information false \
+	--read-validation-stringency LENIENT \
+	--remove-duplicate-information true \
+	--sanitize true \
+	--tmp-dir . \
+	--spark-verbosity ERROR
 	"""
 }
 
@@ -494,7 +443,7 @@ process fastqTrimming_trimmomatic {
 
 	input:
 	tuple val(sample_id), path(input_R1_fastqs), path(input_R2_fastqs) from input_fastqs_forTrimming
-	path contaminants from trimmomatic_contaminants
+	path contaminants from trimmomatic_contaminants_file
 
 	output:
 	tuple val(sample_id), path(fastq_R1_trimmed), path(fastq_R2_trimmed) into trimmed_fastqs_forFastqc, trimmed_fastqs_forAlignment
@@ -600,154 +549,6 @@ process alignmentPostprocessing_samtools {
     """
 }
 
-
-
-/*
-
-
-
-// BWA MEM / Sambamba ~ align trimmed FASTQ files to reference genome to produce BAM file
-process alignment_bwa {
-	tag "${sample_id}"
-
-	input:
-	tuple val(sample_id), path(fastq_R1), path(fastq_R2), path(bwa_reference_dir) from fastqs_forAlignment.combine(bwa_reference_dir)
-
-	output:
-	tuple val(sample_id), path(bam_aligned) into aligned_bams, aligned_bam_forFlagstats
-
-	script:
-	bam_aligned = "${sample_id}.bam"
-	"""
-	bwa mem \
-	-M \
-	-K 100000000 \
-	-v 1 \
-	-t ${task.cpus - 1} \
-	-R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
-	"${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
-	"${fastq_R1}" "${fastq_R2}" \
-	| \
-	sambamba view \
-	--sam-input \
-	--nthreads=${task.cpus - 1} \
-	--filter='mapping_quality>=10' \
-	--format=bam \
-	--compression-level=0 \
-	/dev/stdin \
-	| \
-	sambamba sort \
-	--nthreads=${task.cpus - 1} \
-	--tmpdir=. \
-	--memory-limit=24GB \
-	--sort-by-name \
-	--out=${bam_aligned} \
-	/dev/stdin
-	"""
-}
-
-// Sambamba flagstat ~ generate read metrics after alignment
-process postAlignmentFlagstats_sambamba {
-	publishDir "${params.output_dir}/preprocessing/alignmentFlagstats", mode: 'copy', pattern: "*${bam_flagstat_log}"
-	tag "${sample_id}"
-
-	input:
-	tuple val(sample_id), path(bam_aligned) from aligned_bam_forFlagstats
-
-	output:
-	path bam_flagstat_log
-
-	script:
-	bam_flagstat_log = "${sample_id}.alignment.flagstat.log"
-	"""
-	sambamba flagstat \
-	--nthreads=${task.cpus} \
-	"${bam_aligned}" > "${bam_flagstat_log}"
-	"""
-}
-
-// GATK FixMateInformation / SortSam ~ veryify/fix mate-pair information and sort output BAM by coordinate
-process fixMateInformationAndSort_gatk {
-	tag "${sample_id}"
-
-	input:
-	tuple val(sample_id), path(bam_aligned) from aligned_bams
-
-	output:
-	tuple val(sample_id), path(bam_fixed_mate) into fixed_mate_bams
-
-	script:
-	bam_fixed_mate_unsorted = "${sample_id}.fixmate.bam"
-	bam_fixed_mate = "${sample_id}.sort.fixmate.bam"
-	"""
-	gatk FixMateInformation \
-	--java-options "-Xmx16G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
-	--VERBOSITY ERROR \
-	--VALIDATION_STRINGENCY SILENT \
-	--ADD_MATE_CIGAR true \
-	--MAX_RECORDS_IN_RAM 2000000 \
-	--ASSUME_SORTED true \
-	--TMP_DIR . \
-	--INPUT "${bam_aligned}" \
-	--OUTPUT "${bam_fixed_mate_unsorted}"
-
-	gatk SortSam \
-	--java-options "-Xmx16G -Djava.io.tmpdir=. -XX:ParallelGCThreads=1" \
-	--VERBOSITY ERROR \
-	--TMP_DIR . \
-	--SORT_ORDER coordinate \
-	--INPUT "${bam_fixed_mate_unsorted}" \
-	--OUTPUT "${bam_fixed_mate}"
-	"""
-}
-
-// Sambamba markdup ~ mark duplicate alignments, remove them, and create BAM index
-process markDuplicatesAndIndex_sambamba {
-	publishDir "${params.output_dir}/preprocessing/markdupFlagstats", mode: 'copy', pattern: '*.{log}'
-	tag "${sample_id}"
-
-	input:
-	tuple val(sample_id), path(bam_fixed_mate) from fixed_mate_bams
-
-	output:
-	tuple val(sample_id), path(bam_marked_dup) into marked_dup_bams_forRealignment, marked_dup_bams_forDownsampleBam, marked_dup_bams_forApplyBqsr
-	path bam_marked_dup_index
-	path markdup_output_log
-	path bam_markdup_flagstat_log
-
-	script:
-	bam_marked_dup = "${sample_id}.markdup.sort.fixmate.bam"
-	bam_marked_dup_index = "${bam_marked_dup}.bai"
-	markdup_output_log = "${sample_id}.markdup.log"
-	bam_markdup_flagstat_log = "${sample_id}.markdup.flagstat.log"
-	"""
-	sambamba markdup \
-	--remove-duplicates \
-	--nthreads ${task.cpus} \
-	--hash-table-size 1000000 \
-	--overflow-list-size 1000000 \
-	--tmpdir . \
-	"${bam_fixed_mate}" \
-	"${bam_marked_dup}" \
-	2> "${markdup_output_log}"
-
-	sambamba flagstat \
-	--nthreads ${task.cpus} \
-	"${bam_marked_dup}" > "${bam_markdup_flagstat_log}"
-
-	sambamba index \
-	--nthreads ${task.cpus} \
-	"${bam_marked_dup}" "${bam_marked_dup_index}"
-	"""	
-}
-
-
-
-
-*/
-
-
-
 // ABRA2 ~ local and global realignment for improvement of InDel calling in exome data
 process localAndGlobalRealignment_abra2 {
     publishDir "${params.output_dir}/preprocessing/realignment", mode: 'copy', pattern: '*.{log}'
@@ -771,7 +572,7 @@ process localAndGlobalRealignment_abra2 {
     bam_postprocessed_realigned = "${sample_id}.postprocessed.realigned.bam"
     abra_log = "${sample_id}.abra.realign.log"
     """
-    java -jar -Xmx16G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \$ABRA2JAR \
+    java -jar -Xmx16G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \$ABRA2_JAR \
     --in "${bam_postprocessed}" \
     --out "${bam_postprocessed_realigned}" \
     --ref "${ref_genome_fasta}" \
@@ -839,18 +640,33 @@ process baseRecalibrator_gatk {
 	script:
 	bqsr_table = "${sample_id}.recaldata.table"
 	"""
-	gatk BaseRecalibrator \
+	#gatk BaseRecalibrator \
+	#--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+	#--verbosity ERROR \
+	#--tmp-dir . \
+	#--read-filter GoodCigarReadFilter \
+	#--reference "${ref_genome_fasta}" \
+	#--intervals "${targets_list}" \
+	#--input "${bam_downsampled}" \
+	#--output "${bqsr_table}" \
+	#--known-sites "${mills_1000G}" \
+	#--known-sites "${known_indels}" \
+	#--known-sites "${dbsnp138}"
+
+	# UPDATE TO SPARK
+	gatk BaseRecalibratorSpark \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-	--verbosity ERROR \
-	--tmp-dir . \
-	--read-filter GoodCigarReadFilter \
-	--reference "${ref_genome_fasta}" \
-	--intervals "${targets_list}" \
+	--spark-master local[${task.cpus}] \
 	--input "${bam_downsampled}" \
-	--output "${bqsr_table}" \
 	--known-sites "${mills_1000G}" \
 	--known-sites "${known_indels}" \
-	--known-sites "${dbsnp138}"
+	--known-sites "${dbsnp138}" \
+	--output "${bqsr_table}" \
+	--reference "${ref_genome_fasta}" \
+	--intervals "${targets_list}" \
+	--read-filter GoodCigarReadFilter \
+	--tmp-dir . \
+	--spark-verbosity ERROR
 	"""
 }
 
@@ -867,9 +683,6 @@ process applyBqsr_gatk {
 
 	input:
 	tuple val(sample_id), path(bam_for_bqsr), path(bqsr_table) from bams_forApplyBqsr.join(base_quality_score_recalibration_data)
-	path ref_genome_fasta from ref_genome_fasta_file
-	path ref_genome_fasta_index from ref_genome_fasta_index_file
-	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
 
 	output:
 	tuple val(sample_id), path(bam_preprocessed_final) into final_preprocessed_bams_forAlfred
@@ -879,15 +692,26 @@ process applyBqsr_gatk {
 	bam_preprocessed_final = "${sample_id}.final.bam"
 	bam_preprocessed_final_index = "${sample_id}.final.bai"
 	"""
-	gatk ApplyBQSR \
+	#gatk ApplyBQSR \
+	#--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
+	#--verbosity ERROR \
+	#--tmp-dir . \
+	#--read-filter GoodCigarReadFilter \
+	#--reference "${ref_genome_fasta}" \
+	#--input "${bam_for_bqsr}" \
+	#--output "${bam_preprocessed_final}" \
+	#--bqsr-recal-file "${bqsr_table}"
+
+	# UPDATE TO SPARK
+	gatk ApplyBQSRSpark \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-	--verbosity ERROR \
-	--tmp-dir . \
-	--read-filter GoodCigarReadFilter \
-	--reference "${ref_genome_fasta}" \
+	--spark-master local[${task.cpus}] \
+	--bqsr-recal-file "${bqsr_table}" \
 	--input "${bam_for_bqsr}" \
 	--output "${bam_preprocessed_final}" \
-	--bqsr-recal-file "${bqsr_table}"
+	--read-filter GoodCigarReadFilter \
+	--tmp-dir . \
+	--spark-verbosity ERROR
 	"""
 }
 
