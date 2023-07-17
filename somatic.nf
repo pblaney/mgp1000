@@ -120,7 +120,7 @@ def helpMessage() {
 	  --conpair_min_cov              INT  Manually set the minimum coverage
 	                                      [Default: 10]
 	  --fragcounter                  STR  Indicates whether or not to use this tool
-	                                      [Default: on | Available: off, on]
+	                                      [Default: off | Available: off, on]
 	  --telomerecat                  STR  Indicates whether or not to use this tool
 	                                      [Default: off | Available: off, on]
 	  --telomerehunter               STR  Indicates whether or not to use this tool
@@ -151,7 +151,7 @@ params.varscan = "on"
 params.mutect = "on"
 params.strelka = "on"
 params.caveman = "off"
-params.fragcounter = "on"
+params.fragcounter = "off"
 params.battenberg = "on"
 params.facets = "on"
 params.manta = "on"
