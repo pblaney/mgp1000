@@ -1720,7 +1720,7 @@ process snvAndIndelCalling_gatk {
 	grep -w '${chromosome}' "${wgs_bed}" > "${per_chromosome_bed_file}"
 
 	gatk Mutect2 \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--native-pair-hmm-threads ${task.cpus} \
@@ -1755,7 +1755,7 @@ process mergeAndSortMutect2Vcfs_gatk {
 	merged_raw_vcf_index = "${merged_raw_vcf}.tbi"
 	"""
 	gatk SortVcf \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--VERBOSITY ERROR \
 	--TMP_DIR . \
 	--MAX_RECORDS_IN_RAM 4000000 \
@@ -1781,7 +1781,7 @@ process mergeMutect2StatsForFiltering_gatk {
 	merged_mutect_stats_file = "${tumor_normal_sample_id}.vcf.gz.stats"
 	"""
 	gatk MergeMutectStats \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	${raw_per_chromosome_mutect_stats_file.collect { "--stats $it " }.join()} \
@@ -1818,7 +1818,7 @@ process pileupSummariesForMutect2Contamination_gatk {
 	grep -w '${chromosome}' "${wgs_bed}" > "${per_chromosome_bed_file}"
 
 	gatk GetPileupSummaries \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--intervals "${per_chromosome_bed_file}" \
@@ -1827,7 +1827,7 @@ process pileupSummariesForMutect2Contamination_gatk {
 	--output "${per_chromosome_tumor_pileup}"
 
 	gatk GetPileupSummaries \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--intervals "${per_chromosome_bed_file}" \
@@ -1856,7 +1856,7 @@ process gatherTumorPileupSummariesForMutect2Contamination_gatk {
 	tumor_pileup = "${tumor_id}.pileup"
 	"""
 	gatk GatherPileupSummaries \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--sequence-dictionary "${ref_genome_fasta_dict}" \
@@ -1884,7 +1884,7 @@ process gatherNormalPileupSummariesForMutect2Contamination_gatk {
 	normal_pileup = "${normal_id}.pileup"
 	"""
 	gatk GatherPileupSummaries \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--sequence-dictionary "${ref_genome_fasta_dict}" \
@@ -1911,7 +1911,7 @@ process mutect2ContaminationCalculation_gatk {
 	mutect_contamination_file = "${tumor_normal_sample_id}.mutect.contamination.txt" 
 	"""
 	gatk CalculateContamination \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--input "${tumor_pileup}" \
@@ -1943,7 +1943,7 @@ process mutect2VariantFiltration_gatk {
 	filter_stats_file = "${tumor_normal_sample_id}.filterstats.txt"
 	"""
 	gatk FilterMutectCalls \
-	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=." \
+	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--verbosity ERROR \
 	--tmp-dir . \
 	--unique-alt-read-count 4 \
