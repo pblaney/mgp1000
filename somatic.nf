@@ -319,10 +319,6 @@ Channel
     .set{ dbsnp_known_indel_ref_vcf_index }
 
 Channel
-    .value( file('references/hg38/simple_and_centromeric_repeats.hg38.bed') )
-    .set{ simple_and_centromeric_repeats_bed }
-
-Channel
 	.value( file('references/hg38/wgs_calling_regions_blacklist.1based.hg38.bed') )
 	.set{ wgs_bed_blacklist_1based }
 
@@ -1010,7 +1006,6 @@ process svAndIndelCalling_svaba {
 	path wgs_blacklist_1based_bed from wgs_bed_blacklist_1based
 	path dbsnp_known_indel_vcf from dbsnp_known_indel_ref_vcf
 	path dbsnp_known_indel_vcf_index from dbsnp_known_indel_ref_vcf_index
-	path simple_and_centromeric_repeats from simple_and_centromeric_repeats_bed
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
@@ -1048,7 +1043,6 @@ process svAndIndelCalling_svaba {
 	--blacklist "${wgs_blacklist_1based_bed}" \
 	--id-string "${tumor_normal_sample_id}" \
 	--dbsnp-vcf "${dbsnp_known_indel_vcf}" \
-	--simple-seq-database "${simple_and_centromeric_repeats_bed}" \
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip
