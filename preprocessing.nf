@@ -662,7 +662,7 @@ process applyBqsr_gatk {
 
 	script:
 	bam_preprocessed_final = "${sample_id}.final.bam"
-	bam_preprocessed_final_index = "${sample_id}.final.bai"
+	bam_preprocessed_final_index = "${bam_preprocessed_final}.bai"
 	"""
 	gatk ApplyBQSRSpark \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
