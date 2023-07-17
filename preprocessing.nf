@@ -362,21 +362,6 @@ process revertMappedBam_gatk {
 	sample_id = "${bam_mapped}".replaceFirst(/\..*bam/, "")
 	bam_unmapped = "${sample_id}.unmapped.bam"
 	"""
-	#gatk RevertSam \
-	#--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-	#--VERBOSITY ERROR \
-	#--VALIDATION_STRINGENCY LENIENT \
-	#--MAX_RECORDS_IN_RAM 4000000 \
-	#--TMP_DIR . \
-	#--SANITIZE true \
-	#--ATTRIBUTE_TO_CLEAR XT \
-	#--ATTRIBUTE_TO_CLEAR XN \
-	#--ATTRIBUTE_TO_CLEAR OC \
-	#--ATTRIBUTE_TO_CLEAR OP \
-	#--INPUT "${bam_mapped}" \
-	#--OUTPUT "${bam_unmapped}"
-
-	# UPDATE TO SPARK
 	gatk RevertSamSpark \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--spark-master local[${task.cpus}] \
@@ -395,7 +380,7 @@ process revertMappedBam_gatk {
 	--remove-duplicate-information true \
 	--sanitize true \
 	--tmp-dir . \
-	--spark-verbosity ERROR
+	--spark-verbosity DEBUG
 	"""
 }
 
@@ -597,14 +582,15 @@ process downsampleBam_gatk {
 	tuple val(sample_id), path(bam_for_downsample) from bams_forDownsampleBam
 
 	output:
-	tuple val(sample_id), path(bam_downsampled) into downsampled_bams
+	tuple val(sample_id), path(bam_downsampled), path(bam_downsampled_index) into downsampled_bams
 
 	script:
 	bam_downsampled = "${bam_for_downsample}".replaceFirst(/\.bam/, ".ds.bam")
+	bam_downsampled_index = "${bam_for_downsample}".replaceFirst(/\.bam/, ".ds.bai")
 	"""
 	gatk DownsampleSam \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-	--VERBOSITY ERROR \
+	--VERBOSITY DEBUG \
 	--MAX_RECORDS_IN_RAM 4000000 \
 	--TMP_DIR . \
 	--STRATEGY ConstantMemory \
@@ -622,7 +608,7 @@ process baseRecalibrator_gatk {
 	tag "${sample_id}"
 
 	input:
-	tuple val(sample_id), path(bam_downsampled) from downsampled_bams
+	tuple val(sample_id), path(bam_downsampled), path(bam_downsampled_index) from downsampled_bams
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -666,7 +652,7 @@ process baseRecalibrator_gatk {
 	--intervals "${targets_list}" \
 	--read-filter GoodCigarReadFilter \
 	--tmp-dir . \
-	--spark-verbosity ERROR
+	--spark-verbosity DEBUG
 	"""
 }
 
@@ -711,7 +697,7 @@ process applyBqsr_gatk {
 	--output "${bam_preprocessed_final}" \
 	--read-filter GoodCigarReadFilter \
 	--tmp-dir . \
-	--spark-verbosity ERROR
+	--spark-verbosity DEBUG
 	"""
 }
 
