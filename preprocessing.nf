@@ -626,20 +626,6 @@ process baseRecalibrator_gatk {
 	script:
 	bqsr_table = "${sample_id}.recaldata.table"
 	"""
-	#gatk BaseRecalibrator \
-	#--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-	#--verbosity ERROR \
-	#--tmp-dir . \
-	#--read-filter GoodCigarReadFilter \
-	#--reference "${ref_genome_fasta}" \
-	#--intervals "${targets_list}" \
-	#--input "${bam_downsampled}" \
-	#--output "${bqsr_table}" \
-	#--known-sites "${mills_1000G}" \
-	#--known-sites "${known_indels}" \
-	#--known-sites "${dbsnp138}"
-
-	# UPDATE TO SPARK
 	gatk BaseRecalibratorSpark \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--spark-master local[${task.cpus}] \
@@ -678,17 +664,6 @@ process applyBqsr_gatk {
 	bam_preprocessed_final = "${sample_id}.final.bam"
 	bam_preprocessed_final_index = "${sample_id}.final.bai"
 	"""
-	#gatk ApplyBQSR \
-	#--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
-	#--verbosity ERROR \
-	#--tmp-dir . \
-	#--read-filter GoodCigarReadFilter \
-	#--reference "${ref_genome_fasta}" \
-	#--input "${bam_for_bqsr}" \
-	#--output "${bam_preprocessed_final}" \
-	#--bqsr-recal-file "${bqsr_table}"
-
-	# UPDATE TO SPARK
 	gatk ApplyBQSRSpark \
 	--java-options "-Xmx${task.memory.toGiga() - 2}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
 	--spark-master local[${task.cpus}] \
