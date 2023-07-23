@@ -130,7 +130,7 @@ igcaller <- readr::read_delim(file = igcaller_tsv_path,
                               show_col_types = F)
 
 igcaller_bedpe <- igcaller %>%
-                    dplyr::filter(Score >= 5 & `Reads in normal` <= 3 & `Count in PoN` <= 4) %>%
+                    dplyr::filter(Score >= 5 & `Reads in normal` <= 4 & `Count in PoN` <= 5) %>%
                     dplyr::mutate("end1" = PositionA + 1,
                                   "end2" = PositionB + 1,
                                   "score" = ".") %>%
@@ -211,7 +211,8 @@ consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
 plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.delly, seen.by.svaba, seen.by.igcaller)])))
 pdf(file = paste0(tum_norm_id, ".hq.union.consensus.somatic.sv.intersection.plot.pdf"),
     width = 7,
-    height = 7)
+    height = 7,
+    onefile = FALSE)
 UpSetR::upset(plot_data,
               mainbar.y.label = "Breakpoint Pair Intersection",
               sets.x.label = "SVs Per Caller",
