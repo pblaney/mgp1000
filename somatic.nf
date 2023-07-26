@@ -1009,7 +1009,7 @@ process svAndIndelCalling_svaba {
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
-	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
+	tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) into svaba_sv_vcf_forPostprocessing
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) into svaba_tumor_bam_forDuphold
 	path unfiltered_somatic_indel_vcf
 	path unfiltered_somatic_sv_vcf
@@ -1031,7 +1031,6 @@ process svAndIndelCalling_svaba {
 	unfiltered_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.unfiltered.sv.vcf.gz"
 	filtered_somatic_indel_vcf = "${tumor_normal_sample_id}.svaba.somatic.filtered.indel.vcf.gz"
 	filtered_somatic_indel_vcf_index = "${filtered_somatic_indel_vcf}.tbi"
-	svaba_somatic_sv_unclassified_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unclassified.vcf"
 	svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unprocessed.vcf.gz"
 	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
 	sample_renaming_file = "sample_renaming_file.txt"
@@ -1051,11 +1050,7 @@ process svAndIndelCalling_svaba {
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.sv.vcf.gz" "${unfiltered_somatic_sv_vcf}"
 	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
-
-	gunzip -c "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" > "${svaba_somatic_sv_unclassified_vcf}"
-
-	svaba_sv_classifier.py "${svaba_somatic_sv_unclassified_vcf}" \
-		| bgzip > "${svaba_somatic_sv_vcf}"
+	mv "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" "${svaba_somatic_sv_vcf}"
 
 	tabix "${filtered_somatic_indel_vcf}"
 	tabix "${svaba_somatic_sv_vcf}"
@@ -1071,7 +1066,7 @@ process filterAndPostprocessSvabaVcf_bcftools {
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(svaba_somatic_sv_unclassified_vcf), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
+    tuple val(tumor_normal_sample_id), val(tumor_id), path(svaba_somatic_sv_vcf), path(svaba_somatic_sv_vcf_index), path(sample_renaming_file) from svaba_sv_vcf_forPostprocessing
 
     output:
     tuple val(tumor_normal_sample_id), path(final_svaba_somatic_sv_vcf) into svaba_sv_vcf_forDuphold
