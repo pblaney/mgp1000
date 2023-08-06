@@ -39,7 +39,7 @@ def helpMessage() {
 	                                      matched tumor sample
 	  -profile                       STR  Configuration profile to use, must use somatic
 
-	Main Options:
+	Optional Arguments:
 	  -bg                           FLAG  Runs the pipeline processes in the background, this
 	                                      option should be included if deploying pipeline with
 	                                      real data set so processes will not be cut if user
@@ -77,7 +77,7 @@ def helpMessage() {
 	                                      [Default: slurm | Available: local, slurm, lsf]
 	  --help                        FLAG  Prints this message
 
-	Toolbox Options:
+	Toolbox Arguments:
 	  --battenberg                   STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --battenberg_min_depth         STR  Manually set the minimum read depth in the normal
@@ -85,7 +85,7 @@ def helpMessage() {
 	                                      default is for 30x coverage
 	                                      [Default: 10]
 	  --battenberg_preset_rho_psi    STR  Wish to manually set the rho/psi for this run?
-	                                      If TRUE, must set both rho and psi.
+	                                      If TRUE, must set both rho and psi
 	                                      [Default: FALSE | Available: FALSE, TRUE]
 	  --battenberg_preset_rho        INT  Manually set the value of rho (purity)
 	                                      [Default: NA]
@@ -120,14 +120,14 @@ def helpMessage() {
 	  --conpair_min_cov              INT  Manually set the minimum coverage
 	                                      [Default: 10]
 	  --fragcounter                  STR  Indicates whether or not to use this tool
-	                                      [Default: off | Available: off, on]
+	                                      [Default: on | Available: off, on]
 	  --telomerecat                  STR  Indicates whether or not to use this tool
 	                                      [Default: off | Available: off, on]
 	  --telomerehunter               STR  Indicates whether or not to use this tool
 	                                      [Default: off | Available: off, on]
 	  --caveman                      STR  Indicates whether or not to use this tool
 	                                      EXPERIMENTAL! Requires many process directories
-	                                      and only calls in WES targets currently
+	                                      and only calls in WES targets
 	                                      [Default: off | Available: off, on]
 	""".stripIndent()
 }
@@ -151,7 +151,7 @@ params.varscan = "on"
 params.mutect = "on"
 params.strelka = "on"
 params.caveman = "off"
-params.fragcounter = "off"
+params.fragcounter = "on"
 params.battenberg = "on"
 params.facets = "on"
 params.manta = "on"

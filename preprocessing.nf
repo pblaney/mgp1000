@@ -38,7 +38,7 @@ def helpMessage() {
 	                                      [Default: fastq | Available: fastq, bam]
 	  -profile                       STR  Configuration profile to use, must use preprocessing                               
 
-	Main Options:
+	Optional Arguments:
 	  -bg                           FLAG  Runs the pipeline processes in the background, this
 	                                      option should be included if deploying pipeline with
 	                                      real data set so processes will not be cut if user
@@ -49,7 +49,7 @@ def helpMessage() {
 	                                      output
 	  --lane_split                   STR  Determines if input FASTQs are lane split per R1/R2
 	                                      [Default: no | Available: yes, no]
-	  --input_dir                   PATH  Directory that holds BAMs and associated index files,
+	  --input_dir                   PATH  Directory that holds input FASTQs or BAMs files,
 	                                      this should be given as an absolute path
 	                                      [Default: input/]
 	  --output_dir                  PATH  Directory that will hold all output files this should

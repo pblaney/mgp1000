@@ -39,7 +39,7 @@ def helpMessage() {
 	                                      matched tumor sample
 	  -profile                       STR  Configuration profile to use, must use germline
 
-	Main Options:
+	Optional Arguments:
 	  -bg                           FLAG  Runs the pipeline processes in the background, this
 	                                      option should be included if deploying pipeline with
 	                                      real data set so processes will not be cut if user
@@ -61,8 +61,7 @@ def helpMessage() {
 	                                      [Default: WGS | Available: WGS, WES]
 	  --deepvariant                  STR  Indicates whether or not to run DeepVariant workflow
 	                                      [Default: on | Available: on, off]
-	  --fastngsadmix                 STR  Indicates whether or not to only run the fastNGSadmix
-	                                      workflow
+	  --fastngsadmix                 STR  Indicates whether or not to run fastNGSadmix workflow
 	                                      [Default: on | Available: on, off]
 	  --cpus                         INT  Globally set the number of cpus to be allocated
 	  --memory                       STR  Globally set the amount of memory to be allocated,
