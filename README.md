@@ -14,7 +14,7 @@ If there are any further questions, suggestions for improvement, or wishes for c
 ## Acknowledgements
 
 #### Author, maintainer
-> *Patrick Blaney, MS* - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
+> **Patrick Blaney, MS** - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
 
 #### Senior leaders
 > Gareth Morgan, MD, PhD - Director, NYU Langone Health, Multiple Myeloma Research Program
@@ -27,12 +27,14 @@ If there are any further questions, suggestions for improvement, or wishes for c
 >
 > Niels Weinhold, PhD - Adj. Assistant Professor, University Hospital Heidelberg, Myeloma Research Group
 
-#### Beta users, testers
+#### Beta testers
 > Dylan Gagler, MS - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
 >
 > Parvathi Sudha, MS - Research Associate, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
 >
 > Travis Johnson, PhD, MSPH - Assistant Professor, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
+>
+> Michael Durante, MD, PhD - Resident Physician, University of Miami, Sylvester Comprehensive Cancer Center
 >
 > Bachisio Ziccheddu, PhD - Postdoctoral Associate, University of Miami, Sylvester Comprehensive Cancer Center
 >
