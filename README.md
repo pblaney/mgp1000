@@ -5,13 +5,16 @@
 ## Pipeline Documentation
 [🏎️ 🏁 🏆 Let's get started ...](https://pblaney.github.io/mgp1000-docs/)
 
+## Citation
+Hopefully soon....
+
 ## Contact
 If there are any further questions, suggestions for improvement, or wishes for collaboration please feel free to email: patrick.blaney@nyulangone.org
 
 ## Acknowledgements
 
 #### Author, maintainer
-> Patrick Blaney, MS - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
+> *Patrick Blaney, MS* - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
 
 #### Senior leaders
 > Gareth Morgan, MD, PhD - Director, NYU Langone Health, Multiple Myeloma Research Program
@@ -41,6 +44,3 @@ If there are any further questions, suggestions for improvement, or wishes for c
 > Nicolas Robine, PhD - Director, New York Genome Center, Computational Biology Lab
 >
 > Timothy Chu, MS - Senior Bioinformatics Programmer, New York Genome Center, Computational Biology Lab
-
-## Citation
-Hopefully soon....
