@@ -264,7 +264,7 @@ process mergeLaneSplitFastqs_mergelane {
 	path lane_merged_input_fastqs into lane_merged_fastq_dir
 
 	when:
-	params.input_format == "fastq" & params.lane_split == "yes"
+	params.input_format == "fastq" & params.lane_split == "yes" & params.qc_only == "no"
 
 	script:
 	lane_merged_input_fastqs = "laneMergedFastqs"
@@ -295,7 +295,7 @@ process gatherInputFastqs_fastqgatherer {
 	path run_fastq_samplesheet into input_fastq_sample_sheet
 
 	when:
-	params.input_format == "fastq"
+	params.input_format == "fastq" & params.qc_only == "no"
 
 	script:
 	run_fastq_samplesheet = "${params.run_id}.fastq.samplesheet.txt"
@@ -356,7 +356,7 @@ process revertMappedBam_gatk {
 	tuple val(sample_id), path(bam_unmapped) into unmapped_bams
 
 	when:
-	params.input_format == "bam"
+	params.input_format == "bam" & params.qc_only == "no"
 
 	script:
 	sample_id = "${bam_mapped}".replaceFirst(/\..*bam/, "")
@@ -395,7 +395,7 @@ process bamToFastq_biobambam {
 	tuple val(sample_id), path(fastq_R1), path(fastq_R2) into converted_fastqs_forTrimming
 
 	when:
-	params.input_format == "bam"
+	params.input_format == "bam" & params.qc_only == "no"
 
 	script:
 	fastq_R1 = "${sample_id}_R1.fastq.gz"
@@ -435,7 +435,7 @@ process fastqTrimming_trimmomatic {
 	path fastq_trim_log
 
 	when:
-	params.skip_trimming == "no"
+	params.skip_trimming == "no" & params.qc_only == "no"
 
 	script:
 	fastq_R1_trimmed = "${sample_id}_R1.trim.fastq.gz"
@@ -482,6 +482,9 @@ process fastqQualityControlMetrics_fastqc {
 	tuple path(fastqc_R1_html), path(fastqc_R2_html)
 	tuple path(fastqc_R1_zip), path(fastqc_R2_zip)
 
+	when:
+	params.qc_only == "no"
+
 	script:
 	fastqc_R1_html = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.html")
 	fastqc_R1_zip = "${fastq_R1}".replaceFirst(/\.*fastq.gz/, "_fastqc.zip")
@@ -503,6 +506,9 @@ process alignment_bwa {
     output:
     tuple val(sample_id), path(bam_aligned) into aligned_bams
 
+    when:
+	params.qc_only == "no"
+
     script:
     bam_aligned = "${sample_id}.bam"
     """
@@ -523,6 +529,9 @@ process alignmentPostprocessing_samtools {
 
     output:
     tuple val(sample_id), path(bam_postprocessed) into postprocessed_bams_forRealignment, postprocessed_bams_forDownsampleBam, postprocessed_bams_forApplyBqsr
+
+    when:
+	params.qc_only == "no"
 
     script:
     bam_postprocessed = "${sample_id}.postprocessed.bam"
@@ -551,7 +560,7 @@ process localAndGlobalRealignment_abra2 {
     path abra_log
 
     when:
-    params.seq_protocol == "WES"
+    params.seq_protocol == "WES" & params.qc_only == "no"
 
     script:
     bam_postprocessed_realigned = "${sample_id}.postprocessed.realigned.bam"
@@ -583,6 +592,9 @@ process downsampleBam_gatk {
 
 	output:
 	tuple val(sample_id), path(bam_downsampled), path(bam_downsampled_index) into downsampled_bams
+
+	when:
+	params.qc_only == "no"
 
 	script:
 	bam_downsampled = "${bam_for_downsample}".replaceFirst(/\.bam/, ".ds.bam")
@@ -623,6 +635,9 @@ process baseRecalibrator_gatk {
 	output:
 	tuple val(sample_id), path(bqsr_table) into base_quality_score_recalibration_data
 
+	when:
+	params.qc_only == "no"
+
 	script:
 	bqsr_table = "${sample_id}.recaldata.table"
 	"""
@@ -657,8 +672,11 @@ process applyBqsr_gatk {
 	tuple val(sample_id), path(bam_for_bqsr), path(bqsr_table) from bams_forApplyBqsr.join(base_quality_score_recalibration_data)
 
 	output:
-	tuple val(sample_id), path(bam_preprocessed_final) into final_preprocessed_bams_forAlfred
+	path bam_preprocessed_final into final_preprocessed_bams_forAlfred
 	path bam_preprocessed_final_index
+
+	when:
+	params.qc_only == "no"
 
 	script:
 	bam_preprocessed_final = "${sample_id}.final.bam"
@@ -690,7 +708,7 @@ process alignmentQualityControl_alfred {
     tag "${sample_id}"
 
     input:
-    tuple val(sample_id), path(bam_for_qc) from bams_forAlfred
+    path bam_for_qc from bams_forAlfred
     path ref_genome_fasta from ref_genome_fasta_file
     path ref_genome_fasta_index from ref_genome_fasta_index_file
     path ref_genome_fasta_dict from ref_genome_fasta_dict_file
@@ -702,6 +720,7 @@ process alignmentQualityControl_alfred {
     path alignment_qc_stats_summary
 
     script:
+    sample_id = "${bam_for_qc}".replaceFirst(/\..*bam/, "")
     alignment_qc_stats_full_txt = "${sample_id}.alfred.qc.txt.gz"
     alignment_qc_stats_json = "${sample_id}.alfred.qc.json.gz"
     alignment_qc_stats_summary = "${sample_id}.alfred.qc.summary.txt"

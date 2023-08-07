@@ -15,21 +15,31 @@ If there are any further questions, suggestions for improvement, or wishes for c
 
 #### Senior leaders
 > Gareth Morgan, MD, PhD - Director, NYU Langone Health, Multiple Myeloma Research Program
+>
 > Francesco Maura, MD - Assistant Professor, University of Miami, Sylvester Comprehensive Cancer Center
+>
 > Kylee Maclachlan, MBBCh, PhD - Assistant Attending Physician, Memorial Sloan Kettering Cancer Center, Myeloma Service
+>
 > Brian Walker, PhD - Professor, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
+>
 > Niels Weinhold, PhD - Adj. Assistant Professor, University Hospital Heidelberg, Myeloma Research Group
 
 #### Beta users, testers
 > Dylan Gagler, MS - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
+>
 > Parvathi Sudha, MS - Research Associate, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
+>
 > Travis Johnson, PhD, MSPH - Assistant Professor, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
+>
 > Bachisio Ziccheddu, PhD - Postdoctoral Associate, University of Miami, Sylvester Comprehensive Cancer Center
+>
 > David Coffey, MD - Assistant Professor, University of Miami, Sylvester Comprehensive Cancer Center
+>
 > Alexandra Poos, PhD - Postdoctoral Associate, University Hospital Heidelberg, Myeloma Research Group
 
 #### Implementation advice
 > Nicolas Robine, PhD - Director, New York Genome Center, Computational Biology Lab
+>
 > Timothy Chu, MS - Senior Bioinformatics Programmer, New York Genome Center, Computational Biology Lab
 
 ## Citation
