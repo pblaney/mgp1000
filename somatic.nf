@@ -156,6 +156,7 @@ params.battenberg = "on"
 params.facets = "on"
 params.manta = "on"
 params.svaba = "on"
+params.svaba_mate_lookup_min = 3
 params.delly = "on"
 params.delly_strict = "off"
 params.igcaller = "on"
@@ -1044,7 +1045,9 @@ process svAndIndelCalling_svaba {
 	--dbsnp-vcf "${dbsnp_known_indel_vcf}" \
 	--threads "${task.cpus}" \
 	--verbose 1 \
-	--g-zip
+	--g-zip \
+	--hp \
+	--mate-lookup-min ${params.svaba_mate_lookup_min}
 
 	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"

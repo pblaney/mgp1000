@@ -13,36 +13,36 @@ If there are any further questions, suggestions for improvement, or wishes for c
 
 ## Acknowledgements
 
-#### Author, maintainer
-> **Patrick Blaney, MS** - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
+#### **Author, maintainer**
+> **Patrick Blaney, MS** - NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
 
 #### Senior leaders
-> Gareth Morgan, MD, PhD - Director, NYU Langone Health, Multiple Myeloma Research Program
+> Gareth Morgan, MD, PhD - NYU Langone Health, Multiple Myeloma Research Program
 >
-> Francesco Maura, MD - Assistant Professor, University of Miami, Sylvester Comprehensive Cancer Center
+> Francesco Maura, MD - University of Miami, Sylvester Comprehensive Cancer Center
 >
-> Kylee Maclachlan, MBBCh, PhD - Assistant Attending Physician, Memorial Sloan Kettering Cancer Center, Myeloma Service
+> Kylee Maclachlan, MBBCh, PhD - Memorial Sloan Kettering Cancer Center, Myeloma Service
 >
-> Brian Walker, PhD - Professor, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
+> Brian Walker, PhD - Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
 >
-> Niels Weinhold, PhD - Adj. Assistant Professor, University Hospital Heidelberg, Myeloma Research Group
+> Niels Weinhold, PhD - University Hospital Heidelberg, Myeloma Research Group
 
 #### Beta testers
-> Dylan Gagler, MS - Bioinformatics Analyst, NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
+> Dylan Gagler, MS - NYU Langone Health, Multiple Myeloma Research Program & Applied Bioinformatics Laboratories
 >
-> Parvathi Sudha, MS - Research Associate, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
+> Parvathi Sudha, MS - Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
 >
-> Travis Johnson, PhD, MSPH - Assistant Professor, Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
+> Travis Johnson, PhD, MSPH - Indiana University School of Medicine, Melvin and Bren Simon Comprehensive Cancer Center
 >
-> Michael Durante, MD, PhD - Resident Physician, University of Miami, Sylvester Comprehensive Cancer Center
+> Michael Durante, MD, PhD - University of Miami, Sylvester Comprehensive Cancer Center
 >
-> Bachisio Ziccheddu, PhD - Postdoctoral Associate, University of Miami, Sylvester Comprehensive Cancer Center
+> Bachisio Ziccheddu, PhD - University of Miami, Sylvester Comprehensive Cancer Center
 >
-> David Coffey, MD - Assistant Professor, University of Miami, Sylvester Comprehensive Cancer Center
+> David Coffey, MD - University of Miami, Sylvester Comprehensive Cancer Center
 >
-> Alexandra Poos, PhD - Postdoctoral Associate, University Hospital Heidelberg, Myeloma Research Group
+> Alexandra Poos, PhD - University Hospital Heidelberg, Myeloma Research Group
 
 #### Implementation advice
-> Nicolas Robine, PhD - Director, New York Genome Center, Computational Biology Lab
+> Nicolas Robine, PhD - New York Genome Center, Computational Biology Lab
 >
-> Timothy Chu, MS - Senior Bioinformatics Programmer, New York Genome Center, Computational Biology Lab
+> Timothy Chu, MS - New York Genome Center, Computational Biology Lab

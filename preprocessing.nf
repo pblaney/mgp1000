@@ -423,7 +423,7 @@ if( params.input_format == "bam" & params.skip_trimming == "no" ) {
 
 // Trimmomatic ~ trim low quality bases and clip adapters from reads
 process fastqTrimming_trimmomatic {
-	publishDir "${params.output_dir}/preprocessing/trimLogs", mode: 'copy', pattern: '*.{log}'
+	publishDir "${params.output_dir}/preprocessing/trimmomatic", mode: 'copy', pattern: '*.{log}'
 	tag "${sample_id}"
 
 	input:
@@ -442,7 +442,7 @@ process fastqTrimming_trimmomatic {
 	fastq_R2_trimmed = "${sample_id}_R2.trim.fastq.gz"
 	fastq_R1_unpaired = "${sample_id}_R1.unpaired.fastq.gz"
 	fastq_R2_unpaired = "${sample_id}_R2.unpaired.fastq.gz"
-	fastq_trim_log = "${sample_id}.trim.log"
+	fastq_trim_log = "${sample_id}.trimmomatic.log"
 	"""
 	trimmomatic PE \
 	-threads ${task.cpus} \
@@ -545,7 +545,7 @@ process alignmentPostprocessing_samtools {
 
 // ABRA2 ~ local and global realignment for improvement of InDel calling in exome data
 process localAndGlobalRealignment_abra2 {
-    publishDir "${params.output_dir}/preprocessing/realignment", mode: 'copy', pattern: '*.{log}'
+    publishDir "${params.output_dir}/preprocessing/abra", mode: 'copy', pattern: '*.{log}'
     tag "${sample_id}"
 
     input:
@@ -564,7 +564,7 @@ process localAndGlobalRealignment_abra2 {
 
     script:
     bam_postprocessed_realigned = "${sample_id}.postprocessed.realigned.bam"
-    abra_log = "${sample_id}.abra.realign.log"
+    abra_log = "${sample_id}.abra.log"
     """
     java -jar -Xmx16G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \$ABRA2_JAR \
     --in "${bam_postprocessed}" \
@@ -665,7 +665,7 @@ if( params.seq_protocol == "WGS" ) {
 
 // GATK ApplyBQSR ~ apply base quality score recalibration using generated table
 process applyBqsr_gatk {
-	publishDir "${params.output_dir}/preprocessing/finalPreprocessedBams", mode: 'copy', pattern: '*.{final.bam,bai}'
+	publishDir "${params.output_dir}/preprocessing/finalBams", mode: 'copy', pattern: '*.{final.bam,bai}'
 	tag "${sample_id}"
 
 	input:
