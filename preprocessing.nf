@@ -523,6 +523,8 @@ process alignment_bwa {
 // samtools ~ stream of alignment post-processing including collate, fixmate, sort, and markdup
 process alignmentPostprocessing_samtools {
     tag "${sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(sample_id), path(bam_aligned) from aligned_bams
@@ -536,10 +538,10 @@ process alignmentPostprocessing_samtools {
     script:
     bam_postprocessed = "${sample_id}.postprocessed.bam"
     """
-    samtools collate -@ ${task.cpus} -Ou ${bam_aligned} \
+    samtools collate -@ ${task.cpus} -T workdirTmp/collate -Ou ${bam_aligned} \
         | samtools fixmate -@ ${task.cpus} -mu - - \
-        | samtools sort -@ ${task.cpus} -u -m 2G - \
-        | samtools markdup -@ ${task.cpus} - "${bam_postprocessed}"
+        | samtools sort -@ ${task.cpus} -T workdirTmp/sort -u -m 2G - \
+        | samtools markdup -@ ${task.cpus} -T workdirTmp/markdup - "${bam_postprocessed}"
     """
 }
 
