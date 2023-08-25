@@ -2130,7 +2130,6 @@ process concordanceAndContaminationEstimation_conpair {
 
 // BEDOPS vcf2bed / sort-bed ~ convert germline indel VCF to sorted BED file
 process prepGermlineBedForCaveman_bedops {
-	publishDir "${params.output_dir}/somatic/caveman/intermediates", mode: 'symlink', pattern: '*.{bed,tbi}'
 	tag "${tumor_normal_sample_id}"
 
 	input:
