@@ -151,6 +151,12 @@ params.varscan = "on"
 params.mutect = "on"
 params.strelka = "on"
 params.caveman = "off"
+params.caveman_min_depth = 8
+params.caveman_min_single_end_depth = 10
+params.caveman_mut_prior = 0.000006
+params.caveman_snp_prior = 0.0001
+params.caveman_mut_prob_cutoff = 0.8
+params.caveman_snp_prob_cutoff = 0.95
 params.fragcounter = "on"
 params.battenberg = "on"
 params.facets = "on"
@@ -2220,11 +2226,11 @@ process setup_caveman {
 	echo "minPassPhaseQual=21" >> "${postprocessing_config_file}"
 	echo "minDepthQual=25" >> "${postprocessing_config_file}"
 	echo "minNormMutAllelequal=15" >> "${postprocessing_config_file}"
-	echo "minRdPosDepth=8" >> "${postprocessing_config_file}"
+	echo "minRdPosDepth=${params.caveman_min_depth}" >> "${postprocessing_config_file}"
 	echo "vcfUnmatchedMinMutAlleleCvg=3" >> "${postprocessing_config_file}"
 	echo "vcfUnmatchedMinSamplePct=1.000" >> "${postprocessing_config_file}"
 	echo "matchedNormalMaxMutProportion=0.2" >> "${postprocessing_config_file}"
-	echo "minSingleEndCoverage=10" >> "${postprocessing_config_file}"
+	echo "minSingleEndCoverage=${params.caveman_min_single_end_depth}" >> "${postprocessing_config_file}"
 	echo "" >> "${postprocessing_config_file}"
 
 	echo "[${config_species}_${config_study_type} FLAGLIST]" >> "${postprocessing_config_file}"
@@ -2275,6 +2281,10 @@ process setup_caveman {
 	-seqType genome \
 	-threads ${task.cpus} \
 	-normal-contamination \${normal_contamination} \
+	-prior-mut-probability ${params.caveman_mut_prior} \
+	-prior-snp-probability ${params.caveman_snp_prior} \
+	-mut_probability_cutoff ${params.caveman_mut_prob_cutoff} \
+	-snp_probability_cutoff ${params.caveman_snp_prob_cutoff} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 1000000 \
 	-process setup \
@@ -2346,6 +2356,10 @@ process split_caveman {
 	-seqType genome \
 	-threads ${task.cpus} \
 	-normal-contamination \${normal_contamination} \
+	-prior-mut-probability ${params.caveman_mut_prior} \
+	-prior-snp-probability ${params.caveman_snp_prior} \
+	-mut_probability_cutoff ${params.caveman_mut_prob_cutoff} \
+	-snp_probability_cutoff ${params.caveman_snp_prob_cutoff} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 1000000 \
 	-process split \
@@ -2416,6 +2430,10 @@ process splitConcat_caveman {
 	-seqType genome \
 	-threads ${task.cpus} \
 	-normal-contamination \${normal_contamination} \
+	-prior-mut-probability ${params.caveman_mut_prior} \
+	-prior-snp-probability ${params.caveman_snp_prior} \
+	-mut_probability_cutoff ${params.caveman_mut_prob_cutoff} \
+	-snp_probability_cutoff ${params.caveman_snp_prob_cutoff} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 1000000 \
 	-process split_concat \
@@ -2494,6 +2512,10 @@ process mstep_caveman {
 	-seqType genome \
 	-threads ${task.cpus} \
 	-normal-contamination \${normal_contamination} \
+	-prior-mut-probability ${params.caveman_mut_prior} \
+	-prior-snp-probability ${params.caveman_snp_prior} \
+	-mut_probability_cutoff ${params.caveman_mut_prob_cutoff} \
+	-snp_probability_cutoff ${params.caveman_snp_prob_cutoff} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 1000000 \
 	-process mstep \
@@ -2570,6 +2592,10 @@ process merge_caveman {
 	-seqType genome \
 	-threads ${task.cpus} \
 	-normal-contamination \${normal_contamination} \
+	-prior-mut-probability ${params.caveman_mut_prior} \
+	-prior-snp-probability ${params.caveman_snp_prior} \
+	-mut_probability_cutoff ${params.caveman_mut_prob_cutoff} \
+	-snp_probability_cutoff ${params.caveman_snp_prob_cutoff} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 1000000 \
 	-process merge \
@@ -2652,6 +2678,10 @@ process snvCalling_caveman {
 	-seqType genome \
 	-threads ${task.cpus} \
 	-normal-contamination \${normal_contamination} \
+	-prior-mut-probability ${params.caveman_mut_prior} \
+	-prior-snp-probability ${params.caveman_snp_prior} \
+	-mut_probability_cutoff ${params.caveman_mut_prob_cutoff} \
+	-snp_probability_cutoff ${params.caveman_snp_prob_cutoff} \
 	-flagConfig "${postprocessing_config_file}" \
 	-read-count 1000000 \
 	-process estep \
