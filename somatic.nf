@@ -1052,7 +1052,6 @@ process svAndIndelCalling_svaba {
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip \
-	--hp \
 	--mate-lookup-min ${params.svaba_mate_lookup_min}
 
 	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
