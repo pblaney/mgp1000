@@ -2838,13 +2838,28 @@ process mergeResults_caveman {
 // ~~~~~~ UNION CONSENSUS SNV/INDEL ~~~~~~~~ \\
 // START
 
+// Set the input for the consensus SNV/InDel if CaVEMan was used
+if( params.caveman == "on" & params.varscan == "on" & params.mutect == "on" & params.strelka == "on" ) {
+	consensus_input_vcfs = final_varscan_snv_vcf_forConsensus
+						     .join(final_mutect_snv_vcf_forConsensus)
+						     .join(final_strelka_snv_vcf_forConsensus)
+						     .join(final_caveman_snv_vcf_forConsensus)
+
+} else if( params.caveman == "off" & params.varscan == "on" & params.mutect == "on" & params.strelka == "on" ) {
+	consensus_input_vcfs = final_varscan_snv_vcf_forConsensus
+						     .join(final_mutect_snv_vcf_forConsensus)
+						     .join(final_strelka_snv_vcf_forConsensus)
+						     .empty()
+
+}
+
 // devgru ~ merge VCF files by calls, generating a union followed by a consensus pass
 process unionAndConsensusSnvCalls_devgru {
     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
     tag "${tumor_normal_sample_id}"
 
     input:
-    tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_mutect_snv_vcf), path(final_strelka_snv_vcf) from final_varscan_snv_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_strelka_snv_vcf_forConsensus)
+    tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_mutect_snv_vcf), path(final_strelka_snv_vcf), path(final_caveman_snv_vcf_forConsensus) from consensus_input_vcfs
     path gene_gtf from ensembl_gtf_file
 
     output:

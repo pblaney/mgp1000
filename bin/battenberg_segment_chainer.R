@@ -187,9 +187,12 @@ seg_logr <- data.table::fread(input = segmented_logr_file,
                               header = F,
                               col.names = c("seqnames", "start", "segmentedR"))
 
+# Edge case: Need to account for negative values of non-rounded minor allele, these are rounded to 0
+calc_total_cn_nonrounded <- cnv_csv$nAfull + pmax(cnv_csv$nBfull, 0)
+
 cnv_profile_per_segment <- data.table::data.table(seqnames = paste0("chr",seg_logr$seqnames),
                                                   start = seg_logr$start,
-                                                  total_cn_nonrounded = cnv_csv$nAfull + cnv_csv$nBfull,
+                                                  total_cn_nonrounded = calc_total_cn_nonrounded, 
                                                   major_allele_nonrounded = cnv_csv$nAfull,
                                                   minor_allele_nonrounded = cnv_csv$nBfull,
                                                   segmented_baf = cnv_csv$segmentedBAF,
