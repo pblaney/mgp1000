@@ -390,7 +390,7 @@ for (i in 1:length(unique(consensus_jnc_dt$merged.ix))) {
   name_col_idx <- which(stringr::str_detect(string = colnames(bedpe_pair), pattern = "name\\."))
   
   # Collect type of SV junction and evaluation of seen.by columns to generate a string of caller consensus
-  record_type <- na.omit(bedpe_pair %>% dplyr::select(dplyr::all_of(name_col_idx)) %>% unique() %>% as.vector())[1]
+  record_type <- stats::na.omit(bedpe_pair %>% dplyr::select(dplyr::all_of(name_col_idx)) %>% unique() %>% t() %>% as.vector())
   
   # Comprehensive coordinate-based merge to create consensus junction set
   if(processed_input == "manta,svaba,delly,igcaller") {
