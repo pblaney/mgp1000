@@ -130,7 +130,7 @@ igcaller_tsv <- igcaller_tsv %>%
 processed_input <- ""
 temp_files <- c()
 message("Processing Manta input ...")
-message("\tFound ", nrow(VariantAnnotation::info(manta_vcf)), "SVs in VCF ...")
+message("  Found ", nrow(VariantAnnotation::info(manta_vcf)), " SVs in VCF ...")
 if(nrow(VariantAnnotation::info(manta_vcf)) > 0) {
   
   # VCF ---> breakpointRanges
@@ -164,7 +164,7 @@ if(nrow(VariantAnnotation::info(manta_vcf)) > 0) {
 }
 
 message("Processing SvABA input ...")
-message("\tFound ", nrow(VariantAnnotation::info(svaba_vcf)), "SVs in VCF ...")
+message("  Found ", nrow(VariantAnnotation::info(svaba_vcf)), " SVs in VCF ...")
 if(nrow(VariantAnnotation::info(svaba_vcf)) > 0) {
   
   # Adjust SvBAB VCF to include END info field
@@ -211,7 +211,7 @@ if(nrow(VariantAnnotation::info(svaba_vcf)) > 0) {
 }
 
 message("Processing DELLY2 input ...")
-message("\tFound ", nrow(VariantAnnotation::info(delly_vcf)), "SVs in VCF ...")
+message("  Found ", nrow(VariantAnnotation::info(delly_vcf)), " SVs in VCF ...")
 if(nrow(VariantAnnotation::info(delly_vcf)) > 0) {
   
   # VCF ---> breakpointRanges
@@ -246,7 +246,7 @@ if(nrow(VariantAnnotation::info(delly_vcf)) > 0) {
 }
 
 message("Processing IgCaller input ...")
-message("\tFound ", nrow(igcaller_tsv), "SVs in VCF ...")
+message("  Found ", nrow(igcaller_tsv), " SVs in TSV ...")
 if(nrow(igcaller_tsv) > 0) {
   
   # TSV ---> BEDPE
@@ -390,7 +390,7 @@ for (i in 1:length(unique(consensus_jnc_dt$merged.ix))) {
   name_col_idx <- which(stringr::str_detect(string = colnames(bedpe_pair), pattern = "name\\."))
   
   # Collect type of SV junction and evaluation of seen.by columns to generate a string of caller consensus
-  record_type <- stats::na.omit(bedpe_pair %>% dplyr::select(dplyr::all_of(name_col_idx)) %>% unique() %>% t() %>% as.vector())
+  record_type <- stats::na.omit(bedpe_pair %>% dplyr::select(dplyr::all_of(name_col_idx)) %>% unique() %>% t() %>% as.vector())[1]
   
   # Comprehensive coordinate-based merge to create consensus junction set
   if(processed_input == "manta,svaba,delly,igcaller") {
