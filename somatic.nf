@@ -330,8 +330,8 @@ Channel
 	.set{ wgs_bed_blacklist_1based }
 
 Channel
-	.value( file('references/hg38/exome_blacklist.hg38.bed') )
-	.set{ wes_bed_blacklist_0based }	
+	.value( file('references/hg38/caveman_blacklist.hg38.bed') )
+	.set{ caveman_blacklist_0based }	
 
 Channel
 	.value( file('references/hg38/unmatchedNormal.bed.gz') )
@@ -2176,7 +2176,7 @@ process setup_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2300,7 +2300,7 @@ process split_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2375,7 +2375,7 @@ process splitConcat_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2456,7 +2456,7 @@ process mstep_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2534,7 +2534,7 @@ process merge_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2618,7 +2618,7 @@ process snvCalling_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2706,7 +2706,7 @@ process flag_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
@@ -2782,7 +2782,7 @@ process mergeResults_caveman {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path blacklist from wes_bed_blacklist_0based
+	path blacklist from caveman_blacklist_0based
 	path unmatched_normal from unmatched_normal_bed
 	path unmatched_normal_index from unmatched_normal_bed_index
 	path centromeric_repeats from centromeric_repeats_bed
