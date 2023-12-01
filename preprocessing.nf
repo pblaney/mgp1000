@@ -568,6 +568,8 @@ process localAndGlobalRealignment_abra2 {
     bam_postprocessed_realigned = "${sample_id}.postprocessed.realigned.bam"
     abra_log = "${sample_id}.abra.log"
     """
+    samtools index "${bam_postprocessed}"
+    
     java -jar -Xmx16G -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10 \$ABRA2_JAR \
     --in "${bam_postprocessed}" \
     --out "${bam_postprocessed_realigned}" \
