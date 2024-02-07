@@ -265,6 +265,7 @@ if(nrow(igcaller_tsv) > 0) {
 
   igcaller_bedpe$type <- dplyr::case_when(igcaller_bedpe$type == "Deletion" ~ "DEL",
                                           igcaller_bedpe$type == "Duplication" ~ "DUP",
+                                          igcaller_bedpe$type == "Gain" ~ "DUP",
                                           igcaller_bedpe$type == "Insertion" ~ "INS",
                                           igcaller_bedpe$type == "Inversion" ~ "INV",
                                           igcaller_bedpe$type == "Translocation" ~ "TRA")

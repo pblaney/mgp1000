@@ -205,9 +205,22 @@ Channel
     .value( file('references/hg38/Homo_sapiens_assembly38.dict') )
     .set{ ref_genome_fasta_dict_file }
 
-Channel
-    .value( file('references/hg38/wgs_calling_regions.hg38.bed') )
-    .set{ gatk_wgs_bed }
+if( params.seq_protocol == "WGS" ) {
+
+    Channel
+        .value( file('references/hg38/wgs_calling_regions.hg38.bed') )
+        .set{ target_regions_bed }
+
+} else if( params.seq_protocol == "WES" ) {
+
+    Channel
+        .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed') )
+        .set{ target_regions_bed }
+
+} else {
+    exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole-genome or 'WES' for whole-exome."
+}
+
 
 Channel
     .value( file('references/hg38/wgs_calling_regions_blacklist.0based.hg38.bed') )
@@ -706,15 +719,18 @@ process cnvCalling_facets {
     facets_cnv_profile = "${tumor_normal_sample_id}.facets.cnv.txt"
     facets_cnv_pdf = "${tumor_normal_sample_id}.facets.cnv.pdf"
     facets_spider_qc_pdf = "${tumor_normal_sample_id}.facets.spider.pdf"
+    facets_call_parameters = params.seq_protocol == "WES" ? "250 25 75 150 35" : "1000 35 150 300 ${params.facets_min_depth}"
     """
     Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
     "${facets_snp_pileup}" \
     hg38 \
-    1000 \
-    35 \
-    150 \
-    300 \
-    ${params.facets_min_depth}
+    "${facets_call_parameters}"
+
+    #1000 \
+    #35 \
+    #150 \
+    #300 \
+    #${params.facets_min_depth}
 
     mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_stats.txt" "${facets_purity_ploidy}"
@@ -766,7 +782,7 @@ process svAndIndelCalling_manta {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path wgs_bed from gatk_wgs_bed
+	path target_bed from target_regions_bed
 
 	output:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(candidate_indel_vcf), path(candidate_indel_vcf_index) into bams_and_candidate_indel_vcf_forStrelka
@@ -783,7 +799,7 @@ process svAndIndelCalling_manta {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	zipped_wgs_bed_forManta = "${wgs_bed}.gz"
+	zipped_bed= "${target_bed}.gz"
 	unfiltered_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unfiltered.vcf.gz"
 	manta_somatic_config = "${tumor_normal_sample_id}.manta.somatic.config.ini"
 	unfiltered_sv_vcf_index = "${unfiltered_sv_vcf}.tbi"
@@ -793,9 +809,10 @@ process svAndIndelCalling_manta {
 	candidate_indel_vcf_index = "${candidate_indel_vcf}.tbi"
 	manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unprocessed.vcf.gz"
 	manta_somatic_sv_vcf_index = "${manta_somatic_sv_vcf}.tbi"
+	manta_call_parameters = params.seq_protocol == "WES" ? "--exome" : ""
 	"""
-	bgzip < "${wgs_bed}" > "${zipped_wgs_bed_forManta}"
-	tabix "${zipped_wgs_bed_forManta}"
+	bgzip < "${target_bed}" > "${zipped_bed}"
+	tabix "${zipped_bed}"
 
 	touch "${manta_somatic_config}"
 	cat \${MANTA_DIR}/bin/configManta.py.ini \
@@ -807,14 +824,15 @@ process svAndIndelCalling_manta {
 	--tumorBam "${tumor_bam}" \
 	--normalBam "${normal_bam}" \
 	--referenceFasta "${ref_genome_fasta}" \
-	--callRegions "${zipped_wgs_bed_forManta}" \
+	--callRegions "${zipped_bed}" \
 	--config "${manta_somatic_config}" \
-	--runDir manta
+	--runDir manta \
+	"${manta_call_parameters}"
 
 	python manta/runWorkflow.py \
 	--mode local \
-	--jobs ${task.cpus} \
-	--memGb ${task.memory.toGiga()}
+	--jobs "${task.cpus}" \
+	--memGb "${task.memory.toGiga()}"
 
 	mv manta/results/variants/candidateSV.vcf.gz "${unfiltered_sv_vcf}"
 	mv manta/results/variants/candidateSV.vcf.gz.tbi "${unfiltered_sv_vcf_index}"
@@ -914,7 +932,7 @@ process snvAndIndelCalling_strelka {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path wgs_bed from gatk_wgs_bed
+	path target_bed from target_regions_bed
 
 	output:
 	tuple val(tumor_normal_sample_id), path(unfiltered_strelka_snv_vcf), path(unfiltered_strelka_snv_vcf_index), path(unfiltered_strelka_indel_vcf), path(unfiltered_strelka_indel_vcf_index) into unfiltered_snv_and_indel_vcfs_forStrelkaBcftools
@@ -923,27 +941,29 @@ process snvAndIndelCalling_strelka {
 	params.strelka == "on" && params.manta == "on"
 
 	script:
-	zipped_wgs_bed_forStrelka = "${wgs_bed}.gz"
+	zipped_bed= "${target_bed}.gz"
 	unfiltered_strelka_snv_vcf = "${tumor_normal_sample_id}.strelka.somatic.snv.unfiltered.vcf.gz"
 	unfiltered_strelka_snv_vcf_index = "${unfiltered_strelka_snv_vcf}.tbi"
 	unfiltered_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.unfiltered.vcf.gz"
 	unfiltered_strelka_indel_vcf_index = "${unfiltered_strelka_indel_vcf}.tbi"
+	strelka_call_parameters = params.seq_protocol == "WES" ? "--exome" : ""
 	"""
-	bgzip < "${wgs_bed}" > "${zipped_wgs_bed_forStrelka}"
-	tabix "${zipped_wgs_bed_forStrelka}"
+	bgzip < "${target_bed}" > "${zipped_bed}"
+	tabix "${zipped_bed}"
 
 	python \${STRELKA_DIR}/bin/configureStrelkaSomaticWorkflow.py \
 	--normalBam "${normal_bam}" \
 	--tumorBam "${tumor_bam}" \
 	--referenceFasta "${ref_genome_fasta}" \
 	--indelCandidates "${candidate_indel_vcf}" \
-	--callRegions "${zipped_wgs_bed_forStrelka}" \
-	--runDir strelka
+	--callRegions "${zipped_bed}" \
+	--runDir strelka \
+	"${strelka_call_parameters}"
 
 	python strelka/runWorkflow.py \
 	--mode local \
-	--jobs ${task.cpus} \
-	--memGb ${task.memory.toGiga()}
+	--jobs "${task.cpus}" \
+	--memGb "${task.memory.toGiga()}"
 
 	mv strelka/results/variants/somatic.snvs.vcf.gz "${unfiltered_strelka_snv_vcf}"
 	mv strelka/results/variants/somatic.snvs.vcf.gz.tbi "${unfiltered_strelka_snv_vcf_index}"
@@ -1013,6 +1033,7 @@ process svAndIndelCalling_svaba {
 	path wgs_blacklist_1based_bed from wgs_bed_blacklist_1based
 	path dbsnp_known_indel_vcf from dbsnp_known_indel_ref_vcf
 	path dbsnp_known_indel_vcf_index from dbsnp_known_indel_ref_vcf_index
+	path target_bed from target_regions_bed
 
 	output:
 	tuple val(tumor_normal_sample_id), path(filtered_somatic_indel_vcf), path(filtered_somatic_indel_vcf_index) into filtered_indel_vcf_forSvabaBcftools
@@ -1041,6 +1062,7 @@ process svAndIndelCalling_svaba {
 	svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unprocessed.vcf.gz"
 	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
 	sample_renaming_file = "sample_renaming_file.txt"
+	svaba_call_parameters = params.seq_protocol == "WES" ? "--region ${target_bed}" : ""
 	"""
 	svaba run \
 	-t "${tumor_bam}" \
@@ -1052,7 +1074,8 @@ process svAndIndelCalling_svaba {
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip \
-	--mate-lookup-min ${params.svaba_mate_lookup_min}
+	--mate-lookup-min ${params.svaba_mate_lookup_min} \
+	"${svaba_call_parameters}"
 
 	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
@@ -1195,9 +1218,9 @@ process svAndIndelCalling_delly {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 30 --qual-tra 40 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
 	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
 	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
+	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 30 --qual-tra 40 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
 	"""
 	delly call \
 	${delly_call_parameters} \
@@ -1313,6 +1336,7 @@ process igRearrangementsAndTranslocations_igcaller {
 	igcaller_igh_tsv = "${tumor_normal_sample_id}.igcaller.igh.tsv"
 	igcaller_filtered_calls_tsv = "${tumor_normal_sample_id}.igcaller.filtered.tsv"
 	igcaller_oncogenic_rearrangements_tsv = "${tumor_normal_sample_id}.igcaller.oncogenic.rearrangements.tsv"
+	igcaller_call_parameters = params.seq_protocol == "WES" ? "wes" : "wgs"
     """
     python3 \${IGCALLER_DIR}/IgCaller.py \
     --inputsFolder \${IGCALLER_DIR}/IgCaller_reference_files/ \
@@ -1322,7 +1346,8 @@ process igRearrangementsAndTranslocations_igcaller {
     --bamT "${tumor_bam}" \
     --refGenome "${ref_genome_fasta}" \
     --outputPath . \
-    -@ ${task.cpus}
+    -@ "${task.cpus}" \
+    --sequencing "${igcaller_call_parameters}"
 
     mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_CSR.tsv" "${igcaller_csr_tsv}"
     mv "${tumor_bam.baseName}_IgCaller/${tumor_bam.baseName}_output_IGK.tsv" "${igcaller_igk_tsv}"
@@ -1349,7 +1374,7 @@ process snvAndIndelCalling_varscan {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path wgs_bed from gatk_wgs_bed
+	path target_bed from target_regions_bed
 	each chromosome from chromosome_list_forVarscanSamtoolsMpileup
 
 	output:
@@ -1370,7 +1395,7 @@ process snvAndIndelCalling_varscan {
 	samtools mpileup \
 	--no-BAQ \
 	--min-MQ 1 \
-	--positions "${wgs_bed}" \
+	--positions "${target_bed}" \
 	--region "${chromosome}" \
 	--fasta-ref "${ref_genome_fasta}" \
 	"${normal_bam}" "${tumor_bam}" \
@@ -1705,7 +1730,7 @@ process snvAndIndelCalling_gatk {
 	path ref_genome_fasta from ref_genome_fasta_file
 	path ref_genome_fasta_index from ref_genome_fasta_index_file
 	path ref_genome_fasta_dict from ref_genome_fasta_dict_file
-	path wgs_bed from gatk_wgs_bed
+	path target_bed from target_regions_bed
 	path pon_1000G from panel_of_normals_1000G
 	path pon_1000G_index from panel_of_normals_1000G_index
 	each chromosome from chromosome_list_forMutectCalling
@@ -1721,12 +1746,12 @@ process snvAndIndelCalling_gatk {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	per_chromosome_bed_file = "${wgs_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
+	per_chromosome_bed_file = "${target_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
 	raw_per_chromosome_vcf = "${tumor_normal_sample_id}.${chromosome}.vcf.gz"
 	raw_per_chromosome_vcf_index = "${raw_per_chromosome_vcf}.tbi"
 	raw_per_chromosome_mutect_stats_file = "${tumor_normal_sample_id}.${chromosome}.vcf.gz.stats"
 	"""
-	grep -w '${chromosome}' "${wgs_bed}" > "${per_chromosome_bed_file}"
+	grep -w '${chromosome}' "${target_bed}" > "${per_chromosome_bed_file}"
 
 	gatk Mutect2 \
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
@@ -1804,7 +1829,7 @@ process pileupSummariesForMutect2Contamination_gatk {
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index) from tumor_normal_pair_forMutectPileup
-	path wgs_bed from gatk_wgs_bed
+	path target_bed from target_regions_bed
 	path exac_common_sites_vcf from exac_common_sites_ref_vcf
 	path exac_common_sites_vcf_index from exac_common_sites_ref_vcf_index
 	each chromosome from chromosome_list_forMutectPileup
@@ -1820,11 +1845,11 @@ process pileupSummariesForMutect2Contamination_gatk {
 	tumor_id = "${tumor_bam.baseName}".replaceFirst(/\..*$/, "")
 	normal_id = "${normal_bam.baseName}".replaceFirst(/\..*$/, "")
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
-	per_chromosome_bed_file = "${wgs_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
+	per_chromosome_bed_file = "${target_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
 	per_chromosome_tumor_pileup = "${tumor_id}.${chromosome}.pileup"
 	per_chromosome_normal_pileup = "${normal_id}.${chromosome}.pileup"
 	"""
-	grep -w '${chromosome}' "${wgs_bed}" > "${per_chromosome_bed_file}"
+	grep -w '${chromosome}' "${target_bed}" > "${per_chromosome_bed_file}"
 
 	gatk GetPileupSummaries \
 	--java-options "-Xmx${task.memory.toGiga()}G -Djava.io.tmpdir=. -XX:GCTimeLimit=50 -XX:GCHeapFreeLimit=10" \
@@ -2130,7 +2155,7 @@ process concordanceAndContaminationEstimation_conpair {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ \\
 
 
-// ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~ \\
+// ~~~~~~~~~~~~~~~~ CaVEMan ~~~~~~~~~~~~~~~~ \\
 // START
 
 // BEDOPS vcf2bed / sort-bed ~ convert germline indel VCF to sorted BED file
