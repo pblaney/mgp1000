@@ -1062,7 +1062,7 @@ process svAndIndelCalling_svaba {
 	svaba_somatic_sv_vcf = "${tumor_normal_sample_id}.svaba.somatic.sv.unprocessed.vcf.gz"
 	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
 	sample_renaming_file = "sample_renaming_file.txt"
-	svaba_call_parameters = params.seq_protocol == "WES" ? "--region ${target_bed}" : ""
+	svaba_call_parameters = params.seq_protocol == "WES" ? "-k ${target_bed}" : ""
 	"""
 	svaba run \
 	-t "${tumor_bam}" \
