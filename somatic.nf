@@ -719,24 +719,40 @@ process cnvCalling_facets {
     facets_cnv_profile = "${tumor_normal_sample_id}.facets.cnv.txt"
     facets_cnv_pdf = "${tumor_normal_sample_id}.facets.cnv.pdf"
     facets_spider_qc_pdf = "${tumor_normal_sample_id}.facets.spider.pdf"
-    facets_call_parameters = params.seq_protocol == "WES" ? "250 25 75 150 35" : "1000 35 150 300 ${params.facets_min_depth}"
+    
+    if ( params.seq_protocol == "WGS" )
     """
     Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
     "${facets_snp_pileup}" \
     hg38 \
-    "${facets_call_parameters}"
-
-    #1000 \
-    #35 \
-    #150 \
-    #300 \
-    #${params.facets_min_depth}
+    1000 \
+    35 \
+    150 \
+    300 \
+    ${params.facets_min_depth}
 
     mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_stats.txt" "${facets_purity_ploidy}"
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.txt" "${facets_cnv_profile}"
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.pdf" "${facets_cnv_pdf}"
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV_spider.pdf" "${facets_spider_qc_pdf}"
+    """
+    else if ( params.seq_protocol == "WES" )
+    """
+    Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
+    "${facets_snp_pileup}" \
+    hg38 \
+    250 \
+    25 \
+    75 \
+    150 \
+    ${params.facets_min_depth}
+
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.R_sessionInfo.txt" "${facets_run_log}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_stats.txt" "${facets_purity_ploidy}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.txt" "${facets_cnv_profile}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.pdf" "${facets_cnv_pdf}"
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV_spider.pdf" "${facets_spider_qc_pdf}"v
     """
 }
 
