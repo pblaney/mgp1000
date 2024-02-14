@@ -445,6 +445,7 @@ process fastqTrimming_trimmomatic {
 	fastq_trim_log = "${sample_id}.trimmomatic.log"
 	"""
 	trimmomatic PE \
+	-XX:ParallelGCThreads=2 -Djava.io.tmpdir=. \
 	-threads ${task.cpus} \
 	"${input_R1_fastqs}" \
 	"${input_R2_fastqs}" \
