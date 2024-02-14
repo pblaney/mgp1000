@@ -752,7 +752,7 @@ process cnvCalling_facets {
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_stats.txt" "${facets_purity_ploidy}"
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.txt" "${facets_cnv_profile}"
     mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV.pdf" "${facets_cnv_pdf}"
-    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV_spider.pdf" "${facets_spider_qc_pdf}"v
+    mv "${tumor_normal_sample_id}.facets.snp_pileup.def_cval"*"_CNV_spider.pdf" "${facets_spider_qc_pdf}"
     """
 }
 
