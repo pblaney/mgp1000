@@ -826,6 +826,52 @@ process svAndIndelCalling_manta {
 	manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unprocessed.vcf.gz"
 	manta_somatic_sv_vcf_index = "${manta_somatic_sv_vcf}.tbi"
 	manta_call_parameters = params.seq_protocol == "WES" ? "--exome" : ""
+	
+	if ( params.seq_protocol == "WGS" )
+	"""
+	bgzip < "${target_bed}" > "${zipped_bed}"
+	tabix "${zipped_bed}"
+
+	touch "${manta_somatic_config}"
+	cat \${MANTA_DIR}/bin/configManta.py.ini \
+		| sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
+		| sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
+		| sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
+
+	python \${MANTA_DIR}/bin/configManta.py \
+	--tumorBam "${tumor_bam}" \
+	--normalBam "${normal_bam}" \
+	--referenceFasta "${ref_genome_fasta}" \
+	--callRegions "${zipped_bed}" \
+	--config "${manta_somatic_config}" \
+	--runDir manta
+
+	python manta/runWorkflow.py \
+	--mode local \
+	--jobs "${task.cpus}" \
+	--memGb "${task.memory.toGiga()}"
+
+	mv manta/results/variants/candidateSV.vcf.gz "${unfiltered_sv_vcf}"
+	mv manta/results/variants/candidateSV.vcf.gz.tbi "${unfiltered_sv_vcf_index}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz "${candidate_indel_vcf}"
+	mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi "${candidate_indel_vcf_index}"
+
+	zcat manta/results/variants/diploidSV.vcf.gz \
+		| grep -E "^#|PASS" \
+		| bgzip > "${germline_sv_vcf}"
+	tabix "${germline_sv_vcf}"
+
+	zcat manta/results/variants/somaticSV.vcf.gz \
+		| grep -E "^#|PASS" > somaticSV.passonly.vcf
+
+	\${MANTA_DIR}/libexec/convertInversion.py \
+	\${MANTA_DIR}/libexec/samtools \
+	"${ref_genome_fasta}" \
+	somaticSV.passonly.vcf \
+		| bgzip > "${manta_somatic_sv_vcf}"
+	tabix "${manta_somatic_sv_vcf}"
+	"""
+	else if ( params.seq_protocol == "WES" )
 	"""
 	bgzip < "${target_bed}" > "${zipped_bed}"
 	tabix "${zipped_bed}"
@@ -843,7 +889,7 @@ process svAndIndelCalling_manta {
 	--callRegions "${zipped_bed}" \
 	--config "${manta_somatic_config}" \
 	--runDir manta \
-	"${manta_call_parameters}"
+	--exome
 
 	python manta/runWorkflow.py \
 	--mode local \
@@ -962,7 +1008,31 @@ process snvAndIndelCalling_strelka {
 	unfiltered_strelka_snv_vcf_index = "${unfiltered_strelka_snv_vcf}.tbi"
 	unfiltered_strelka_indel_vcf = "${tumor_normal_sample_id}.strelka.somatic.indel.unfiltered.vcf.gz"
 	unfiltered_strelka_indel_vcf_index = "${unfiltered_strelka_indel_vcf}.tbi"
-	strelka_call_parameters = params.seq_protocol == "WES" ? "--exome" : ""
+	
+	if ( params.seq_protocol == "WGS" )
+	"""
+	bgzip < "${target_bed}" > "${zipped_bed}"
+	tabix "${zipped_bed}"
+
+	python \${STRELKA_DIR}/bin/configureStrelkaSomaticWorkflow.py \
+	--normalBam "${normal_bam}" \
+	--tumorBam "${tumor_bam}" \
+	--referenceFasta "${ref_genome_fasta}" \
+	--indelCandidates "${candidate_indel_vcf}" \
+	--callRegions "${zipped_bed}" \
+	--runDir strelka
+
+	python strelka/runWorkflow.py \
+	--mode local \
+	--jobs "${task.cpus}" \
+	--memGb "${task.memory.toGiga()}"
+
+	mv strelka/results/variants/somatic.snvs.vcf.gz "${unfiltered_strelka_snv_vcf}"
+	mv strelka/results/variants/somatic.snvs.vcf.gz.tbi "${unfiltered_strelka_snv_vcf_index}"
+	mv strelka/results/variants/somatic.indels.vcf.gz "${unfiltered_strelka_indel_vcf}"
+	mv strelka/results/variants/somatic.indels.vcf.gz.tbi "${unfiltered_strelka_indel_vcf_index}"
+	"""
+	else if ( params.seq_protocol == "WES" )
 	"""
 	bgzip < "${target_bed}" > "${zipped_bed}"
 	tabix "${zipped_bed}"
@@ -974,7 +1044,7 @@ process snvAndIndelCalling_strelka {
 	--indelCandidates "${candidate_indel_vcf}" \
 	--callRegions "${zipped_bed}" \
 	--runDir strelka \
-	"${strelka_call_parameters}"
+	--exome
 
 	python strelka/runWorkflow.py \
 	--mode local \
