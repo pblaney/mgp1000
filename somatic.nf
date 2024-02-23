@@ -699,6 +699,8 @@ process snpPileup_facets {
 process cnvCalling_facets {
     publishDir "${params.output_dir}/somatic/facets", mode: 'copy'
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(facets_snp_pileup) from snp_pileup_forFacets
@@ -722,6 +724,8 @@ process cnvCalling_facets {
     
     if ( params.seq_protocol == "WGS" )
     """
+    export TMPDIR="workdirTmp/"
+
     Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
     "${facets_snp_pileup}" \
     hg38 \
@@ -739,6 +743,8 @@ process cnvCalling_facets {
     """
     else if ( params.seq_protocol == "WES" )
     """
+    export TMPDIR="workdirTmp/"
+
     Rscript --vanilla ${workflow.projectDir}/bin/run_iarc_facets.R \
     "${facets_snp_pileup}" \
     hg38 \
@@ -2953,6 +2959,8 @@ process mergeResults_caveman {
 process unionAndConsensusSnvCalls_devgru {
     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_mutect_snv_vcf), path(final_strelka_snv_vcf) from final_varscan_snv_vcf_forConsensus.join(final_mutect_snv_vcf_forConsensus).join(final_strelka_snv_vcf_forConsensus)
@@ -2967,6 +2975,7 @@ process unionAndConsensusSnvCalls_devgru {
     script:
     hq_union_consensus_snv_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt.gz"
     """
+    export TMPDIR="workdirTmp/"
     mkdir -p results/
 
     Rscript --vanilla ${workflow.projectDir}/bin/snvindel_union_consensus_polisher.R \
@@ -2984,6 +2993,8 @@ process unionAndConsensusSnvCalls_devgru {
 process unionAndConsensusLowCovSnvCalls_devgru {
     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(final_varscan_snv_vcf), path(final_mutect_snv_vcf), path(final_strelka_snv_vcf), path(final_caveman_snv_vcf) from final_varscan_snv_vcf_forLowCovConsensus.join(final_mutect_snv_vcf_forLowCovConsensus).join(final_strelka_snv_vcf_forLowCovConsensus).join(final_caveman_snv_vcf_forLowCovConsensus)
@@ -2998,6 +3009,7 @@ process unionAndConsensusLowCovSnvCalls_devgru {
     script:
     hq_union_consensus_low_cov_snv_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.snv.txt.gz"
     """
+    export TMPDIR="workdirTmp/"
     mkdir -p results/
 
     Rscript --vanilla ${workflow.projectDir}/bin/snvindel_union_consensus_polisher.R \
@@ -3015,6 +3027,8 @@ process unionAndConsensusLowCovSnvCalls_devgru {
 process unionAndConsensusIndelCalls_devgru {
     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy'
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(final_varscan_indel_vcf), path(final_mutect_indel_vcf), path(final_strelka_indel_vcf), path(final_svaba_indel_vcf) from final_varscan_indel_vcf_forConsensus.join(final_mutect_indel_vcf_forConsensus).join(final_strelka_indel_vcf_forConsensus).join(final_svaba_indel_vcf_forConsensus)
@@ -3029,6 +3043,7 @@ process unionAndConsensusIndelCalls_devgru {
     script:
     hq_union_consensus_indel_table = "${tumor_normal_sample_id}.hq.union.consensus.somatic.indel.txt.gz"
     """
+    export TMPDIR="workdirTmp/"
     mkdir -p results/
 
     Rscript --vanilla ${workflow.projectDir}/bin/snvindel_union_consensus_polisher.R \
@@ -3101,6 +3116,8 @@ process twoWayMergeAndGenerateConsensusCnvCalls_bedtools {
 process mergeAndGenerateConsensusSvCalls_ggnome {
     publishDir "${params.output_dir}/somatic/consensus/${tumor_normal_sample_id}", mode: 'copy', pattern: '*.{bedpe,pdf}'
     tag  "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(manta_filtered_final_sv_vcf), path(svaba_filtered_final_sv_vcf), path(delly_filtered_final_sv_vcf), path(igcaller_oncogenic_rearrangements_tsv) from manta_filtered_final_sv_vcf_forConsensus.join(svaba_filtered_final_sv_vcf_forConsensus).join(delly_filtered_final_sv_vcf_forConsensus).join(igcaller_onco_tsv_forConsensus)
@@ -3116,6 +3133,8 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
     hq_union_consensus_sv_bedpe = "${tumor_normal_sample_id}.hq.union.consensus.somatic.sv.bedpe"
     hq_union_consensus_upset_intersection_plot = "${tumor_normal_sample_id}.hq.union.consensus.somatic.sv.intersection.plot.pdf"
     """
+    export TMPDIR="workdirTmp/"
+
     Rscript --vanilla ${workflow.projectDir}/bin/sv_union_consensus_polisher.R \
     "${tumor_normal_sample_id}" \
     "${manta_filtered_final_sv_vcf}" \
@@ -3136,6 +3155,8 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
 process binReadCoverageInNormal_fragcounter {
     publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
     tag "${tumor_normal_sample_id} S=Normal"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(normal_bam), path(normal_bam_index) from normal_bams_forFragCounter
@@ -3154,6 +3175,8 @@ process binReadCoverageInNormal_fragcounter {
     normal_fragcounter_cov_rds = "${normal_id}.fragcounter.cov.rds"
     normal_fragcounter_cov_bw = "${normal_id}.fragcounter.cov.corrected.bw"
     """
+    export TMPDIR="workdirTmp/"
+
     fragCounter_executor.sh \
 	"${normal_bam}" \
 	"${gc_mappability}" \
@@ -3169,6 +3192,8 @@ process binReadCoverageInNormal_fragcounter {
 process binReadCoverageInTumor_fragcounter {
     publishDir "${params.output_dir}/somatic/fragCounter", mode: 'copy', pattern: '*.{rds,bw}'
     tag "${tumor_normal_sample_id} S=Tumor"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index) from tumor_bams_forFragCounter
@@ -3187,6 +3212,8 @@ process binReadCoverageInTumor_fragcounter {
     tumor_fragcounter_cov_rds = "${tumor_id}.fragcounter.cov.rds"
     tumor_fragcounter_cov_bw = "${tumor_id}.fragcounter.cov.corrected.bw"
     """
+    export TMPDIR="workdirTmp/"
+
     fragCounter_executor.sh \
 	"${tumor_bam}" \
 	"${gc_mappability}" \
