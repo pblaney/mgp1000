@@ -584,7 +584,8 @@ process cnvCalling_battenberg {
     """
     export TMPDIR="workdirTmp/"
 
-    cp /opt/downloads/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
+    # TODO: Update this hardcoded path to use a container env var instead
+    cp /opt/toolshed/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
 
     sex=\$(cut -d ' ' -f 1 "${sample_sex}")
 
