@@ -496,6 +496,8 @@ process identifySampleSex_allelecount {
 // Battenberg ~ download the reference files needed to run Battenberg
 process downloadBattenbergReferences_battenberg {
   	publishDir "references/hg38", mode: 'copy'
+  	beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
   	output:
   	path battenberg_references into battenberg_ref_dir_fromProcess
@@ -506,6 +508,8 @@ process downloadBattenbergReferences_battenberg {
   	script:
   	battenberg_references = "battenberg_reference/"
   	"""
+  	export TMPDIR="workdirTmp/"
+
   	mkdir -p ${battenberg_references}
   	cd ${battenberg_references}/
   	mkdir -p temp/
@@ -534,6 +538,8 @@ else {
 process cnvCalling_battenberg {
     publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(battenberg_references) from bams_and_sex_of_sample_forBattenberg.combine(battenberg_ref_dir)
@@ -576,7 +582,10 @@ process cnvCalling_battenberg {
     battenberg_fit_purity_ploidy = "${tumor_normal_sample_id}.battenberg.fit.purity.ploidy.txt"
     battenberg_fit_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.fit.cnv.png"
     """
-    cp /opt/downloads/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
+    export TMPDIR="workdirTmp/"
+
+    # TODO: Update this hardcoded path to use a container env var instead
+    cp /opt/toolshed/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
 
     sex=\$(cut -d ' ' -f 1 "${sample_sex}")
 
@@ -606,6 +615,8 @@ process cnvCalling_battenberg {
 process fitCnvProfileExtract_devgru {
     publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(battenberg_fit_cnv_profile_csv), path(battenberg_fit_segmented_logr) from fit_cnv_data
@@ -619,6 +630,8 @@ process fitCnvProfileExtract_devgru {
     script:
     final_battenberg_cnv_profile = "${tumor_normal_sample_id}.battenberg.fit.cnv.bed"
     """
+    export TMPDIR="workdirTmp/"
+
     Rscript --vanilla ${workflow.projectDir}/bin/battenberg_segment_chainer.R \
     "${tumor_normal_sample_id}" \
     "${battenberg_fit_cnv_profile_csv}" \
@@ -631,6 +644,8 @@ process fitCnvProfileExtract_devgru {
 // Battenberg Consensus CNV Prep ~ extract and prepare CNV output for consensus
 process consensusCnvPrep_battenberg {
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(final_battenberg_cnv_profile) from final_battenberg_cnv_profile_forConsensusPrep
@@ -646,6 +661,8 @@ process consensusCnvPrep_battenberg {
     battenberg_somatic_cnv_bed = "${tumor_normal_sample_id}.battenberg.somatic.cnv.bed"
     battenberg_somatic_alleles_bed = "${tumor_normal_sample_id}.battenberg.somatic.alleles.bed"
     """
+    export TMPDIR="workdirTmp/"
+
     battenberg_cnv_profile_postprocesser.sh \
     "${final_battenberg_cnv_profile}" \
     "${battenberg_somatic_cnv_bed}" \
@@ -765,6 +782,8 @@ process cnvCalling_facets {
 // FACETS ~ fraction and copy number estimate from tumor/normal sequencing
 process consensusCnvPrep_facets {
     tag "${tumor_normal_sample_id}"
+    beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(facets_cnv_profile) from facets_cnv_profile_forConsensusPrep
@@ -779,6 +798,8 @@ process consensusCnvPrep_facets {
     facets_somatic_cnv_bed = "${tumor_normal_sample_id}.facets.somatic.cnv.bed"
     facets_somatic_alleles_bed = "${tumor_normal_sample_id}.facets.somatic.alleles.bed"
     """
+    export TMPDIR="workdirTmp/"
+
     facets_cnv_profile_postprocesser.sh \
     "${facets_cnv_profile}" \
     "${tumor_normal_sample_id}" \
@@ -1118,6 +1139,8 @@ process splitMultiallelicAndLeftNormalizeStrelkaVcf_bcftools {
 process svAndIndelCalling_svaba {
 	publishDir "${params.output_dir}/somatic/svaba", mode: 'copy', pattern: '*.{somatic.sv.unprocessed.vcf.gz,somatic.sv.unprocessed.vcf.gz.tbi}'
 	tag "${tumor_normal_sample_id}"
+	beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
 	input:
 	tuple path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path("Homo_sapiens_assembly38.fasta"), path("Homo_sapiens_assembly38.fasta.fai"), path("Homo_sapiens_assembly38.fasta.64.alt"), path("Homo_sapiens_assembly38.fasta.64.amb"), path("Homo_sapiens_assembly38.fasta.64.ann"), path("Homo_sapiens_assembly38.fasta.64.bwt"), path("Homo_sapiens_assembly38.fasta.64.pac"), path("Homo_sapiens_assembly38.fasta.64.sa") from tumor_normal_pair_forSvaba.combine(bwa_ref_genome_files.collect())
@@ -1156,6 +1179,8 @@ process svAndIndelCalling_svaba {
 	sample_renaming_file = "sample_renaming_file.txt"
 	svaba_call_parameters = params.seq_protocol == "WES" ? "-k ${target_bed}" : ""
 	"""
+	export TMPDIR="workdirTmp/"
+
 	svaba run \
 	-t "${tumor_bam}" \
 	-n "${normal_bam}" \
@@ -1492,7 +1517,7 @@ process snvAndIndelCalling_varscan {
 	--fasta-ref "${ref_genome_fasta}" \
 	"${normal_bam}" "${tumor_bam}" \
 	| \
-	java -Xmx2G -XX:ParallelGCThreads=2 -jar \${VARSCAN_JAR} somatic \
+	java -Xmx2G -XX:ParallelGCThreads=2 -Djava.io.tmpdir=. -jar \${VARSCAN_JAR} somatic \
 	--mpileup 1 \
 	--min-coverage-normal 6 \
 	--min-coverage-tumor 4 \
@@ -1613,7 +1638,7 @@ process filterRawSnvAndIndels_varscan {
 	"""
 	zcat "${raw_snv_vcf}" \
 	| \
-	java -Xmx2G -XX:ParallelGCThreads=2 -jar \${VARSCAN_JAR} processSomatic \
+	java -Xmx2G -XX:ParallelGCThreads=2 -Djava.io.tmpdir=. -jar \${VARSCAN_JAR} processSomatic \
 	"${tumor_normal_sample_id}.snv" \
 	--min-tumor-freq 0.01 \
 	--max-normal-freq 0.05 \
@@ -1624,7 +1649,7 @@ process filterRawSnvAndIndels_varscan {
 
 	zcat "${raw_indel_vcf}" \
 	| \
-	java -Xmx2G -XX:ParallelGCThreads=2 -jar \${VARSCAN_JAR} processSomatic \
+	java -Xmx2G -XX:ParallelGCThreads=2 -Djava.io.tmpdir=. -jar \${VARSCAN_JAR} processSomatic \
 	"${tumor_normal_sample_id}.indel" \
 	--min-tumor-freq 0.01 \
 	--max-normal-freq 0.05 \
@@ -1638,6 +1663,8 @@ process filterRawSnvAndIndels_varscan {
 // bam-readcount / BCFtools concat ~ generate metrics at single nucleotide positions for filtering out false positive calls
 process bamReadcountForVarscanFpFilter_bamreadcount {
 	tag "${tumor_normal_sample_id}"
+	beforeScript 'mkdir -p workdirTmp/'
+	afterScript 'rm -f workdirTmp/*'
 
 	input:
 	tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(high_confidence_snv_vcf), path(high_confidence_snv_vcf_index), path(high_confidence_indel_vcf), path(high_confidence_indel_vcf_index) from bams_forVarscanBamReadcount.join(high_confidence_vcfs_forVarscanBamReadcount)
@@ -1655,6 +1682,8 @@ process bamReadcountForVarscanFpFilter_bamreadcount {
 	snv_readcount_file = "${tumor_normal_sample_id}_bam_readcount_snv.tsv"
 	indel_readcount_file = "${tumor_normal_sample_id}_bam_readcount_indel.tsv"
 	"""
+	export TMPDIR="workdirTmp/"
+
 	bcftools concat \
 	--threads ${task.cpus} \
 	--allow-overlaps \
@@ -1697,7 +1726,7 @@ process falsePositivefilterSnvAndIndels_varscan {
 	"""
 	gunzip -f "${high_confidence_snv_vcf}"
 
-	java -Xmx2G -XX:ParallelGCThreads=2 -jar \$VARSCAN_JAR fpfilter \
+	java -Xmx2G -XX:ParallelGCThreads=2 -Djava.io.tmpdir=. -jar \$VARSCAN_JAR fpfilter \
 	"${unzipped_hc_snv_vcf}" \
 	"${snv_readcount_file}" \
 	--min-var-count 2 \
@@ -1708,7 +1737,7 @@ process falsePositivefilterSnvAndIndels_varscan {
 
 	gunzip -f "${high_confidence_indel_vcf}"
 
-	java -Xmx2G -XX:ParallelGCThreads=2 -jar \$VARSCAN_JAR fpfilter \
+	java -Xmx2G -XX:ParallelGCThreads=2 -Djava.io.tmpdir=. -jar \$VARSCAN_JAR fpfilter \
 	"${unzipped_hc_indel_vcf}" \
 	"${indel_readcount_file}" \
 	--min-var-count 2 \
