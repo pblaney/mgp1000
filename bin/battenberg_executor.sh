@@ -30,7 +30,7 @@ fitCnvCsv=${12}
 sed -E 's|\$\{REF_PATH\}|'${PWD}'/battenberg_reference|g' battenberg_reference/impute_info.txt > battenberg_reference/imputation/impute_info.txt
 
 # Second, update the path of the Beagle5 base directory
-cat /opt/battenberg/inst/example/battenberg_wgs.R | \
+cat /opt/toolshed/battenberg/inst/example/battenberg_wgs.R | \
 sed 's|BEAGLE_BASEDIR = \".*|BEAGLE_BASEDIR = \"'${PWD}'/battenberg_reference\"|' | \
 sed 's|CHROM_COORD_FILE = \".*|CHROM_COORD_FILE = \"/opt/battenberg/chromosome_coordinates_hg38.txt\"|' | \
 sed 's|MIN_NORMAL_DEPTH = 10|MIN_NORMAL_DEPTH = '${minDepth}'|' > battenberg_wgs.R
