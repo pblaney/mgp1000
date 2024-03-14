@@ -539,7 +539,7 @@ process cnvCalling_battenberg {
     publishDir "${params.output_dir}/somatic/battenberg", mode: 'copy'
     tag "${tumor_normal_sample_id}"
     beforeScript 'mkdir -p workdirTmp/'
-	afterScript 'rm -f workdirTmp/*'
+	afterScript 'rm -rf workdirTmp/*'
 
     input:
     tuple val(tumor_normal_sample_id), path(tumor_bam), path(tumor_bam_index), path(normal_bam), path(normal_bam_index), path(sample_sex), path(battenberg_references) from bams_and_sex_of_sample_forBattenberg.combine(battenberg_ref_dir)
