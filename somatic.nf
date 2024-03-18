@@ -582,7 +582,7 @@ process cnvCalling_battenberg {
     battenberg_fit_purity_ploidy = "${tumor_normal_sample_id}.battenberg.fit.purity.ploidy.txt"
     battenberg_fit_cnv_profile_png = "${tumor_normal_sample_id}.battenberg.fit.cnv.png"
     """
-    export TMPDIR="workdirTmp/"
+    #export TMPDIR="workdirTmp/"
 
     cp /opt/downloads/beagle.08Feb22.fa4.jar battenberg_reference/beagle5/
 
