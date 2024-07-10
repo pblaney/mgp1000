@@ -2406,7 +2406,7 @@ process setup_caveman {
 
 	touch "${normal_cnv_profile}"
 
-	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print (contam_percent / denom)}' | xargs printf "%.*f\n" 3)
 
 	caveman.pl \
 	-outdir . \
@@ -2479,7 +2479,7 @@ process split_caveman {
 	mkdir -p tmpCaveman/
 	mv "${config_file}" tmpCaveman/
 
-	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print (contam_percent / denom)}' | xargs printf "%.*f\n" 3)
 
 	i=\$(grep -wn "${chromosome}" "${ref_genome_fasta_index}" | cut -f 1 | cut -d ':' -f 1)
 
@@ -2555,7 +2555,7 @@ process splitConcat_caveman {
 	mv splitList.chr* tmpCaveman/
 	mv readpos.chr* tmpCaveman/
 
-	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print (contam_percent / denom)}' | xargs printf "%.*f\n" 3)
 
 	caveman.pl \
 	-outdir . \
@@ -2637,7 +2637,7 @@ process mstep_caveman {
 	mv readpos.chr* tmpCaveman/
 	mv "${split_list}" tmpCaveman/
 
-	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print (contam_percent / denom)}' | xargs printf "%.*f\n" 3)
 
 	caveman.pl \
 	-outdir . \
@@ -2717,7 +2717,7 @@ process merge_caveman {
 	mkdir -p tmpCaveman/results
 	cp -a results_mstep_*/* tmpCaveman/results/
 
-	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print (contam_percent / denom)}' | xargs printf "%.*f\n" 3)
 
 	caveman.pl \
 	-outdir . \
@@ -2803,7 +2803,7 @@ process snvCalling_caveman {
 	mkdir -p tmpCaveman/results
 	cp -a results_mstep_*/* tmpCaveman/results/
 
-	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print (contam_percent / denom)}' | xargs printf "%.*f\n" 3)
 
 	caveman.pl \
 	-outdir . \
@@ -2887,7 +2887,7 @@ process flag_caveman {
 	mv readpos.chr* tmpCaveman/
 	mv "${split_list}" tmpCaveman/
 
-	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print  (contam_percent / denom)}')
+	normal_contamination=\$(awk -v contam_percent=\$(grep 'Tumor' ${normal_contamination_file} | cut -d ' ' -f 5 | sed 's|%||') -v denom=100 'BEGIN {print (contam_percent / denom)}' | xargs printf "%.*f\n" 3)
 
 	for input_vcf in `ls -1v results_estep_${index}/*/*/*.muts.vcf.gz`;
 		do
