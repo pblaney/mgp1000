@@ -512,14 +512,6 @@ process downloadBattenbergReferences_battenberg {
 
   	mkdir -p ${battenberg_references}
   	cd ${battenberg_references}/
-  	mkdir -p temp/
-  	mkdir -p GC_correction_hg38/
-  	mkdir -p RT_correction_hg38/
-  	mkdir -p shapeit2/
-  	mkdir -p imputation/
-  	mkdir -p 1000G_loci_hg38/
-  	mkdir -p probloci/
-  	mkdir -p beagle5/
 
   	battenberg_reference_downloader.sh
   	"""
