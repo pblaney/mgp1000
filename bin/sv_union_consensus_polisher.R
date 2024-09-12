@@ -449,6 +449,9 @@ for (i in 1:length(unique(consensus_jnc_dt$merged.ix))) {
   }
   
   # Build the final BEDPE output
+  # SV type strandness is reported using standard convention
+  # where deletions +-, duplications are -+, inversions are ++ or --
+  # and translocations are any combination with different chromosomes
   bedpe_single_line_record <- data.table::data.table("#chr1" = bedpe_pair$seqnames[1],
                                                      "start1" = bedpe_pair$start[1],
                                                      "end1" = bedpe_pair$end[1],
@@ -457,8 +460,8 @@ for (i in 1:length(unique(consensus_jnc_dt$merged.ix))) {
                                                      "end2" = bedpe_pair$end[2],
                                                      "type" = record_type,
                                                      "score" = ".",
-                                                     "strand1" = bedpe_pair$strand[1],
-                                                     "strand2" = bedpe_pair$strand[2],
+                                                     "strand1" = bedpe_pair$strand[2],          # To keep with standard BEDPE convention, these
+                                                     "strand2" = bedpe_pair$strand[1],          # strands need to be reversed
                                                      "caller" = record_caller_combo_string)
   
   final_bedpe <- rbind(final_bedpe,
