@@ -45,7 +45,6 @@ echo "Prepping Imputation and Impute info ..."
 unzip imputation_chr.zip -x
 rm imputation_chr.zip
 rm imputation.zip
-rm imputation/ALL.v1a.shapeit2_integrated_chr23*
 echo "Done"
 
 # 1000G
