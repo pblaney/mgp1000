@@ -167,6 +167,15 @@ if( params.seq_protocol == "WGS" ) {
         .value( file('references/hg38/wxs_exons_gencode_v39_autosome_sex_chroms.hg38.bed') )
         .set{ target_regions_bed }
 
+} else if( params.seq_protocol == "PANEL" ) {
+    Channel
+        .value( file('references/hg38/mgp_panel_calling_regions_v22.hg38.interval_list') )
+        .set{ target_regions }
+
+    Channel
+        .value( file('references/hg38/mgp_panel_calling_regions_v22.hg38.bed') )
+        .set{ target_regions_bed }
+
 } else {
     exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole-genome or 'WES' for whole-exome."
 }
