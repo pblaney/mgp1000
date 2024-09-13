@@ -69,7 +69,6 @@ rm beagle.zip
 rm beagle_chr.zip
 rm beagle/chr23.1kg.phase3.v5a_GRCh38nounref.vcf.gz
 rm beagle/plink.chr23*
-rm beagle/plink.chr23*
 # Need to add 'chr' notation to VCFs
 mkdir -p temp/
 mv beagle/chr*.1kg.phase3.v5a_GRCh38nounref.vcf.gz temp/
