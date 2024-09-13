@@ -572,7 +572,7 @@ process localAndGlobalRealignment_abra2 {
     path abra_log
 
     when:
-    params.seq_protocol == "WES" & params.qc_only == "no"
+    params.seq_protocol != "WGS" & params.qc_only == "no"
 
     script:
     bam_postprocessed_realigned = "${sample_id}.postprocessed.realigned.bam"
@@ -593,7 +593,7 @@ process localAndGlobalRealignment_abra2 {
 
 if( params.seq_protocol == "WGS" ) {
     bams_forDownsampleBam = postprocessed_bams_forDownsampleBam
-} else if( params.seq_protocol == "WES" ) {
+} else if( params.seq_protocol != "WGS" | ) {
     bams_forDownsampleBam = postprocessed_realigned_bams_forDownsampleBam
 }
 
@@ -673,7 +673,7 @@ process baseRecalibrator_gatk {
 
 if( params.seq_protocol == "WGS" ) {
     bams_forApplyBqsr = postprocessed_bams_forApplyBqsr
-} else if( params.seq_protocol == "WES" ) {
+} else if( params.seq_protocol != "WGS" ) {
     bams_forApplyBqsr = postprocessed_realigned_bams_forApplyBqsr
 }
 
