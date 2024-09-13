@@ -273,7 +273,7 @@ process mergeLaneSplitFastqs_mergelane {
 	path lane_merged_input_fastqs into lane_merged_fastq_dir
 
 	when:
-	params.input_format == "fastq" & params.lane_split == "yes" & params.qc_only == "no"
+	params.input_format == "fastq" && params.lane_split == "yes" && params.qc_only == "no"
 
 	script:
 	lane_merged_input_fastqs = "laneMergedFastqs"
@@ -304,7 +304,7 @@ process gatherInputFastqs_fastqgatherer {
 	path run_fastq_samplesheet into input_fastq_sample_sheet
 
 	when:
-	params.input_format == "fastq" & params.qc_only == "no"
+	params.input_format == "fastq" && params.qc_only == "no"
 
 	script:
 	run_fastq_samplesheet = "${params.run_id}.fastq.samplesheet.txt"
@@ -365,7 +365,7 @@ process revertMappedBam_gatk {
 	tuple val(sample_id), path(bam_unmapped) into unmapped_bams
 
 	when:
-	params.input_format == "bam" & params.qc_only == "no"
+	params.input_format == "bam" && params.qc_only == "no"
 
 	script:
 	sample_id = "${bam_mapped}".replaceFirst(/\..*bam/, "")
@@ -404,7 +404,7 @@ process bamToFastq_biobambam {
 	tuple val(sample_id), path(fastq_R1), path(fastq_R2) into converted_fastqs_forTrimming
 
 	when:
-	params.input_format == "bam" & params.qc_only == "no"
+	params.input_format == "bam" && params.qc_only == "no"
 
 	script:
 	fastq_R1 = "${sample_id}_R1.fastq.gz"
@@ -444,7 +444,7 @@ process fastqTrimming_trimmomatic {
 	path fastq_trim_log
 
 	when:
-	params.skip_trimming == "no" & params.qc_only == "no"
+	params.skip_trimming == "no" && params.qc_only == "no"
 
 	script:
 	fastq_R1_trimmed = "${sample_id}_R1.trim.fastq.gz"
@@ -572,7 +572,7 @@ process localAndGlobalRealignment_abra2 {
     path abra_log
 
     when:
-    params.seq_protocol != "WGS" & params.qc_only == "no"
+    params.seq_protocol != "WGS" && params.qc_only == "no"
 
     script:
     bam_postprocessed_realigned = "${sample_id}.postprocessed.realigned.bam"
@@ -593,7 +593,7 @@ process localAndGlobalRealignment_abra2 {
 
 if( params.seq_protocol == "WGS" ) {
     bams_forDownsampleBam = postprocessed_bams_forDownsampleBam
-} else if( params.seq_protocol != "WGS" | ) {
+} else if( params.seq_protocol != "WGS" ) {
     bams_forDownsampleBam = postprocessed_realigned_bams_forDownsampleBam
 }
 
