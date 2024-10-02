@@ -58,8 +58,8 @@ def helpMessage() {
 	  --email                        STR  Email address to send workflow completion/stoppage
 	                                      notification
 	  --seq_protocol                 STR  Sequencing protocol of the input, WGS for whole-genome
-	                                      and WES for whole-exome
-	                                      [Default: WGS | Available: WGS, WES]
+	                                      and WES for whole-exome, PANEL for MGP targeted panel
+	                                      [Default: WGS | Available: WGS, WES, PANEL]
 	  --cpus                         INT  Globally set the number of cpus to be allocated
 	  --memory                       STR  Globally set the amount of memory to be allocated,
 	                                      written as '##.GB' or '##.MB'
@@ -103,6 +103,8 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 if( params.input_format == null ) exit 1, "The run command issued does not have the '--input_format' parameter set. Please set the '--input_format' parameter to either bam or fastq depending on input data."
 
 if( params.input_format == "bam" & params.skip_trimming == "yes" ) exit 1, "This run command cannot be executed. If '--input_format' parameter is 'bam', then trimming must be performed. Please set '--skip_trimming to 'no'."
+
+if( params.seq_protocol != "WGS" | params.seq_protocol != "WES" | params.seq_protocol != "PANEL" ) exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole genome, 'WES' for whole exome, or 'PANEL' for MGP Panel."
 
 // Set channels for reference files
 Channel
@@ -177,7 +179,7 @@ if( params.seq_protocol == "WGS" ) {
         .set{ target_regions_bed }
 
 } else {
-    exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole-genome or 'WES' for whole-exome."
+    exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole genome, 'WES' for whole exome, or 'PANEL' for MGP Panel."
 }
 
 

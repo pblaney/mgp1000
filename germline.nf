@@ -57,8 +57,8 @@ def helpMessage() {
 	  --email                        STR  Email address to send workflow completion/stoppage
 	                                      notification
 	  --seq_protocol                 STR  Sequencing protocol of the input, WGS for whole-genome
-	                                      and WES for whole-exome
-	                                      [Default: WGS | Available: WGS, WES]
+	                                      and WES for whole-exome, PANEL for MGP targeted panel
+	                                      [Default: WGS | Available: WGS, WES, PANEL]
 	  --deepvariant                  STR  Indicates whether or not to run DeepVariant workflow
 	                                      [Default: on | Available: on, off]
 	  --fastngsadmix                 STR  Indicates whether or not to run fastNGSadmix workflow
@@ -103,6 +103,8 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 
 if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
+if( params.seq_protocol != "WGS" | params.seq_protocol != "WES" | params.seq_protocol != "PANEL" ) exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole genome, 'WES' for whole exome, or 'PANEL' for MGP Panel."
+
 // Set channels for reference files
 Channel
     .value( file('references/hg38/Homo_sapiens_assembly38.fasta') )
@@ -142,6 +144,10 @@ Channel
 Channel
     .value( file('references/hg38/fastNGSadmix_markers.hg38.sites.idx') )
     .set{ admix_markers_sites_index }
+
+Channel
+    .value( file('references/hg38/mgp_panel_calling_regions_v22.hg38.bed') )
+    .set{ target_regions_bed }
 
 
 // #################################################### \\
@@ -214,6 +220,7 @@ process snpAndIndelCalling_deepvariant {
     path ref_genome_fasta_index from ref_genome_fasta_index_file
     path ref_genome_fasta_dict from ref_genome_fasta_dict_file
     each chromosome from chromosome_list_forDeepVariant
+    path target_bed from target_regions_bed
 
     output:
     tuple val(sample_id), path(deepvariant_germline_vcf_per_chrom), path(deepvariant_germline_vcf_per_chrom_index) into unfiltered_germline_vcf
@@ -225,6 +232,9 @@ process snpAndIndelCalling_deepvariant {
     sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
     deepvariant_germline_vcf_per_chrom = "${sample_id}.deepvariant.germline.snp.indel.${chromosome}.vcf.gz"
     deepvariant_germline_vcf_per_chrom_index = "${deepvariant_germline_vcf_per_chrom}.tbi"
+    per_chromosome_bed_file = "${target_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
+
+    if ( params.seq_protocol == "WGS" | params.seq_protocol == "WES" )
     """
     run_deepvariant \
     --model_type "${params.seq_protocol}" \
@@ -232,12 +242,28 @@ process snpAndIndelCalling_deepvariant {
     --reads "${bam_preprocessed}" \
     --regions "${chromosome}" \
     --output_vcf "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
+    --output_gvcf "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.gvcf.gz" \
     --num_shards ${task.cpus}
 
     zcat "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.vcf.gz" \
         | awk '(\$5 !~ ",")' \
         | grep -E '^#|PASS' \
         | bgzip > "${deepvariant_germline_vcf_per_chrom}"
+
+    tabix "${deepvariant_germline_vcf_per_chrom}"
+    """
+    else if ( params.seq_protocol == "PANEL" )
+    """
+    grep -w "${chromosome}" ${target_bed} | grep "mutations_and_copynumber" > "${per_chromosome_bed_file}"
+
+    run_deepvariant \
+        --model_type WES \
+        --ref "${ref_genome_fasta}" \
+        --reads "${bam_preprocessed}" \
+        --regions "${per_chromosome_bed_file}" \
+        --output_vcf "${deepvariant_germline_vcf_per_chrom}" \
+        --output_gvcf "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.gvcf.gz" \
+        --num_shards ${task.cpus}
 
     tabix "${deepvariant_germline_vcf_per_chrom}"
     """
@@ -308,6 +334,7 @@ process alleleFrequencyEstimation_angsd {
     path admix_markers_sites
     path admix_markers_sites_bin
     path admix_markers_sites_index
+    //path target_bed from target_regions_bed
 
     output:
     tuple val(sample_id), path(beagle_genotype_likelihoods) into beagle_input_forFastNgsAdmix
@@ -318,6 +345,8 @@ process alleleFrequencyEstimation_angsd {
     script:
     sample_id = "${normal_bam}".replaceFirst(/\.final\..*bam/, "")
     beagle_genotype_likelihoods = "${sample_id}.beagle.gz"
+
+    //if ( params.seq_protocol == "WGS" )
     """
     angsd \
     -nThreads "${task.cpus}" \
@@ -332,6 +361,10 @@ process alleleFrequencyEstimation_angsd {
     -doCounts 1 \
     -out "${sample_id}"
     """
+    //else ( params.seq_protocol == "WES" | params.seq_protocol == "PANEL" )
+    //"""
+    //grep -w "${chromosome}" ${target_bed} | grep "mutations_and_copynumber" > "${per_chromosome_bed_file}"
+    //"""
 }
 
 // fastNGSadmix ~ estimation of sample ancestry using autosomal SNP genotype data in a supervised fashion
