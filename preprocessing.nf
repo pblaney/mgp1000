@@ -589,7 +589,7 @@ process localAndGlobalRealignment_abra2 {
     --targets "${target_bed}" \
     --threads ${task.cpus} \
     --tmpdir . \
-    > "${abra_log}"
+    1> "${abra_log}"
     """
 }
 
