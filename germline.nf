@@ -205,6 +205,7 @@ if(params.sample_sheet != null) {
                       		 file("${params.input_dir}/${normal_bam_index}*.bai") ] }
         .unique()
         .into{ input_preprocessed_bams_forDeepVariant;
+               input_preprocessed_bams_forDeepVariantPanel;
                input_preprocessed_bams_forAngsd }
 }	
 
@@ -218,21 +219,18 @@ process snpAndIndelCalling_deepvariant {
     path ref_genome_fasta_index from ref_genome_fasta_index_file
     path ref_genome_fasta_dict from ref_genome_fasta_dict_file
     each chromosome from chromosome_list_forDeepVariant
-    path target_bed from target_regions_bed
 
     output:
     tuple val(sample_id), path(deepvariant_germline_vcf_per_chrom), path(deepvariant_germline_vcf_per_chrom_index) into unfiltered_germline_vcf
 
     when:
-    params.deepvariant == "on"
+    params.deepvariant == "on" && params.seq_protocol != "PANEL"
 
     script:
     sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
     deepvariant_germline_vcf_per_chrom = "${sample_id}.deepvariant.germline.snp.indel.${chromosome}.vcf.gz"
     deepvariant_germline_vcf_per_chrom_index = "${deepvariant_germline_vcf_per_chrom}.tbi"
     per_chromosome_bed_file = "${target_bed}".replaceFirst(/\.bed/, ".${chromosome}.bed")
-
-    if ( params.seq_protocol == "WGS" | params.seq_protocol == "WES" )
     """
     run_deepvariant \
     --model_type "${params.seq_protocol}" \
@@ -250,17 +248,39 @@ process snpAndIndelCalling_deepvariant {
 
     tabix "${deepvariant_germline_vcf_per_chrom}"
     """
-    else if ( params.seq_protocol == "PANEL" )
+}
+
+// DeepVariant ~ deep learning-based germline variant-calling
+process snpAndIndelCallingForPanel_deepvariant {
+    tag "${sample_id}"
+
+    input:
+    tuple path(bam_preprocessed), path(bam_preprocessed_index) from input_preprocessed_bams_forDeepVariantPanel
+    path ref_genome_fasta from ref_genome_fasta_file
+    path ref_genome_fasta_index from ref_genome_fasta_index_file
+    path ref_genome_fasta_dict from ref_genome_fasta_dict_file
+    path target_bed from target_regions_bed
+
+    output:
+    tuple val(sample_id), path(deepvariant_germline_panel_vcf), path(deepvariant_germline_panel_vcf_index) into unfiltered_deepvariant_panel_vcf
+
+    when:
+    params.deepvariant == "on" && params.seq_protocol == "PANEL"
+
+    script:
+    sample_id = "${bam_preprocessed}".replaceFirst(/\.final\..*bam/, "")
+    deepvariant_germline_panel_vcf = "${sample_id}.deepvariant.germline.snp.indel.vcf.gz"
+    deepvariant_germline_panel_vcf_index = "${deepvariant_germline_panel_vcf}.tbi"
     """
-    grep -w "${chromosome}" ${target_bed} | grep "mutations_and_copynumber" | cut -f 1-3 > "${per_chromosome_bed_file}"
+    grep "mutations_and_copynumber" "${target_bed}" | cut -f 1-3 > "${panel_target_bed}"
 
     run_deepvariant \
         --model_type WES \
         --ref "${ref_genome_fasta}" \
         --reads "${bam_preprocessed}" \
-        --regions "${per_chromosome_bed_file}" \
-        --output_vcf "${deepvariant_germline_vcf_per_chrom}" \
-        --output_gvcf "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.gvcf.gz" \
+        --regions "${panel_target_bed}" \
+        --output_vcf "${deepvariant_germline_panel_vcf}" \
+        --output_gvcf "${sample_id}.deepvariant.raw.germline.snp.indel.gvcf.gz" \
         --num_shards ${task.cpus}
     """
 }
@@ -273,7 +293,7 @@ process mergeAndSortVcfs_gatk {
     tuple val(sample_id), path(deepvariant_germline_vcf_per_chrom), path(deepvariant_germline_vcf_per_chrom_index) from unfiltered_germline_vcf.groupTuple()
 
     output:
-    tuple val(sample_id), path(vcf_merged_unfiltered), path(vcf_merged_unfiltered_index) into merged_unfiltered_germline_vcf
+    tuple val(sample_id), path(vcf_merged_unfiltered), path(vcf_merged_unfiltered_index) into merged_unfiltered_deepvariant_vcf
 
     when:
     params.deepvariant == "on"
@@ -290,6 +310,12 @@ process mergeAndSortVcfs_gatk {
     ${deepvariant_germline_vcf_per_chrom.collect { "--INPUT $it " }.join()} \
     --OUTPUT "${vcf_merged_unfiltered}"
     """
+}
+
+if( params.seq_protocol == "WGS" | params.seq_protocol == "WES" ) {
+    merged_unfiltered_germline_vcf = merged_unfiltered_deepvariant_vcf
+} else if( params.seq_protocol == "PANEL" ) {
+    merged_unfiltered_germline_vcf = unfiltered_deepvariant_panel_vcf
 }
 
 // GATK VariantFiltration ~ hard filter sites based on variant allele frequency and genotype quality
