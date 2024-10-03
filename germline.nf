@@ -252,7 +252,7 @@ process snpAndIndelCalling_deepvariant {
     """
     else if ( params.seq_protocol == "PANEL" )
     """
-    grep -w "${chromosome}" ${target_bed} | grep "mutations_and_copynumber" > "${per_chromosome_bed_file}"
+    grep -w "${chromosome}" ${target_bed} | grep "mutations_and_copynumber" | cut -f 1-3 > "${per_chromosome_bed_file}"
 
     run_deepvariant \
         --model_type WES \
