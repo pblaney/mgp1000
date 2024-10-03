@@ -272,13 +272,13 @@ process snpAndIndelCallingForPanel_deepvariant {
     deepvariant_germline_panel_vcf = "${sample_id}.deepvariant.germline.snp.indel.vcf.gz"
     deepvariant_germline_panel_vcf_index = "${deepvariant_germline_panel_vcf}.tbi"
     """
-    grep "mutations_and_copynumber" "${target_bed}" | cut -f 1-3 > "${panel_target_bed}"
+    grep "mutations_and_copynumber" "${target_bed}" | cut -f 1-3 > mgp_panel.bed
 
     run_deepvariant \
         --model_type WES \
         --ref "${ref_genome_fasta}" \
         --reads "${bam_preprocessed}" \
-        --regions "${panel_target_bed}" \
+        --regions mgp_panel.bed \
         --output_vcf "${deepvariant_germline_panel_vcf}" \
         --output_gvcf "${sample_id}.deepvariant.raw.germline.snp.indel.gvcf.gz" \
         --num_shards ${task.cpus}
