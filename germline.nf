@@ -262,8 +262,6 @@ process snpAndIndelCalling_deepvariant {
         --output_vcf "${deepvariant_germline_vcf_per_chrom}" \
         --output_gvcf "${sample_id}.deepvariant.raw.germline.snp.indel.${chromosome}.gvcf.gz" \
         --num_shards ${task.cpus}
-
-    tabix "${deepvariant_germline_vcf_per_chrom}"
     """
 }
 
