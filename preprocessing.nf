@@ -104,8 +104,6 @@ if( params.input_format == null ) exit 1, "The run command issued does not have 
 
 if( params.input_format == "bam" & params.skip_trimming == "yes" ) exit 1, "This run command cannot be executed. If '--input_format' parameter is 'bam', then trimming must be performed. Please set '--skip_trimming to 'no'."
 
-if( params.seq_protocol != "WGS" | params.seq_protocol != "WES" | params.seq_protocol != "PANEL" ) exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole genome, 'WES' for whole exome, or 'PANEL' for MGP Panel."
-
 // Set channels for reference files
 Channel
     .value( file('references/hg38/Homo_sapiens_assembly38.fasta') )

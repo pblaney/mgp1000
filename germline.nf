@@ -103,8 +103,6 @@ if( params.run_id == null ) exit 1, "The run command issued does not have the '-
 
 if( params.sample_sheet == null ) exit 1, "The run command issued does not have the '--sample_sheet' parameter set. Please set the '--sample_sheet' parameter to the path of the normal/tumor pair sample sheet CSV."
 
-if( params.seq_protocol != "WGS" | params.seq_protocol != "WES" | params.seq_protocol != "PANEL" ) exit 1, "This run command cannot be executed. The '--seq_protocol' must be set to either 'WGS' for whole genome, 'WES' for whole exome, or 'PANEL' for MGP Panel."
-
 // Set channels for reference files
 Channel
     .value( file('references/hg38/Homo_sapiens_assembly38.fasta') )
