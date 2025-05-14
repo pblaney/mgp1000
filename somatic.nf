@@ -99,8 +99,17 @@ def helpMessage() {
 	                                      [Default: 20]
 	  --manta                        STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
+	  --manta_indel_read_retrieval   INT  Manually enable remote read retrieval for 
+	                                      insertions in cancer calling mode, this mode
+	                                      is enabled by default, may improve runtime performance
+	                                      by disabling this feature
+	                                      [Default: 1 | Available: 1, 0]
 	  --svaba                        STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
+	  --svaba_mate_lookup_min        INT  Manually set the value of minimum reads required to
+	                                      initiate distant mate retrieval, may improve runtime
+	                                      performance by increasing this threshold
+	                                      [Default: 3]
 	  --delly                        STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --delly_strict                 STR  Enforce stricter thresholds for calling SVs with DELLY
@@ -161,6 +170,7 @@ params.fragcounter = "on"
 params.battenberg = "on"
 params.facets = "on"
 params.manta = "on"
+params.manta_indel_read_retrieval = 1
 params.svaba = "on"
 params.svaba_mate_lookup_min = 3
 params.delly = "on"
@@ -852,7 +862,7 @@ process svAndIndelCalling_manta {
 
 	touch "${manta_somatic_config}"
 	cat \${MANTA_DIR}/bin/configManta.py.ini \
-		| sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
+		| sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = ${params.manta_indel_read_retrieval}|' \
 		| sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
 		| sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
 
@@ -896,7 +906,7 @@ process svAndIndelCalling_manta {
 
 	touch "${manta_somatic_config}"
 	cat \${MANTA_DIR}/bin/configManta.py.ini \
-		| sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 1|' \
+		| sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = ${params.manta_indel_read_retrieval}|' \
 		| sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
 		| sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
 

@@ -297,7 +297,7 @@ if(nrow(igcaller_tsv) > 0) {
 
 # Comprehensive coordinate-based merge to create consensus junction set
 if(processed_input == "manta,svaba,delly,igcaller") {
-  # Comprehensive coordinate-based merge to create consensus junction set
+  # Full 4 caller consensus
   consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
                                  svaba = svaba_jnc[,"name"],
                                  delly = delly_jnc[,"name"],
@@ -310,22 +310,8 @@ if(processed_input == "manta,svaba,delly,igcaller") {
                                        plot_data$seen.by.delly,
                                        plot_data$seen.by.igcaller)))
   
-  # Edge Case: No surviving records in Manta (even after base filtering, i.e. bland genomes)
-} else if(processed_input == "svaba,delly,igcaller") {
-  # Comprehensive coordinate-based merge to create consensus junction set
-  consensus_jnc <- gGnome::merge(svaba = svaba_jnc[,"name"],
-                                 delly = delly_jnc[,"name"],
-                                 igcaller = igcaller_jnc[,"name"],
-                                 pad = 1000)
-  # Set plot data for UpSetR intersection plot
-  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.svaba, seen.by.delly, seen.by.igcaller)])))
-  plot_bar_cols <- length(table(paste0(plot_data$seen.by.svaba,
-                                       plot_data$seen.by.delly,
-                                       plot_data$seen.by.igcaller)))
-  
-  # Edge Case: No surviving records in IgCaller (even after base filtering, i.e. bland genomes)
 } else if(processed_input == "manta,svaba,delly,") {
-  # Comprehensive coordinate-based merge to create consensus junction set
+  # Edge Case: No surviving records in IgCaller (even after base filtering, i.e. bland genomes)
   consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
                                  svaba = svaba_jnc[,"name"],
                                  delly = delly_jnc[,"name"],
@@ -336,9 +322,74 @@ if(processed_input == "manta,svaba,delly,igcaller") {
                                        plot_data$seen.by.svaba,
                                        plot_data$seen.by.delly)))
   
-  # Edge Case: No surviving records in Manta/IgCaller
+} else if(processed_input == "manta,svaba,igcaller") {
+  # Edge Case: No surviving records in DELLY (even after base filtering, i.e. bland genomes)
+  consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
+                                 svaba = svaba_jnc[,"name"],
+                                 igcaller = igcaller_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.svaba, seen.by.igcaller)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.manta,
+                                       plot_data$seen.by.svaba,
+                                       plot_data$seen.by.igcaller)))
+  
+} else if(processed_input == "manta,delly,igcaller") {
+  # Edge Case: No surviving records in SvABA (even after base filtering, i.e. bland genomes)
+  consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
+                                 delly = delly_jnc[,"name"],
+                                 igcaller = igcaller_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.delly, seen.by.igcaller)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.manta,
+                                       plot_data$seen.by.delly,
+                                       plot_data$seen.by.igcaller)))
+  
+} else if(processed_input == "svaba,delly,igcaller") {
+  # Edge Case: No surviving records in Manta (even after base filtering, i.e. bland genomes)
+  consensus_jnc <- gGnome::merge(svaba = svaba_jnc[,"name"],
+                                 delly = delly_jnc[,"name"],
+                                 igcaller = igcaller_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.svaba, seen.by.delly, seen.by.igcaller)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.svaba,
+                                       plot_data$seen.by.delly,
+                                       plot_data$seen.by.igcaller)))
+  
+} else if(processed_input == "manta,svaba,") {
+  # Edge Case: No surviving records in DELLY/IgCaller
+  consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
+                                 svaba = svaba_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.svaba)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.manta,
+                                       plot_data$seen.by.svaba)))
+
+} else if(processed_input == "manta,delly,") {
+  # Edge Case: No surviving records in SvABA/IgCaller
+  consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
+                                 delly = delly_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.delly)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.manta,
+                                       plot_data$seen.by.delly)))
+
+} else if(processed_input == "manta,igcaller") {
+  # Edge Case: No surviving records in SvABA/IgCaller
+  consensus_jnc <- gGnome::merge(manta = manta_jnc[,"name"],
+                                 igcaller = igcaller_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.manta, seen.by.igcaller)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.manta,
+                                       plot_data$seen.by.igcaller)))
+
 } else if(processed_input == "svaba,delly,") {
-  # Comprehensive coordinate-based merge to create consensus junction set
+  # Edge Case: No surviving records in Manta/IgCaller
   consensus_jnc <- gGnome::merge(svaba = svaba_jnc[,"name"],
                                  delly = delly_jnc[,"name"],
                                  pad = 1000)
@@ -346,25 +397,49 @@ if(processed_input == "manta,svaba,delly,igcaller") {
   plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.svaba, seen.by.delly)])))
   plot_bar_cols <- length(table(paste0(plot_data$seen.by.svaba,
                                        plot_data$seen.by.delly)))
+
+} else if(processed_input == "svaba,igcaller") {
+  # Edge Case: No surviving records in Manta/DELLY
+  consensus_jnc <- gGnome::merge(svaba = svaba_jnc[,"name"],
+                                 igcaller = igcaller_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.svaba, seen.by.igcaller)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.svaba,
+                                       plot_data$seen.by.igcaller)))
+
+} else if(processed_input == "delly,igcaller") {
+  # Edge Case: No surviving records in Manta/SvABA
+  consensus_jnc <- gGnome::merge(delly = delly_jnc[,"name"],
+                                 igcaller = igcaller_jnc[,"name"],
+                                 pad = 1000)
+  # Set plot data for UpSetR intersection plot
+  plot_data <- as.data.frame(sign(as.matrix(consensus_jnc$dt[,.(seen.by.delly, seen.by.igcaller)])))
+  plot_bar_cols <- length(table(paste0(plot_data$seen.by.delly,
+                                       plot_data$seen.by.igcaller)))
+
 }
 
-message("Generating UpSet plot of SV breakpoint pair intersection ...")
-pdf(file = paste0(tum_norm_id, ".hq.union.consensus.somatic.sv.intersection.plot.pdf"),
-    width = 7,
-    height = 7,
-    onefile = FALSE)
-UpSetR::upset(plot_data,
-              mainbar.y.label = "Breakpoint Pair Intersection",
-              sets.x.label = "SVs Per Caller",
-              point.size = 5.25,
-              line.size = 1.8,
-              text.scale = c(1.75, 1.5, 1.5, 1.25, 1.25, 1.5),
-              scale.intersections = "identity",
-              scale.sets = "identity",
-              sets.bar.color = paletteer::paletteer_d("ggsci::default_aaas")[3:(2 + length(which(list(manta_jnc, svaba_jnc, delly_jnc, igcaller_jnc) != "NA")))],
-              main.bar.color = paletteer::paletteer_dynamic("cartography::wine.pal",
-                                                            n = plot_bar_cols))
-dev.off()
+# Only produce the UpSetR plot if there are more than 2 callers
+if(length(processed_input) > 2) {
+  message("Generating UpSet plot of SV breakpoint pair intersection ...")
+  pdf(file = paste0(tum_norm_id, ".hq.union.consensus.somatic.sv.intersection.plot.pdf"),
+      width = 7,
+      height = 7,
+      onefile = FALSE)
+  UpSetR::upset(plot_data,
+                mainbar.y.label = "Breakpoint Pair Intersection",
+                sets.x.label = "SVs Per Caller",
+                point.size = 5.25,
+                line.size = 1.8,
+                text.scale = c(1.75, 1.5, 1.5, 1.25, 1.25, 1.5),
+                scale.intersections = "identity",
+                scale.sets = "identity",
+                sets.bar.color = paletteer::paletteer_d("ggsci::default_aaas")[3:(2 + length(which(list(manta_jnc, svaba_jnc, delly_jnc, igcaller_jnc) != "NA")))],
+                main.bar.color = paletteer::paletteer_dynamic("cartography::wine.pal",
+                                                              n = plot_bar_cols))
+  dev.off()
+}
 
 message("Writing output consensus gGnome junctions as BEDPE format ...")
 # TODO: Go from SV gGnome junctions to BEDPE
@@ -407,17 +482,6 @@ for (i in 1:length(unique(consensus_jnc_dt$merged.ix))) {
     record_caller_string[3] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
     record_caller_string[4] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
     
-  } else if(processed_input == "svaba,delly,igcaller") {
-    record_caller <- data.table::data.table(svaba = bedpe_pair$seen.by.svaba,
-                                            delly = bedpe_pair$seen.by.delly,
-                                            igcaller = bedpe_pair$seen.by.igcaller)
-    record_caller <- colSums(record_caller)
-    
-    record_caller_string <- c(NA, NA, NA)
-    record_caller_string[1] <- dplyr::case_when(record_caller["svaba"] > 0 ~ "svaba", .default = NA)
-    record_caller_string[2] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
-    record_caller_string[3] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
-    
   } else if(processed_input == "manta,svaba,delly,") {
     record_caller <- data.table::data.table(manta = bedpe_pair$seen.by.manta,
                                             svaba = bedpe_pair$seen.by.svaba,
@@ -429,16 +493,93 @@ for (i in 1:length(unique(consensus_jnc_dt$merged.ix))) {
     record_caller_string[2] <- dplyr::case_when(record_caller["svaba"] > 0 ~ "svaba", .default = NA)
     record_caller_string[3] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
     
-  } else if(processed_input == "svaba,delly,") {
-    
-    record_caller <- data.table::data.table(svaba = bedpe_pair$seen.by.svaba,
-                                            delly = bedpe_pair$seen.by.delly)
+  } else if(processed_input == "manta,svaba,igcaller") {
+    record_caller <- data.table::data.table(manta = bedpe_pair$seen.by.manta,
+                                            svaba = bedpe_pair$seen.by.svaba,
+                                            igcaller = bedpe_pair$seen.by.igcaller)
     record_caller <- colSums(record_caller)
     
     record_caller_string <- c(NA, NA, NA)
     record_caller_string[1] <- dplyr::case_when(record_caller["manta"] > 0 ~ "manta", .default = NA)
     record_caller_string[2] <- dplyr::case_when(record_caller["svaba"] > 0 ~ "svaba", .default = NA)
-    record_caller_string[3] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
+    record_caller_string[3] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
+    
+  } else if(processed_input == "manta,delly,igcaller") {
+    record_caller <- data.table::data.table(manta = bedpe_pair$seen.by.manta,
+                                            delly = bedpe_pair$seen.by.delly,
+                                            igcaller = bedpe_pair$seen.by.igcaller)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["manta"] > 0 ~ "manta", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
+    record_caller_string[3] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
+    
+  } else if(processed_input == "svaba,delly,igcaller") {
+    record_caller <- data.table::data.table(svaba = bedpe_pair$seen.by.svaba,
+                                            delly = bedpe_pair$seen.by.delly,
+                                            igcaller = bedpe_pair$seen.by.igcaller)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["svaba"] > 0 ~ "svaba", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
+    record_caller_string[3] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
+    
+  } else if(processed_input == "manta,svaba,") {
+    record_caller <- data.table::data.table(manta = bedpe_pair$seen.by.manta,
+                                            svaba = bedpe_pair$seen.by.svaba)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["manta"] > 0 ~ "manta", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["svaba"] > 0 ~ "svaba", .default = NA)
+    
+  } else if(processed_input == "manta,delly,") {
+    record_caller <- data.table::data.table(manta = bedpe_pair$seen.by.manta,
+                                            delly = bedpe_pair$seen.by.delly)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["manta"] > 0 ~ "manta", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
+    
+  } else if(processed_input == "manta,igcaller") {
+    record_caller <- data.table::data.table(manta = bedpe_pair$seen.by.manta,
+                                            igcaller = bedpe_pair$seen.by.igcaller)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["manta"] > 0 ~ "manta", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
+    
+  } else if(processed_input == "svaba,delly,") {
+    record_caller <- data.table::data.table(svaba = bedpe_pair$seen.by.svaba,
+                                            delly = bedpe_pair$seen.by.delly)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["svaba"] > 0 ~ "svaba", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
+
+  } else if(processed_input == "svaba,igcaller") {
+    record_caller <- data.table::data.table(svaba = bedpe_pair$seen.by.svaba,
+                                            igcaller = bedpe_pair$seen.by.igcaller)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["svaba"] > 0 ~ "svaba", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
+
+  } else if(processed_input == "delly,igcaller") {
+    record_caller <- data.table::data.table(delly = bedpe_pair$seen.by.delly,
+                                            igcaller = bedpe_pair$seen.by.igcaller)
+    record_caller <- colSums(record_caller)
+    
+    record_caller_string <- c(NA, NA)
+    record_caller_string[1] <- dplyr::case_when(record_caller["delly"] > 0 ~ "delly", .default = NA)
+    record_caller_string[2] <- dplyr::case_when(record_caller["igcaller"] > 0 ~ "igcaller", .default = NA)
+
   }
   
   # Build the caller combo string for the final BEDPE output

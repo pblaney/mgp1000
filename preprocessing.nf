@@ -522,7 +522,7 @@ process alignment_bwa {
     script:
     bam_aligned = "${sample_id}.bam"
     """
-    bwa mem -Y -K 100000000 -t ${task.cpus} \
+    bwa mem -M -Y -K 100000000 -t ${task.cpus} \
         -R '@RG\\tID:${sample_id}\\tSM:${sample_id}\\tLB:${sample_id}\\tPL:ILLUMINA' \
         "${bwa_reference_dir}/Homo_sapiens_assembly38.fasta" \
         "${fastq_R1}" "${fastq_R2}" \
@@ -597,7 +597,7 @@ if( params.seq_protocol == "WGS" ) {
     bams_forDownsampleBam = postprocessed_realigned_bams_forDownsampleBam
 }
 
-// GATK DownsampleSam ~ downsample BAM file to use random subset for generating BSQR table
+// GATK DownsampleSam ~ downsample BAM file to use random subset for generating BQSR table
 process downsampleBam_gatk {
 	tag "${sample_id}"
 
