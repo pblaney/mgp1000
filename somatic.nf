@@ -3162,13 +3162,13 @@ process mergeAndGenerateConsensusSvCalls_ggnome {
     hq_union_consensus_sv_bedpe = "${tumor_normal_sample_id}.hq.union.consensus.somatic.sv.bedpe"
     """
     export TMPDIR="workdirTmp/"
+	mkdir -p results/
 
     Rscript --vanilla ${workflow.projectDir}/bin/sv_union_consensus_polisher.R \
-    "${tumor_normal_sample_id}" \
-    "${manta_filtered_final_sv_vcf}" \
-    "${svaba_filtered_final_sv_vcf}" \
-    "${delly_filtered_final_sv_vcf}" \
-    "${igcaller_oncogenic_rearrangements_tsv}"
+    ./ \
+	results/
+
+	mv results/* .
     """
 }
 
