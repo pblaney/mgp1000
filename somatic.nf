@@ -873,8 +873,7 @@ process svAndIndelCalling_manta {
 	--referenceFasta "${ref_genome_fasta}" \
 	--callRegions "${zipped_bed}" \
 	--config "${manta_somatic_config}" \
-	--runDir manta \
-	"${manta_call_parameters}"
+	--runDir manta ${manta_call_parameters}
 
 	python manta/runWorkflow.py \
 	--mode local \
@@ -919,7 +918,7 @@ process svAndIndelCalling_manta {
 	--referenceFasta "${ref_genome_fasta}" \
 	--callRegions "${zipped_bed}" \
 	--config "${manta_somatic_config}" \
-	--runDir manta "${manta_call_parameters}"
+	--runDir manta ${manta_call_parameters}
 
 	python manta/runWorkflow.py \
 	--mode local \
@@ -1229,7 +1228,7 @@ process svAndIndelCalling_svaba {
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip \
-	--mate-lookup-min 25 "${svaba_call_parameters}"
+	--mate-lookup-min 25 ${svaba_call_parameters}
 
 	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
