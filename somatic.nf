@@ -99,17 +99,17 @@ def helpMessage() {
 	                                      [Default: 20]
 	  --manta                        STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
-	  --manta_indel_read_retrieval   INT  Manually enable remote read retrieval for 
+	  --manta_strict   				 INT  Manually enable remote read retrieval for 
 	                                      insertions in cancer calling mode, this mode
 	                                      is enabled by default, may improve runtime performance
 	                                      by disabling this feature
 	                                      [Default: 1 | Available: 1, 0]
 	  --svaba                        STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
-	  --svaba_mate_lookup_min        INT  Manually set the value of minimum reads required to
-	                                      initiate distant mate retrieval, may improve runtime
-	                                      performance by increasing this threshold
-	                                      [Default: 3]
+	  --svaba_strict        		 INT  Enforce stricter thresholds for calling SVs with SvABA
+	                                      with significantly increased minimum reads required to
+	                                      initiate distant mate retrieval
+	                                      [Default: off | Available: off, on]
 	  --delly                        STR  Indicates whether or not to use this tool
 	                                      [Default: on | Available: off, on]
 	  --delly_strict                 STR  Enforce stricter thresholds for calling SVs with DELLY
@@ -170,9 +170,10 @@ params.fragcounter = "on"
 params.battenberg = "on"
 params.facets = "on"
 params.manta = "on"
+params.manta_strict = "off"
 params.manta_indel_read_retrieval = 1
 params.svaba = "on"
-params.svaba_mate_lookup_min = 3
+params.svaba_strict = "off"
 params.delly = "on"
 params.delly_strict = "off"
 params.igcaller = "on"
@@ -854,8 +855,8 @@ process svAndIndelCalling_manta {
 	manta_somatic_sv_vcf = "${tumor_normal_sample_id}.manta.somatic.sv.unprocessed.vcf.gz"
 	manta_somatic_sv_vcf_index = "${manta_somatic_sv_vcf}.tbi"
 	manta_call_parameters = params.seq_protocol == "WES" ? "--exome" : ""
-	
-	if ( params.seq_protocol == "WGS" )
+
+	if ( params.manta_strict == "off" )
 	"""
 	bgzip < "${target_bed}" > "${zipped_bed}"
 	tabix "${zipped_bed}"
@@ -872,7 +873,8 @@ process svAndIndelCalling_manta {
 	--referenceFasta "${ref_genome_fasta}" \
 	--callRegions "${zipped_bed}" \
 	--config "${manta_somatic_config}" \
-	--runDir manta
+	--runDir manta \
+	"${manta_call_parameters}"
 
 	python manta/runWorkflow.py \
 	--mode local \
@@ -899,16 +901,17 @@ process svAndIndelCalling_manta {
 		| bgzip > "${manta_somatic_sv_vcf}"
 	tabix "${manta_somatic_sv_vcf}"
 	"""
-	else if ( params.seq_protocol == "WES" )
+	else if ( params.manta_strict == "on" )
 	"""
 	bgzip < "${target_bed}" > "${zipped_bed}"
 	tabix "${zipped_bed}"
 
 	touch "${manta_somatic_config}"
 	cat \${MANTA_DIR}/bin/configManta.py.ini \
-		| sed 's|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = 0|enableRemoteReadRetrievalForInsertionsInCancerCallingModes = ${params.manta_indel_read_retrieval}|' \
-		| sed 's|minPassSomaticScore = 30|minPassSomaticScore = 35|' \
-		| sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 4|' >> "${manta_somatic_config}"
+		| sed 's|minEdgeObservations = 3|minEdgeObservations = 7|' \
+		| sed 's|minPassSomaticScore = 10|minPassSomaticScore = 75|' \
+		| sed 's|minPassSomaticScore = 30|minPassSomaticScore = 75|' \
+		| sed 's|minCandidateSpanningCount = 3|minCandidateSpanningCount = 11|' >> "${manta_somatic_config}"
 
 	python \${MANTA_DIR}/bin/configManta.py \
 	--tumorBam "${tumor_bam}" \
@@ -917,7 +920,7 @@ process svAndIndelCalling_manta {
 	--callRegions "${zipped_bed}" \
 	--config "${manta_somatic_config}" \
 	--runDir manta \
-	--exome
+	"${manta_call_parameters}"
 
 	python manta/runWorkflow.py \
 	--mode local \
@@ -1179,6 +1182,8 @@ process svAndIndelCalling_svaba {
 	svaba_somatic_sv_vcf_index = "${svaba_somatic_sv_vcf}.tbi"
 	sample_renaming_file = "sample_renaming_file.txt"
 	svaba_call_parameters = params.seq_protocol == "WES" ? "-k ${target_bed}" : ""
+	
+	if ( params.svaba_strict == "off" )
 	"""
 	export TMPDIR="workdirTmp/"
 
@@ -1192,7 +1197,41 @@ process svAndIndelCalling_svaba {
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip \
-	--mate-lookup-min ${params.svaba_mate_lookup_min} \
+	"${svaba_call_parameters}"
+
+	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
+	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
+	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.sv.vcf.gz" "${unfiltered_somatic_sv_vcf}"
+	mv "${tumor_normal_sample_id}.svaba.somatic.indel.vcf.gz" "${filtered_somatic_indel_vcf}"
+
+	gunzip -c "${tumor_normal_sample_id}.svaba.somatic.sv.vcf.gz" > "${tumor_normal_sample_id}.svaba.somatic.sv.unclassified.vcf"
+
+	echo "Running simple classification ..."
+	svaba_sv_classifier.py "${tumor_normal_sample_id}.svaba.somatic.sv.unclassified.vcf" \
+		| bgzip > "${svaba_somatic_sv_vcf}"
+	echo "Done ..."
+
+	tabix "${filtered_somatic_indel_vcf}"
+	tabix "${svaba_somatic_sv_vcf}"
+
+	touch "${sample_renaming_file}"
+	echo "${tumor_bam} ${tumor_id}" >> "${sample_renaming_file}"
+	"""
+	else if ( params.svaba_strict == "on" )
+	"""
+	export TMPDIR="workdirTmp/"
+
+	svaba run \
+	-t "${tumor_bam}" \
+	-n "${normal_bam}" \
+	--reference-genome Homo_sapiens_assembly38.fasta \
+	--blacklist "${wgs_blacklist_1based_bed}" \
+	--id-string "${tumor_normal_sample_id}" \
+	--dbsnp-vcf "${dbsnp_known_indel_vcf}" \
+	--threads "${task.cpus}" \
+	--verbose 1 \
+	--g-zip \
+	--mate-lookup-min 25 \
 	"${svaba_call_parameters}"
 
 	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
@@ -1338,10 +1377,30 @@ process svAndIndelCalling_delly {
 	tumor_normal_sample_id = "${tumor_id}_vs_${normal_id}"
 	delly_somatic_sv_vcf = "${tumor_normal_sample_id}.delly.somatic.sv.unprocessed.vcf.gz"
 	delly_somatic_sv_vcf_index = "${delly_somatic_sv_vcf}.tbi"
-	delly_call_parameters = params.delly_strict == "on" ? "--map-qual 30 --qual-tra 40 --mad-cutoff 15 --min-clique-size 5" : "--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2"
+	
+	if ( params.delly_strict == "off" )
 	"""
 	delly call \
-	${delly_call_parameters} \
+	--map-qual 1 --qual-tra 20 --mad-cutoff 9 --min-clique-size 2 \
+	--genome "${ref_genome_fasta}" \
+	--exclude "${wgs_blacklist_0based_bed}" \
+	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
+	"${tumor_bam}" \
+	"${normal_bam}"
+
+	touch samples.tsv
+	echo "${tumor_id}\ttumor" >> samples.tsv
+	echo "${normal_id}\tcontrol" >> samples.tsv
+
+	delly filter --filter somatic --pass --altaf 0.05 --minsize 51 --coverage 10 --samples samples.tsv "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
+		| bcftools view --output-type z --threads ${task.cpus} --output-file "${delly_somatic_sv_vcf}"
+
+	tabix "${delly_somatic_sv_vcf}"
+	"""
+	else if ( params.delly_strict == "on" )
+	"""
+	delly call \
+	--map-qual 60 --qual-tra 60 --mad-cutoff 17 --min-clique-size 9 \
 	--genome "${ref_genome_fasta}" \
 	--exclude "${wgs_blacklist_0based_bed}" \
 	--outfile "${tumor_normal_sample_id}.delly.sv.unfiltered.bcf" \
