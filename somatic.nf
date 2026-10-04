@@ -1228,7 +1228,12 @@ process svAndIndelCalling_svaba {
 	--threads "${task.cpus}" \
 	--verbose 1 \
 	--g-zip \
-	--mate-lookup-min 25 ${svaba_call_parameters}
+	--lod 15 \
+	--lod-dbsnp 12 \
+	--lod-somatic 12 \
+	--lod-somatic-dbsnp 10 \
+	--mate-lookup-min 50 \
+	 ${svaba_call_parameters}
 
 	mv "${tumor_normal_sample_id}.alignments.txt.gz" "${contig_alignment_plot}"
 	mv "${tumor_normal_sample_id}.svaba.unfiltered.somatic.indel.vcf.gz" "${unfiltered_somatic_indel_vcf}"
